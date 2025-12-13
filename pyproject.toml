@@ -1,0 +1,25 @@
+[project]
+name = "ea-cli-django"
+version = "0.0.1"
+requires-python = ">=3.13"
+dependencies = [
+    "django>=6.0",
+    "django-shinobi",
+    "django-htmx",
+    "django-environ",
+    "psycopg[binary]",
+    "redis",
+    "django-redis",
+    "polars[pyarrow]",
+    "watchfiles",
+    "uvicorn[standard]",
+    "httpx",
+    "loguru",
+    "pypdf",
+    "fastexcel",
+    "openpyxl"
+]
+
+[project.optional-dependencies]
+dev = ["ruff", "ipython", "django-debug-toolbar"]
+test = ["pytest", "pytest-django", "pytest-cov"]

@@ -1,0 +1,12 @@
+<div class="grid">
+  {% for item in items %}
+    <div class="card">
+      <div class="card-body">
+        <h3>{{ item.filename|default:"Untitled" }}</h3>
+        <p>Material ID: {{ item.material_id }}</p>
+      </div>
+    </div>
+  {% empty %}
+    <p>No items.</p>
+  {% endfor %}
+</div>

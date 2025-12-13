@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="p-4" x-data="{ showUploadModal: false }">
+
+    <!-- Toolbar -->
+    <div class="flex justify-between mb-4">
+        <h1 class="text-2xl font-bold">Copyright Dashboard</h1>
+        <button @click="showUploadModal = true" class="btn btn-primary">
+            Upload Excel
+        </button>
+    </div>
+
+    <!-- The Grid (HTMX Target) -->
+    <div id="data-grid"
+         hx-get="{% url 'dashboard:grid_partial' %}"
+         hx-trigger="load">
+         <!-- Spinner while loading -->
+         <span class="loading loading-spinner loading-lg"></span>
+    </div>
+
+    <!-- Upload Modal (DaisyUI + Alpine) -->
+    <dialog class="modal" :class="{ 'modal-open': showUploadModal }">
+        <div class="modal-box">
+            <h3 class="font-bold text-lg">Upload Data</h3>
+            <form hx-post="{% url 'api:trigger_ingest' %}"
+                  hx-swap="none"
+                  @htmx:after-request="showUploadModal = false">
+                <input type="file" name="file" class="file-input w-full max-w-xs" />
+                <div class="modal-action">
+                    <button type="submit" class="btn btn-success">Upload</button>
+                    <button type="button" class="btn" @click="showUploadModal = false">Close</button>
+                </div>
+            </form>
+        </div>
+    </dialog>
+
+</div>
+{% endblock %}

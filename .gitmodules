@@ -1,0 +1,3 @@
+[submodule "ea-cli"]
+	path = ea-cli
+	url = https://github.com/utsmok/ea-cli
