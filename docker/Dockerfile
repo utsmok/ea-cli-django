@@ -1,4 +1,4 @@
-FROM python:3.12-slim
+FROM python:3.13-slim
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential libpq-dev curl git netcat-openbsd \
@@ -6,14 +6,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
 
-WORKDIR /app
-ENV PATH="/app/.venv/bin:$PATH" \
+ENV UV_PROJECT_ENVIRONMENT="/opt/venv"
+ENV PATH="/opt/venv/bin:$PATH" \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     DJANGO_SETTINGS_MODULE=config.settings
 
-COPY pyproject.toml uv.lock* ./
-RUN uv sync --frozen
+WORKDIR /app
+
+COPY pyproject.toml ./
+RUN uv sync --all-groups
 
 COPY . .
 RUN mkdir -p media documents/downloads documents/processed logs static_files \

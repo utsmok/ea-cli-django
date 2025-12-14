@@ -1,859 +1,327 @@
-\*\*\*
-
-
-
-\# Easy Access Platform (v2.0) - Master Development Guide
-
-\*\*Date:\*\* December 8, 2025
-
-\*\*Status:\*\* Ready for Implementation
-
-\*\*Target Stack:\*\* Django 6.0, Python 3.12+, PostgreSQL 17, Docker, HTMX, Alpine.js, DaisyUI.
-
-
 
 ---
 
+# Easy Access Platform (v2.0) - Master Development Guide
+**Date:** December 14, 2025
+**Target Stack:** Django 6.0, Python 3.12+, PostgreSQL 17, Polars, Docker, CatBoost.
+**Status:** Implementation Ready
 
-
-\## 1. Introduction \& Architecture
-
-
-
-\### 1.1 Overview
-
-This project refactors the legacy `ea-cli` tool into a robust, web-based platform. The original codebase can be found as git submodule `\ea-cli` in the root of this repo. In short, the new system ingests copyright data from Excel sheets, enriches it via external APIs (OSIRIS, Canvas), and provides a reactive dashboard for data entry and classification.
-
-
-
-\*\*Key Constraints:\*\*
-
-\*   \*\*Scale:\*\* 50k - 400k items.
-
-\*   \*\*Environment:\*\* Internal University Network (VPN/Intranet).
-
-\*   \*\*Storage:\*\* Local disk storage (NAS/Volume mapped) for PDFs.
-
-\*   \*\*Auth:\*\* Standard Django Admin/Staff authentication.
-
-
-
-\### 1.2 Tech Stack
-
-\*   \*\*Backend:\*\* \[Django 6.0](https://docs.djangoproject.com/en/6.0/) (Native Tasks, Async).
-
-\*   \*\*API:\*\* \[Django Shinobi](https://github.com/django-shinobi/django-shinobi) (Pydantic-based API schemas).
-
-\*   \*\*Data Processing:\*\* \[Polars](https://pola.rs/) (High-performance Excel/CSV processing).
-
-\*   \*\*Frontend:\*\* \[HTMX](https://htmx.org/) (Server interaction) + \[Alpine.js](https://alpinejs.dev/) (Client state) + \[DaisyUI](https://daisyui.com/) (Tailwind CSS Components).
-
-\*   \*\*Infrastructure:\*\* Docker Compose, VS Code Dev Containers.
-
-
+## 📋 Executive Summary
+We are refactoring the `ea-cli` tool (Tortoise ORM/Pandas) into a robust **Django 6.0** platform.
+*   **Legacy Code:** The original `ea-cli` is included as a submodule for direct field/logic reference.
+*   **Database Strategy:** We are replicating the V1 schema strictness (fields, types) but porting relations to Django's ORM standards.
+*   **Migration:** Data will be exported from V1 to CSV/JSON, then ingested via Polars into the V2 `StagedItem` table.
 
 ---
 
+## 🛠 Phase 1: Infrastructure & Project Structure
 
-
-\## 2. Infrastructure \& Environment Setup
-
-
-
-\### 2.1 File Structure
-
-Initialize your repository with this exact structure.
-
-
+### 1.1 File Structure
+Initialize the repository. **Action:** Run `git submodule add <ea-cli-repo-url> ea-cli` to mount the legacy code.
 
 ```text
-
 copyright-platform/
-
-├── .devcontainer/
-
-│   └── devcontainer.json        # VS Code Remote Config
-
+├── .devcontainer/devcontainer.json
+├── ea-cli/                              # [SUBMODULE] Reference Code
 ├── docker/
-
-│   ├── Dockerfile               # Python + Node (for Tailwind)
-
-│   ├── entrypoint.sh            # Startup script
-
-│   └── redis.conf               # Redis config
-
-├── raw\_data/                    # Watch folder for Excel drops
-
-│   └── .gitkeep
-
-├── documents/                   # PDF Storage (Volume Mapped)
-
-│   ├── downloads/
-
-│   └── processed/
-
+│   ├── Dockerfile
+│   ├── entrypoint.sh
+├── documents/                           # [VOLUME] Mapped to local storage (NAS/Disk)
+├── raw_data/                            # [VOLUME] Watch folder for Excel
 ├── src/
-
 │   ├── apps/
-
-│   │   ├── api/                 # Shinobi Endpoints
-
-│   │   ├── core/                # Models \& Shared Logic
-
-│   │   ├── dashboard/           # UI Views (HTMX)
-
-│   │   ├── documents/           # PDF Logic
-
-│   │   ├── enrichment/          # External Integrations
-
-│   │   └── ingest/              # Polars Logic \& Watchdog
-
-│   ├── config/                  # Settings
-
-│   │   ├── settings.py
-
-│   │   ├── tasks.py             # Task Backend Config
-
-│   │   └── urls.py
-
-│   ├── static/                  # CSS/JS Assets
-
-│   ├── templates/               # HTML Templates
-
+│   │   ├── api/
+│   │   ├── classification/              # Rule Engine & ML
+│   │   │   ├── widget/                  # AnyWidget (Notebook)
+│   │   │   └── pipeline/                # Heuristics
+│   │   ├── core/                        # Organization, Person, Users
+│   │   ├── dashboard/                   # HTMX Views
+│   │   ├── documents/                   # PDF & Canvas Metadata models
+│   │   ├── enrichment/                  # External APIs
+│   │   └── ingest/                      # Polars Tasks
+│   ├── config/
 │   └── manage.py
-
 ├── .env.example
-
 ├── docker-compose.yml
-
 └── pyproject.toml
-
 ```
 
-
-
-\### 2.2 Container Configuration
-
-
-
-\*\*`pyproject.toml`\*\*
-
+### 1.2 Configuration
+**`pyproject.toml`** (Combined Dependencies)
 ```toml
-
-\[project]
-
+[project]
 name = "copyright-platform"
-
 version = "2.0.0"
-
 requires-python = ">=3.12"
-
-dependencies = \[
-
-&nbsp;   "django>=6.0",
-
-&nbsp;   "django-shinobi",
-
-&nbsp;   "django-htmx",
-
-&nbsp;   "django-environ",
-
-&nbsp;   "psycopg\[binary]",
-
-&nbsp;   "redis",
-
-&nbsp;   "django-redis-tasks", # Assumption: Community backend for Django 6 Tasks
-
-&nbsp;   "polars\[xlsx,pyarrow]",
-
-&nbsp;   "watchfiles",
-
-&nbsp;   "uvicorn\[standard]",
-
-&nbsp;   "httpx",
-
-&nbsp;   "loguru",
-
-&nbsp;   "pypdf"
-
+dependencies = [
+    "django>=6.0",
+    "django-shinobi",
+    "django-htmx",
+    "django-environ",
+    "django-redis-tasks",
+    "psycopg[binary]",
+    "redis",
+    "polars[xlsx,pyarrow]",
+    "catboost",
+    "scikit-learn",
+    "watchfiles",
+    "anywidget",
+    "pypdf",
+    "Levenshtein",
+    "loguru"
 ]
-
 ```
-
-
-
-\*\*`docker-compose.yml`\*\*
-
-```yaml
-
-services:
-
-&nbsp; db:
-
-&nbsp;   image: postgres:17-alpine
-
-&nbsp;   environment:
-
-&nbsp;     POSTGRES\_DB: copyright\_db
-
-&nbsp;     POSTGRES\_USER: admin
-
-&nbsp;     POSTGRES\_PASSWORD: dev\_password
-
-&nbsp;   volumes:
-
-&nbsp;     - postgres\_data:/var/lib/postgresql/data
-
-&nbsp;   healthcheck:
-
-&nbsp;     test: \["CMD-SHELL", "pg\_isready -U admin"]
-
-&nbsp;     interval: 5s
-
-
-
-&nbsp; redis:
-
-&nbsp;   image: redis:7-alpine
-
-&nbsp;   volumes:
-
-&nbsp;     - redis\_data:/data
-
-&nbsp;   healthcheck:
-
-&nbsp;     test: \["CMD", "redis-cli", "ping"]
-
-&nbsp;     interval: 5s
-
-
-
-&nbsp; web:
-
-&nbsp;   build: .
-
-&nbsp;   command: python src/manage.py runserver 0.0.0.0:8000
-
-&nbsp;   volumes:
-
-&nbsp;     - .:/app
-
-&nbsp;     - ./documents:/app/documents
-
-&nbsp;   ports:
-
-&nbsp;     - "8000:8000"
-
-&nbsp;   depends\_on:
-
-&nbsp;     db: {condition: service\_healthy}
-
-&nbsp;     redis: {condition: service\_healthy}
-
-&nbsp;   environment:
-
-&nbsp;     - DATABASE\_URL=postgres://admin:dev\_password@db:5432/copyright\_db
-
-&nbsp;     - REDIS\_URL=redis://redis:6379/0
-
-&nbsp;     - DEBUG=True
-
-
-
-&nbsp; # Django 6 Task Worker
-
-&nbsp; worker:
-
-&nbsp;   build: .
-
-&nbsp;   # Assuming 'runworker' comes from the backend package or custom command
-
-&nbsp;   command: python src/manage.py runworker
-
-&nbsp;   volumes:
-
-&nbsp;     - .:/app
-
-&nbsp;     - ./documents:/app/documents
-
-&nbsp;   depends\_on:
-
-&nbsp;     - db
-
-&nbsp;     - redis
-
-&nbsp;   environment:
-
-&nbsp;     - DATABASE\_URL=postgres://admin:dev\_password@db:5432/copyright\_db
-
-&nbsp;     - REDIS\_URL=redis://redis:6379/0
-
-
-
-&nbsp; # File Watcher for Excel Ingestion
-
-&nbsp; watcher:
-
-&nbsp;   build: .
-
-&nbsp;   command: python src/manage.py watch
-
-&nbsp;   volumes:
-
-&nbsp;     - .:/app
-
-&nbsp;     - ./raw\_data:/app/raw\_data
-
-&nbsp;   depends\_on:
-
-&nbsp;     - web
-
-&nbsp;     - redis
-
-
-
-volumes:
-
-&nbsp; postgres\_data:
-
-&nbsp; redis\_data:
-
-```
-
-
-
-\### 2.3 Django 6 Task Configuration (`src/config/settings.py`)
-
-Django 6 separates the definition of tasks from the execution backend. We will use Redis.
-
-
-
-```python
-
-\# src/config/settings.py
-
-
-
-TASKS = {
-
-&nbsp;   "default": {
-
-&nbsp;       "BACKEND": "django\_redis\_tasks.backend.RedisBackend",
-
-&nbsp;       "OPTIONS": {
-
-&nbsp;           "connection\_string": env("REDIS\_URL"),
-
-&nbsp;           "queue\_name": "default",
-
-&nbsp;       }
-
-&nbsp;   }
-
-}
-
-```
-
-
 
 ---
 
+## 💾 Phase 2: Core Data Modeling
+**Objective:** Port the exact schema from `ea-cli/easy_access/db/models.py`.
 
-
-\## 3. Data Modeling (Refined)
-
-
-
-We have simplified the organization hierarchy based on review feedback. We use `models.JSONField` for flexible staging.
-
-
-
-\*\*File:\*\* `src/apps/core/models.py`
-
-
+### 2.1 Enums (`apps.core.choices`)
+Map `ea-cli/easy_access/db/enums.py` to Django `TextChoices`.
 
 ```python
-
+# src/apps/core/choices.py
 from django.db import models
 
-from django.utils.translation import gettext\_lazy as \_
+class ClassificationV2(models.TextChoices):
+    # Match strings exactly from legacy enums.py
+    JA_OPEN_LICENTIE = "Ja (open licentie)", "Ja (Open Licentie)"
+    JA_EIGEN_WERK = "Ja (eigen werk)", "Ja (Eigen Werk)"
+    JA_EASY_ACCESS = "Ja (easy access)", "Ja (Easy Access)"
+    JA_ANDERS = "Ja (anders)", "Ja (anders)"
+    NEE_LINK = "Nee (Link beschikbaar)", "Nee (Link beschikbaar)"
+    NEE = "Nee", "Nee"
+    ONBEKEND = "Onbekend", "Onbekend"
+    # ... include all TIJDELIJK variants ...
 
+class WorkflowStatus(models.TextChoices):
+    TODO = "ToDo", "ToDo"
+    DONE = "Done", "Done"
+    IN_PROGRESS = "InProgress", "In Progress"
 
+class Filetype(models.TextChoices):
+    PDF = "pdf", "PDF"
+    PPT = "ppt", "PowerPoint"
+    DOC = "doc", "Word"
+    UNKNOWN = "unknown", "Unknown"
+    # ... map remaining from Legacy Filetype ...
+```
+
+### 2.2 Domain Models (`apps.core.models`)
+Refactor `Organization`, `Faculty`, `Person`.
+
+```python
+from django.db import models
+from .choices import *
 
 class TimestampedModel(models.Model):
-
-&nbsp;   created\_at = models.DateTimeField(auto\_now\_add=True)
-
-&nbsp;   modified\_at = models.DateTimeField(auto\_now=True)
-
-&nbsp;   class Meta:
-
-&nbsp;       abstract = True
-
-
-
-\# -----------------------------------------------------------------------------
-
-\# Organizations (Simplified)
-
-\# -----------------------------------------------------------------------------
-
-
-
-class OrganizationType(models.TextChoices):
-
-&nbsp;   UNIVERSITY = "UNI", "University"
-
-&nbsp;   FACULTY = "FAC", "Faculty"
-
-&nbsp;   DEPARTMENT = "DEP", "Department"
-
-
+    created_at = models.DateTimeField(auto_now_add=True)
+    modified_at = models.DateTimeField(auto_now=True)
+    class Meta:
+        abstract = True
 
 class Organization(TimestampedModel):
+    """
+    Consolidates Legacy 'Organization' and 'Faculty' and 'Programme'
+    Legacy: Organization (db table 'organization_data')
+    """
+    class Type(models.TextChoices):
+        UNI = "UNI", "University"
+        FACULTY = "FAC", "Faculty"
+        DEPT = "DEP", "Department"
+        PROG = "PROG", "Programme"
 
-&nbsp;   name = models.CharField(max\_length=2048, db\_index=True)
+    name = models.CharField(max_length=2048, db_index=True)
+    abbreviation = models.CharField(max_length=255, db_index=True)
+    full_abbreviation = models.CharField(max_length=2048, unique=True, null=True)
+    org_type = models.CharField(choices=Type.choices, default=Type.FACULTY)
+    parent = models.ForeignKey('self', null=True, blank=True, on_delete=models.SET_NULL)
 
-&nbsp;   abbreviation = models.CharField(max\_length=255, db\_index=True)
+    class Meta:
+        unique_together = ('name', 'abbreviation')
 
-&nbsp;   org\_type = models.CharField(
+class Person(TimestampedModel):
+    # Match legacy table 'person_data'
+    input_name = models.CharField(max_length=2048, unique=True, db_index=True)
+    main_name = models.CharField(max_length=2048, null=True, blank=True)
+    first_name = models.CharField(max_length=2048, null=True, blank=True)
+    email = models.CharField(max_length=2048, null=True, blank=True)
+    people_page_url = models.URLField(max_length=2048, null=True, blank=True)
+    match_confidence = models.FloatField(null=True)
 
-&nbsp;       max\_length=10,
-
-&nbsp;       choices=OrganizationType.choices,
-
-&nbsp;       default=OrganizationType.FACULTY
-
-&nbsp;   )
-
-&nbsp;   parent = models.ForeignKey(
-
-&nbsp;       'self', on\_delete=models.SET\_NULL, null=True, blank=True, related\_name='children'
-
-&nbsp;   )
-
-
-
-&nbsp;   class Meta:
-
-&nbsp;       unique\_together = ('name', 'abbreviation')
-
-
-
-&nbsp;   def \_\_str\_\_(self):
-
-&nbsp;       return f"{self.abbreviation} ({self.get\_org\_type\_display()})"
-
-
-
-\# -----------------------------------------------------------------------------
-
-\# Copyright Data
-
-\# -----------------------------------------------------------------------------
-
-
-
-class CopyrightItem(TimestampedModel):
-
-&nbsp;   material\_id = models.BigIntegerField(primary\_key=True)
-
-&nbsp;   filename = models.CharField(max\_length=2048, null=True, blank=True)
-
-&nbsp;   filehash = models.CharField(max\_length=255, null=True, blank=True)
-
-&nbsp;
-
-&nbsp;   # ... (Other fields as per original plan: Status, Author, Title, etc.) ...
-
-&nbsp;
-
-&nbsp;   canvas\_course\_id = models.BigIntegerField(null=True, blank=True)
-
-&nbsp;
-
-&nbsp;   class Meta:
-
-&nbsp;       ordering = \['-modified\_at']
-
-&nbsp;       indexes = \[
-
-&nbsp;           models.Index(fields=\['workflow\_status', 'faculty']),
-
-&nbsp;           models.Index(fields=\['filehash']),        # Duplicate detection
-
-&nbsp;           models.Index(fields=\['canvas\_course\_id']), # API lookups
-
-&nbsp;       ]
-
-
-
-class StagedItem(TimestampedModel):
-
-&nbsp;   """
-
-&nbsp;   Temporary holding area for Excel rows before they become CopyrightItems.
-
-&nbsp;   """
-
-&nbsp;   class Status(models.TextChoices):
-
-&nbsp;       PENDING = "PENDING", "Pending"
-
-&nbsp;       PROCESSED = "PROCESSED", "Processed"
-
-&nbsp;       ERROR = "ERROR", "Error"
-
-
-
-&nbsp;   source\_file = models.CharField(max\_length=1024)
-
-&nbsp;   status = models.CharField(max\_length=20, choices=Status.choices, default=Status.PENDING)
-
-&nbsp;   payload = models.JSONField(default=dict) # Stores the raw Polars row
-
-&nbsp;   error\_log = models.TextField(null=True, blank=True)
-
+    orgs = models.ManyToManyField(Organization, related_name='employees')
 ```
 
+### 2.3 Copyright Models (`apps.core.models`)
+The core `CopyrightItem` must contain every field from `v1` and `v2`.
 
+```python
+class CopyrightItem(TimestampedModel):
+    # Primary Key
+    material_id = models.BigIntegerField(primary_key=True)
+
+    # Identifiers & Status
+    filename = models.CharField(max_length=2048, null=True, blank=True)
+    filehash = models.CharField(max_length=255, db_index=True, null=True)
+    url = models.URLField(max_length=2048, null=True, unique=True) # Check Legacy uniqueness
+    workflow_status = models.CharField(choices=WorkflowStatus.choices, default=WorkflowStatus.TODO, db_index=True)
+
+    # Classification Fields
+    v2_manual_classification = models.CharField(choices=ClassificationV2.choices, default=ClassificationV2.ONBEKEND)
+    # Legacy field retention
+    manual_classification = models.CharField(max_length=2048, null=True, blank=True)
+
+    # Metadata (From legacy)
+    title = models.CharField(max_length=2048, null=True)
+    author = models.CharField(max_length=2048, null=True)
+    publisher = models.CharField(max_length=2048, null=True)
+    isbn = models.CharField(max_length=255, null=True)
+    doi = models.CharField(max_length=255, null=True)
+
+    # Statistics (Legacy: pagecount, pages_x_students, etc)
+    pagecount = models.IntegerField(default=0)
+    wordcount = models.IntegerField(default=0)
+    count_students_registered = models.IntegerField(default=0)
+
+    # Relations
+    faculty = models.ForeignKey(Organization, null=True, on_delete=models.SET_NULL)
+    courses = models.ManyToManyField('Course', related_name='items')
+
+    # Workflow Extras (Legacy: last_canvas_check, file_exists)
+    file_exists = models.BooleanField(null=True, default=None)
+    last_canvas_check = models.DateTimeField(null=True)
+    canvas_course_id = models.BigIntegerField(null=True, db_index=True)
+
+    # ML V2 Fields (New)
+    v2_predicted_classification = models.CharField(choices=ClassificationV2.choices, null=True)
+    v2_prediction_confidence = models.FloatField(default=0.0)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['workflow_status']),
+            models.Index(fields=['filehash']),
+        ]
+```
+
+### 2.4 Document Models (`apps.documents.models`)
+We must port `PDFCanvasMetadata` faithfully, as it determines lock/unlock logic.
+
+```python
+class PDF(TimestampedModel):
+    # Links to Copyright Item
+    item = models.OneToOneField('core.CopyrightItem', related_name='pdf', on_delete=models.CASCADE)
+
+    filename = models.CharField(max_length=2048, null=True)
+    current_file_name = models.CharField(max_length=2048) # Disk location
+
+    # Extraction status
+    extraction_successful = models.BooleanField(default=False)
+    extracted_text_content = models.TextField(null=True) # Flattening PDFText relation for simplicity
+
+    def get_absolute_path(self):
+        return f"/app/documents/downloads/{self.current_file_name}"
+
+class PDFCanvasMetadata(TimestampedModel):
+    pdf = models.OneToOneField(PDF, related_name='canvas_meta', on_delete=models.CASCADE)
+    uuid = models.CharField(max_length=255)
+    size = models.BigIntegerField()
+    locked = models.BooleanField(default=False)
+    hidden = models.BooleanField(default=False)
+    unlock_at = models.DateTimeField(null=True)
+```
 
 ---
 
+## ⚡ Phase 3: Data Ingestion Pipeline
 
-
-\## 4. Implementation Guidelines
-
-
-
-\### 4.1 Ingestion Pipeline (Polars + Django 6 Tasks)
-
-
-
-We handle Excel files in a non-blocking way.
-
-
-
-\*\*1. The Watcher Command (`src/apps/ingest/management/commands/watch.py`)\*\*
-
-Uses `watchfiles` to monitor `raw\_data/`. When a file appears, it triggers the task.
-
-
+### 3.1 Task (`apps.ingest.tasks`)
+We use Polars to read raw Excel. Reference `ea-cli/easy_access/sheets/sheet.py` to see how columns were renamed in the legacy system.
 
 ```python
-
-from django.core.management.base import BaseCommand
-
-from watchfiles import watch
-
-from apps.ingest.tasks import ingest\_excel\_task
-
-
-
-class Command(BaseCommand):
-
-&nbsp;   def handle(self, \*args, \*\*options):
-
-&nbsp;       self.stdout.write("Watching /raw\_data for .xlsx files...")
-
-&nbsp;       for changes in watch('/app/raw\_data'):
-
-&nbsp;           for change, path in changes:
-
-&nbsp;               if path.endswith('.xlsx'):
-
-&nbsp;                   # Enqueue the Django 6 Task
-
-&nbsp;                   ingest\_excel\_task.enqueue(file\_path=path)
-
-```
-
-
-
-\*\*2. The Task (`src/apps/ingest/tasks.py`)\*\*
-
-Uses Django 6 native task decorator.
-
-
-
-```python
-
 from django.tasks import task
-
-import polars as pl
-
 from apps.core.models import StagedItem
 
-
-
-@task(queue\_name="default")
-
-def ingest\_excel\_task(file\_path: str):
-
-&nbsp;   try:
-
-&nbsp;       # 1. Read with Polars (Super fast)
-
-&nbsp;       df = pl.read\_excel(file\_path)
-
-&nbsp;
-
-&nbsp;       # 2. Convert to list of dictionaries
-
-&nbsp;       rows = df.to\_dicts()
-
-&nbsp;
-
-&nbsp;       # 3. Bulk create StagedItems
-
-&nbsp;       batch = \[
-
-&nbsp;           StagedItem(source\_file=file\_path, payload=row)
-
-&nbsp;           for row in rows
-
-&nbsp;       ]
-
-&nbsp;       StagedItem.objects.bulk\_create(batch, batch\_size=5000)
-
-&nbsp;
-
-&nbsp;       return f"Successfully staged {len(batch)} rows from {file\_path}"
-
-&nbsp;
-
-&nbsp;   except Exception as e:
-
-&nbsp;       # In Django 6, this error is saved to TaskResult.errors
-
-&nbsp;       raise e
-
+@task
+def ingest_task(file_path):
+    import polars as pl
+    # Read
+    df = pl.read_excel(file_path)
+    # Convert dates/ints (Polars is strict, check types)
+    # Bulk insert
+    dicts = df.to_dicts()
+    StagedItem.objects.bulk_create(
+        [StagedItem(source_file=file_path, payload=d) for d in dicts]
+    )
+    # Trigger Enrichment
 ```
 
+### 3.2 Legacy Migration
+1.  **Export V1:** Use legacy codebase to dump `copyright_data` table to `migration_dump.csv`.
+2.  **Import V2:** The Watchdog picks up the file.
+3.  **Migration Script:** Write a Django Command that reads `StagedItem`, validates against `CopyrightItem` fields (mapping `classification` -> `v1_manual_classification`), and inserts.
 
+---
 
-\### 4.2 Frontend Pattern (HTMX + Alpine + DaisyUI)
+## 🖥️ Phase 4: HTMX Dashboard
+**Reference:** `ea-cli/dashboard/dash.py` (Visuals) and `data.py` (Filtering).
 
-
-
-Do not write standard Django Forms. Use this pattern for the Dashboard.
-
-
-
-\*\*Template Structure (`dashboard.html`):\*\*
-
-```html
-
-{% extends "base.html" %}
-
-
-
-{% block content %}
-
-<div class="p-4" x-data="{ showUploadModal: false }">
-
-&nbsp;
-
-&nbsp;   <!-- Toolbar -->
-
-&nbsp;   <div class="flex justify-between mb-4">
-
-&nbsp;       <h1 class="text-2xl font-bold">Copyright Dashboard</h1>
-
-&nbsp;       <button @click="showUploadModal = true" class="btn btn-primary">
-
-&nbsp;           Upload Excel
-
-&nbsp;       </button>
-
-&nbsp;   </div>
-
-
-
-&nbsp;   <!-- The Grid (HTMX Target) -->
-
-&nbsp;   <div id="data-grid"
-
-&nbsp;        hx-get="{% url 'dashboard:grid\_partial' %}"
-
-&nbsp;        hx-trigger="load">
-
-&nbsp;        <!-- Spinner while loading -->
-
-&nbsp;        <span class="loading loading-spinner loading-lg"></span>
-
-&nbsp;   </div>
-
-
-
-&nbsp;   <!-- Upload Modal (DaisyUI + Alpine) -->
-
-&nbsp;   <dialog class="modal" :class="{ 'modal-open': showUploadModal }">
-
-&nbsp;       <div class="modal-box">
-
-&nbsp;           <h3 class="font-bold text-lg">Upload Data</h3>
-
-&nbsp;           <form hx-post="{% url 'api:trigger\_ingest' %}"
-
-&nbsp;                 hx-swap="none"
-
-&nbsp;                 @htmx:after-request="showUploadModal = false">
-
-&nbsp;               <input type="file" name="file" class="file-input w-full max-w-xs" />
-
-&nbsp;               <div class="modal-action">
-
-&nbsp;                   <button type="submit" class="btn btn-success">Upload</button>
-
-&nbsp;                   <button type="button" class="btn" @click="showUploadModal = false">Close</button>
-
-&nbsp;               </div>
-
-&nbsp;           </form>
-
-&nbsp;       </div>
-
-&nbsp;   </dialog>
-
-
-
-</div>
-
-{% endblock %}
-
-```
-
-
-
-\*\*View Logic (`src/apps/dashboard/views.py`):\*\*
+### 4.1 Filter Implementation (`apps.dashboard.views`)
+Reimplement filters for `Faculty`, `Status` (Workflow), and `Year` (Period).
 
 ```python
+def grid_partial(request):
+    items = CopyrightItem.objects.select_related('pdf').all()
 
-from django.template.response import TemplateResponse
+    # Status Filter
+    if status := request.GET.get('status'):
+        items = items.filter(workflow_status=status)
 
+    # Full Text Search (Postgres)
+    if q := request.GET.get('q'):
+        items = items.filter(title__icontains=q)
 
-
-def dashboard\_index(request):
-
-&nbsp;   return TemplateResponse(request, "dashboard/dashboard.html", {})
-
-
-
-def grid\_partial(request):
-
-&nbsp;   # Standard filtering logic here
-
-&nbsp;   items = CopyrightItem.objects.all()\[:50]
-
-&nbsp;
-
-&nbsp;   if request.htmx:
-
-&nbsp;       return TemplateResponse(request, "dashboard/\_grid.html", {"items": items})
-
-&nbsp;   return TemplateResponse(request, "dashboard/dashboard.html", {"items": items})
-
+    return render(request, "_grid.html", {"items": items[:100]})
 ```
 
+---
 
+## 🧠 Phase 5: Intelligence & Automation
+**Goal:** Automate V2 Classification.
+
+### 5.1 Hard Rules (`apps.classification.pipeline.rules`)
+Reference `ea-cli/easy_access/merge_rules.py`. Convert hardcoded logic into Policy Classes.
+
+```python
+class OwnWorkRule:
+    """Checks fuzzy match between Author and Course Teacher"""
+    def check(self, item):
+        # Implementation of Levenshtein logic from ea-cli/easy_access/utils.py
+        pass
+```
+
+### 5.2 CatBoost Integration (`apps.classification.ml`)
+Create the training/inference loop using the fields identified in the Models phase (e.g., `pagecount`, `filetype`).
 
 ---
 
+## 🔬 Phase 6: The "AnyWidget" Notebook Tool
+**Goal:** Advanced verification tool replacing the legacy "Dashboard Edit Mode".
 
+### 6.1 Logic (`apps.classification.widget.backend`)
+Use `anywidget` to provide a split-pane view in Marimo/Jupyter.
+**Feature:** Ensure the widget can update `workflow_status` from 'ToDo' to 'Done'.
 
-\## 5. Migration Strategy (Legacy to V2)
-
-
-
-Since we cannot connect Tortoise ORM to the Django DB easily, we use a "Dump and Load" strategy.
-
-
-
-1\.  \*\*Export V1 Data:\*\*
-
-&nbsp;   In the legacy project, run a script using Polars to dump the SQLite/Postgres data to CSVs.
-
-&nbsp;   ```python
-
-&nbsp;   # Legacy Script
-
-&nbsp;   import polars as pl
-
-&nbsp;   # ... connection logic ...
-
-&nbsp;   df = pl.read\_database(query="SELECT \* FROM copyright\_item", connection=conn)
-
-&nbsp;   df.write\_csv("legacy\_export\_v1.csv")
-
-&nbsp;   ```
-
-
-
-2\.  \*\*Import to V2:\*\*
-
-&nbsp;   Place `legacy\_export\_v1.csv` into `raw\_data/`.
-
-&nbsp;   The `watch` command will pick it up, and create `StagedItem` records.
-
-
-
-3\.  \*\*Migration Service:\*\*
-
-&nbsp;   Write a specific service `MigrationService` that iterates over `StagedItem` where `source\_file` contains "legacy".
-
-&nbsp;   \*   Map legacy columns to new `CopyrightItem` fields.
-
-&nbsp;   \*   Set `workflow\_status` to `TODO` so users can verify them in the new UI.
-
-
+### 6.2 Visualization
+In the legacy tool, PDFs were served via static files. In the widget, use `active_pdf_data = traitlets.Unicode()` to stream base64 content so it works in remote notebooks (Hubs/Docker).
 
 ---
 
+## ✅ Implementation Checklist
 
-
-\## 6. Development Workflow
-
-
-
-1\.  \*\*Start the environment:\*\*
-
-&nbsp;   ```bash
-
-&nbsp;   docker compose up --build
-
-&nbsp;   ```
-
-&nbsp;   \*   This starts: Web Server (8000), Worker, File Watcher, DB, Redis.
-
-
-
-2\.  \*\*Accessing the system:\*\*
-
-&nbsp;   \*   Frontend: `http://localhost:8000`
-
-&nbsp;   \*   API Docs: `http://localhost:8000/api/docs` (Shinobi auto-docs)
-
-
-
-3\.  \*\*Applying Changes:\*\*
-
-&nbsp;   \*   If you change models:
-
-&nbsp;       ```bash
-
-&nbsp;       docker compose exec web python src/manage.py makemigrations
-
-&nbsp;       docker compose exec web python src/manage.py migrate
-
-&nbsp;       ```
-
-&nbsp;   \*   If you add dependencies: Update `pyproject.toml` and rebuild Docker.
-
-
-
-4\.  \*\*Debugging:\*\*
-
-&nbsp;   \*   Logs are streamed to the terminal.
-
-&nbsp;   \*   Use `loguru` in code: `logger.info("Processing item...")`
+1.  **Repo Setup:** Git Submodule for `ea-cli`. Docker compose up.
+2.  **Schema Check:** Compare `src/apps/core/models.py` line-by-line with `ea-cli/easy_access/db/models.py`.
+3.  **Migrate:** `manage.py makemigrations` -> `manage.py migrate`.
+4.  **Ingest Test:** Drop a sample excel file. Verify `StagedItem` has JSON data.
+5.  **View Construction:** Build the HTMX grid. Ensure PDF icons link to valid routes.
+6.  **Notebook Test:** Launch Marimo (`marimo edit`), import `CopyrightLabeler`, and verify 2-way sync with Database.
