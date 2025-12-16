@@ -15,7 +15,6 @@ import logging
 from pathlib import Path
 
 from django.conf import settings
-from rich import print
 from xxhash import xxh3_64_hexdigest
 
 from apps.documents.models import PDF, PDFText

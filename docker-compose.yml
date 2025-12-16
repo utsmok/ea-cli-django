@@ -21,50 +21,6 @@ services:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
 
-  web:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile
-    command: python src/manage.py runserver 0.0.0.0:8000
-    volumes:
-      - .:/app
-      - ./documents:/app/documents
-    ports:
-      - "8000:8000"
-    depends_on:
-      db: {condition: service_healthy}
-      redis: {condition: service_healthy}
-    environment:
-      - DATABASE_URL=postgres://admin:dev_password@db:5432/copyright_db
-      - REDIS_URL=redis://redis:6379/0
-      - DEBUG=True
-
-  worker:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile
-    command: python src/manage.py runworker
-    volumes:
-      - .:/app
-      - ./documents:/app/documents
-    depends_on:
-      - db
-      - redis
-    environment:
-      - DATABASE_URL=postgres://admin:dev_password@db:5432/copyright_db
-      - REDIS_URL=redis://redis:6379/0
-
-  watcher:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile
-    command: python src/manage.py watch
-    volumes:
-      - .:/app
-      - ./raw_data:/app/raw_data
-    depends_on:
-      - web
-      - redis
 
 volumes:
   postgres_data:
