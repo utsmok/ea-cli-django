@@ -1,0 +1,14 @@
+.env
+*.pdf
+.venv
+*.pyc
+*.sqlite3
+__pycache__
+.vscode/
+.kreuzberg
+*.arrow
+*.msgpack
+*.json
+*.xlsx
+*.csv
+src/documents/

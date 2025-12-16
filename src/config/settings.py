@@ -2,11 +2,18 @@ import os
 from pathlib import Path
 
 import environ
+from dotenv import load_dotenv
 
 # Minimal Django settings to bootstrap project as in refactor-plan
 BASE_DIR = Path(__file__).resolve().parent.parent
+PROJECT_ROOT = BASE_DIR.parent  # c:\dev\ea-cli-django (root of project)
+
+# Load .env using python-dotenv (handles spaces around = better)
+load_dotenv(PROJECT_ROOT / ".env")
+
 env = environ.Env(DEBUG=(bool, False))
-env.read_env(os.path.join(BASE_DIR, ".env"))
+# Also try django-environ for structured types
+env.read_env(os.path.join(PROJECT_ROOT, ".env"))
 
 SECRET_KEY = env("SECRET_KEY", default="dev-secret-key")
 DEBUG = env("DEBUG")
@@ -25,6 +32,7 @@ INSTALLED_APPS = [
     "apps.api",
     "apps.documents",
     "apps.enrichment",
+    "apps.classification",
 ]
 
 MIDDLEWARE = [
@@ -59,8 +67,13 @@ WSGI_APPLICATION = "config.wsgi.application"
 
 
 # DATABASE configuration, support DATABASE_URL for Docker/Postgres
+# When running from host, 'db' hostname won't resolve, so we replace it with 'localhost'
+_db_url = os.getenv("DATABASE_URL", "postgres://admin:dev_password@localhost:5432/copyright_db")
+# If 'db:' appears in URL (Docker internal hostname), replace with 'localhost:'
+if "@db:" in _db_url:
+    _db_url = _db_url.replace("@db:", "@localhost:")
 DATABASES = {
-    "default": env.db("DATABASE_URL", default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}")
+    "default": env.db_url_config(_db_url)
 }
 
 AUTH_PASSWORD_VALIDATORS = []
@@ -88,3 +101,31 @@ TASKS = {
         },
     }
 }
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+        },
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": "INFO",
+    },
+}
+
+# Canvas LMS API Configuration
+CANVAS_API_URL = os.getenv("CANVAS_API_URL", "https://utwente.instructure.com/api/v1")
+# Support both CANVAS_API_TOKEN and CANVAS_API_KEY (legacy name)
+CANVAS_API_TOKEN = os.getenv("CANVAS_API_TOKEN") or os.getenv("CANVAS_API_KEY", "")
+
+# PDF Download Directory
+PDF_DOWNLOAD_DIR = BASE_DIR / "documents" / "downloads"
+# Ensure directory exists
+PDF_DOWNLOAD_DIR.mkdir(parents=True, exist_ok=True)
+
+# File Existence Check Settings
+FILE_EXISTS_TTL_DAYS = env.int("FILE_EXISTS_TTL_DAYS", default=7)
+FILE_EXISTS_RATE_LIMIT_DELAY = env.float("FILE_EXISTS_RATE_LIMIT_DELAY", default=0.05)

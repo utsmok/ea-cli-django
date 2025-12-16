@@ -26,18 +26,57 @@ class Filetype(models.TextChoices):
     UNKNOWN = "unknown", _("Unknown")
 
 
+class Classification(models.TextChoices):
+    OPEN_ACCESS = "open access", _("open access")
+    KORTE_OVERNAME = "korte overname", _("korte overname")
+    MIDDELLANGE_OVERNAME = "middellange overname", _("middellange overname")
+    LANGE_OVERNAME = "lange overname", _("lange overname")
+
+    EIGEN_MATERIAAL_POWERPOINT = "eigen materiaal - powerpoint", _("eigen materiaal - powerpoint")
+    EIGEN_MATERIAAL_TITELINDICATIE = "eigen materiaal - titelindicatie", _("eigen materiaal - titelindicatie")
+    EIGEN_MATERIAAL_OVERIG = "eigen materiaal - overig", _("eigen materiaal - overig")
+    EIGEN_MATERIAAL = "eigen materiaal", _("eigen materiaal")
+
+    ONBEKEND = "onbekend", _("onbekend")
+    NIET_GEANALYSEERD = "niet geanalyseerd", _("niet geanalyseerd")
+    IN_ONDERZOEK = "in onderzoek", _("in onderzoek")
+    VERWIJDERVERZOEK_VERSTUURD = "verwijderverzoek verstuurd", _("verwijderverzoek verstuurd")
+    LICENTIE_BESCHIKBAAR = "licentie beschikbaar", _("licentie beschikbaar")
+
+
 class ClassificationV2(models.TextChoices):
     JA_OPEN_LICENTIE = "Ja (open licentie)", _("Ja (Open Licentie)")
     JA_EIGEN_WERK = "Ja (eigen werk)", _("Ja (Eigen Werk)")
     JA_EASY_ACCESS = "Ja (easy access)", _("Ja (Easy Access)")
     NEE = "Nee", _("Nee")
     ONBEKEND = "Onbekend", _("Onbekend")
+    JA_BIBLIOTHEEK_LICENTIE = "Ja (bibilotheek licentie)", _("Ja (Bibliotheek Licentie)")
+    JA_DIRECTE_TOESTEMMING = "Ja (directe toestemming)", _("Ja (Directe Toestemming)")
+    JA_PUBLIEK_DOMEIN = "Ja (Publiek domein)", _("Ja (Publiek Domein)")
+    JA_STUDENTWERK = "Ja (studentwerk)", _("Ja (Studentwerk)")
+    JA_ANDERS = "Ja (anders)", _("Ja (Anders)")
+
+    JA_DIRECTE_TOESTEMMING_TIJDELIJK = "Ja (directe toestemming) - tijdelijk", _("Ja (Directe Toestemming) - Tijdelijk")
+    JA_BIBLIOTHEEK_LICENTIE_TIJDELIJK = "Ja (bibilotheek licentie)- tijdelijk", _("Ja (Bibliotheek Licentie) - Tijdelijk")
+    JA_ANDERS_TIJDELIJK = "Ja (anders) - tijdelijk", _("Ja (Anders) - Tijdelijk")
+
+    # No classifications
+    NEE_LINK_BESCHIKBAAR = "Nee (Link beschikbaar)", _("Nee (Link Beschikbaar)")
+    NEE_STUDENTWERK = "Nee (studentwerk)", _("Nee (Studentwerk)")
 
 
 class OvernameStatus(models.TextChoices):
     OVERNAME_INBREUKMAKENDE = "Overname (inbreukmakende)", _("Inbreukmakend")
+    OVERNAME_ANDERE = "Overname (andere)", _("Overname (Andere)")
     GEEN_OVERNAME = "Geen overname", _("Geen Overname")
     ONBEKEND = "Onbekend", _("Onbekend")
+
+
+class Infringement(models.TextChoices):
+    YES = "yes", _("Yes")
+    NO = "no", _("No")
+    MAYBE = "maybe", _("Maybe")
+    UNDETERMINED = "undetermined", _("Undetermined")
 
 
 class Lengte(models.TextChoices):
@@ -168,6 +207,11 @@ class CopyrightItem(TimestampedModel):
         max_length=50, choices=Status.choices, default=Status.PUBLISHED
     )
 
+    classification = models.CharField(
+        max_length=100,
+        choices=Classification.choices,
+        default=Classification.LANGE_OVERNAME,
+    )
     manual_classification = models.CharField(max_length=2048, null=True, blank=True)
     v2_manual_classification = models.CharField(
         max_length=100,
@@ -187,6 +231,25 @@ class CopyrightItem(TimestampedModel):
     publisher = models.CharField(max_length=2048, null=True, blank=True)
     remarks = models.TextField(null=True, blank=True)
 
+    # Missing fields from legacy
+    period = models.CharField(max_length=50, null=True, blank=True)
+    department = models.CharField(max_length=2048, null=True, blank=True)
+    course_code = models.CharField(max_length=2048, null=True, blank=True) # Canvas course code
+    course_name = models.CharField(max_length=2048, null=True, blank=True) # Canvas course name
+    manual_identifier = models.CharField(max_length=2048, null=True, blank=True)
+    scope = models.CharField(max_length=50, null=True, blank=True)
+    isbn = models.CharField(max_length=255, null=True, blank=True)
+    doi = models.CharField(max_length=255, null=True, blank=True)
+
+    owner = models.CharField(max_length=2048, null=True, blank=True)
+    in_collection = models.BooleanField(null=True, blank=True)
+
+    picturecount = models.IntegerField(default=0)
+    reliability = models.IntegerField(default=0)
+    pages_x_students = models.IntegerField(default=0)
+    count_students_registered = models.IntegerField(default=0)
+
+
     pagecount = models.IntegerField(default=0)
     wordcount = models.IntegerField(default=0)
 
@@ -198,6 +261,13 @@ class CopyrightItem(TimestampedModel):
 
     file_exists = models.BooleanField(null=True, blank=True)
     last_canvas_check = models.DateTimeField(null=True, blank=True)
+
+    infringement = models.CharField(
+        max_length=50,
+        choices=Infringement.choices,
+        default=Infringement.UNDETERMINED
+    )
+    possible_fine = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
 
     class Meta:
         ordering = ["-modified_at"]
@@ -232,3 +302,28 @@ class StagedItem(TimestampedModel):
     payload = models.JSONField(default=dict)
     status = models.CharField(max_length=50, default="PENDING")
     error_message = models.TextField(null=True, blank=True)
+
+
+class ItemUpdate(TimestampedModel):
+    """Stores changes made to a copyright item."""
+
+    change_details = models.JSONField()
+    material_id = models.IntegerField(help_text="ID of the item in the copyright tool")
+
+    # We can link it to the actual item if it exists
+    item = models.ForeignKey(
+        CopyrightItem,
+        on_delete=models.CASCADE,
+        related_name="updates",
+        null=True,
+        blank=True,
+    )
+
+
+class MissingCourse(TimestampedModel):
+    """Store cursus codes that do not yet have a 'Course' entry in the db."""
+
+    cursuscode = models.BigIntegerField(primary_key=True)
+
+    def __str__(self):
+        return str(self.cursuscode)
