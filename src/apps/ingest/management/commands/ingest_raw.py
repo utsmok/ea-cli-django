@@ -1,31 +1,31 @@
-import logging
 from pathlib import Path
-from django.core.management.base import BaseCommand
-from django.conf import settings
-from apps.ingest.utils import read_raw_copyright_file, sanitize_payload
-from apps.core.models import StagedItem
 
-logger = logging.getLogger(__name__)
+from django.conf import settings
+from django.contrib.auth import get_user_model
+from django.core.files import File
+from django.core.management.base import BaseCommand
+
+from apps.ingest.models import IngestionBatch
+from apps.ingest.tasks import process_batch, stage_batch
+
 
 class Command(BaseCommand):
-    help = "Ingest raw copyright Excel file into StagedItem table."
+    help = "Ingest raw copyright Excel file via the Phase A ingestion pipeline (IngestionBatch)."
 
     def add_arguments(self, parser):
         parser.add_argument(
-            "--file",
-            type=str,
-            help="Path to the Excel file to ingest."
+            "--file", type=str, help="Path to the Excel file to ingest."
         )
         parser.add_argument(
             "--legacy-path",
             action="store_true",
-            help="Look in the legacy ea-cli/raw_copyright_data folder for the newest file."
+            help="Look in the legacy ea-cli/raw_copyright_data folder for the newest file.",
         )
         parser.add_argument(
             "--clear",
             action="store_true",
             default=True,
-            help="Clear existing StagedItem records of type 'CRC' before ingesting (default True)."
+            help="Deprecated (kept for compatibility). No-op in Phase A pipeline.",
         )
 
     def handle(self, *args, **options):
@@ -67,55 +67,31 @@ class Command(BaseCommand):
             self.stderr.write(f"File not found: {target_file}")
             return
 
-        # Process
-        self.stdout.write(f"Processing {target_file}...")
-        try:
-            date_str, df = read_raw_copyright_file(target_file)
-            count = len(df)
-            self.stdout.write(f"Read {count} records. Date: {date_str}")
+        self.stdout.write(f"Ingesting raw export via batch pipeline: {target_file}")
 
-            # Convert to dicts
-            records = df.to_dicts()
+        User = get_user_model()
+        user, _ = User.objects.get_or_create(username="system")
+        if not user.has_usable_password():
+            user.set_unusable_password()
+            user.save(update_fields=["password"])
 
-            # Sanitize payloads (NaN -> None)
-            sanitized_records = [sanitize_payload(r) for r in records]
+        batch = IngestionBatch.objects.create(
+            source_type=IngestionBatch.SourceType.QLIK,
+            uploaded_by=user,
+        )
 
-            # Clear old data?
-            if options["clear"]:
-                deleted, _ = StagedItem.objects.filter(source_type=StagedItem.SourceType.CRC_EXPORT).delete()
-                self.stdout.write(f"Deleted {deleted} existing StagedItems (CRC).")
+        with open(target_file, "rb") as fh:
+            batch.source_file = File(fh, name=Path(target_file).name)
+            batch.save()
 
-            # Create StagedItem objects
-            batch_size = 1000
-            objs = []
+        stage_result = stage_batch(batch.id)
+        if not stage_result.get("success"):
+            raise RuntimeError(f"Staging failed: {stage_result}")
 
-            for i, record in enumerate(sanitized_records):
-                # We can try to extract target_material_id from record if available
-                m_id = record.get("material_id")
-                # Ensure it's an int if possible, safely
-                try:
-                    m_id = int(str(m_id).split(".")[0]) if m_id is not None else None
-                except Exception:
-                    m_id = None
+        process_result = process_batch(batch.id)
+        if not process_result.get("success"):
+            raise RuntimeError(f"Processing failed: {process_result}")
 
-                objs.append(StagedItem(
-                    source_type=StagedItem.SourceType.CRC_EXPORT,
-                    target_material_id=m_id,
-                    payload=record,
-                    status="PENDING"
-                ))
-
-                if len(objs) >= batch_size:
-                    StagedItem.objects.bulk_create(objs)
-                    self.stdout.write(f"Saved {i+1} records...")
-                    objs = []
-
-            if objs:
-                StagedItem.objects.bulk_create(objs)
-                self.stdout.write(f"Saved remaining {len(objs)} records.")
-
-            self.stdout.write(self.style.SUCCESS("Ingestion complete."))
-
-        except Exception as e:
-            self.stderr.write(self.style.ERROR(f"Ingestion failed: {e}"))
-            raise e
+        self.stdout.write(
+            self.style.SUCCESS(f"Batch {batch.id} complete: {process_result}")
+        )

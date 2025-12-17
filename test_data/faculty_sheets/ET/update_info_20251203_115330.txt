@@ -1,0 +1,13 @@
+
+         Update information for         
+                   ET                   
+     Last sync with main database:      
+         2025-12-03 -- 11:53:30         
+     ------------------------------     
+     Sheet       | Old | New |  Δ       
+     ------------+-----+-----+-----     
+     inbox       | 12  |  6  | -6       
+     in_progress |  9  | 13  | +4       
+     done        | 258 | 262 | +4       
+     overview    | 279 | 281 | +2       
+     ------------------------------     

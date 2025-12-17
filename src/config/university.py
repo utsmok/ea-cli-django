@@ -41,7 +41,7 @@ FACULTIES = [
             ("Master Educatie in de Bètawetenschappen", "M-EB"),
             ("Public Administration", "M-PA"),
             ("Master Public Management", "M-PUB"),
-        ]
+        ],
     },
     {
         "name": "Faculty of Engineering Technology",
@@ -58,7 +58,7 @@ FACULTIES = [
             ("ET niet-OSIRIS", "O-ET-NOS"),
             ("Sustainable Energy Technology", "M-SET"),
             ("Engineering Technology", "O-ET"),
-        ]
+        ],
     },
     {
         "name": "Faculty of Electrical Engineering, Mathematics and Computer Science",
@@ -80,7 +80,7 @@ FACULTIES = [
             ("Creative Technology - Amsterdam (VU-UT)", "B-CREA-VU"),
             ("2024-ELSE Aspects MSc Robotics", "M-ROB-ELSE"),
             ("EEMCS niet-OSIRIS", "O-EEMCS-NOS"),
-        ]
+        ],
     },
     {
         "name": "Faculty of Science and Technology",
@@ -98,7 +98,7 @@ FACULTIES = [
             ("Health Sciences", "M-HS"),
             ("Technische Geneeskunde", "B-TG"),
             ("Technical Medicine", "M-TM"),
-        ]
+        ],
     },
     {
         "name": "Faculty of Geo-Information Science and Earth Observation",
@@ -108,18 +108,19 @@ FACULTIES = [
             ("Technology and Liberal Arts & Sciences", "B-ATLAS"),
             ("Spatial Engineering", "M-SE"),
             ("Humanitarian Engineering", "M-HE"),
-        ]
+        ],
     },
     {
         "name": "Unmapped",
         "abbreviation": "UNM",
         "programmes": [
             ("Testcourses", "O-TEST"),
-        ]
-    }
+        ],
+    },
 ]
 
-# Populate DEPARTMENT_MAPPING from FACULTIES list
+# Populate DEPARTMENT_MAPPING from FACULTIES list and derive helpers
+FACULTY_NAME_BY_ABBR = {fac["abbreviation"]: fac["name"] for fac in FACULTIES}
 for faculty in FACULTIES:
     abbr = faculty["abbreviation"]
     for prog_name, prog_abbr in faculty["programmes"]:
@@ -128,3 +129,6 @@ for faculty in FACULTIES:
         # Usually legacy logic mapped Name -> Faculty.
         # But sometimes input has abbreviation? Safe to add.
         DEPARTMENT_MAPPING[prog_abbr] = abbr
+
+# Lowercased mapping for case-insensitive lookups
+DEPARTMENT_MAPPING_LOWER = {k.lower(): v for k, v in DEPARTMENT_MAPPING.items()}

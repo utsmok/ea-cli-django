@@ -12,8 +12,9 @@ PROJECT_ROOT = BASE_DIR.parent  # c:\dev\ea-cli-django (root of project)
 load_dotenv(PROJECT_ROOT / ".env")
 
 env = environ.Env(DEBUG=(bool, False))
-# Also try django-environ for structured types
-env.read_env(os.path.join(PROJECT_ROOT, ".env"))
+# Note: we intentionally do not call django-environ's `read_env()` here because
+# it is stricter about whitespace around '=' than python-dotenv, and can emit
+# noisy warnings. Values from `.env` are already loaded into `os.environ`.
 
 SECRET_KEY = env("SECRET_KEY", default="dev-secret-key")
 DEBUG = env("DEBUG")
@@ -26,6 +27,8 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    # Custom apps
+    "apps.users",  # Must be first for AUTH_USER_MODEL
     "apps.core",
     "apps.ingest",
     "apps.dashboard",
@@ -34,6 +37,9 @@ INSTALLED_APPS = [
     "apps.enrichment",
     "apps.classification",
 ]
+
+# Custom User Model
+AUTH_USER_MODEL = "users.User"
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -68,13 +74,13 @@ WSGI_APPLICATION = "config.wsgi.application"
 
 # DATABASE configuration, support DATABASE_URL for Docker/Postgres
 # When running from host, 'db' hostname won't resolve, so we replace it with 'localhost'
-_db_url = os.getenv("DATABASE_URL", "postgres://admin:dev_password@localhost:5432/copyright_db")
+_db_url = os.getenv(
+    "DATABASE_URL", "postgres://admin:dev_password@localhost:5432/copyright_db"
+)
 # If 'db:' appears in URL (Docker internal hostname), replace with 'localhost:'
 if "@db:" in _db_url:
     _db_url = _db_url.replace("@db:", "@localhost:")
-DATABASES = {
-    "default": env.db_url_config(_db_url)
-}
+DATABASES = {"default": env.db_url_config(_db_url)}
 
 AUTH_PASSWORD_VALIDATORS = []
 

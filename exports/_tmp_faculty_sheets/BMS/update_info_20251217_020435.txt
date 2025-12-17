@@ -1,0 +1,14 @@
+         Update information for         
+                  BMS                   
+
+     Last sync with main database:      
+         2025-12-17 -- 02:04:35         
+
+      ---------------------------       
+     Sheet       | Old | New |  Δ       
+     ------------+-----+-----+-----     
+     inbox       |  0  |  1  | +1       
+     in_progress |  0  |  1  | +1       
+     done        |  0  |  1  | +1       
+     overview    |  0  |  3  | +3       
+      ---------------------------       

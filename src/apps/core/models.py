@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
@@ -32,15 +33,24 @@ class Classification(models.TextChoices):
     MIDDELLANGE_OVERNAME = "middellange overname", _("middellange overname")
     LANGE_OVERNAME = "lange overname", _("lange overname")
 
-    EIGEN_MATERIAAL_POWERPOINT = "eigen materiaal - powerpoint", _("eigen materiaal - powerpoint")
-    EIGEN_MATERIAAL_TITELINDICATIE = "eigen materiaal - titelindicatie", _("eigen materiaal - titelindicatie")
+    EIGEN_MATERIAAL_POWERPOINT = (
+        "eigen materiaal - powerpoint",
+        _("eigen materiaal - powerpoint"),
+    )
+    EIGEN_MATERIAAL_TITELINDICATIE = (
+        "eigen materiaal - titelindicatie",
+        _("eigen materiaal - titelindicatie"),
+    )
     EIGEN_MATERIAAL_OVERIG = "eigen materiaal - overig", _("eigen materiaal - overig")
     EIGEN_MATERIAAL = "eigen materiaal", _("eigen materiaal")
 
     ONBEKEND = "onbekend", _("onbekend")
     NIET_GEANALYSEERD = "niet geanalyseerd", _("niet geanalyseerd")
     IN_ONDERZOEK = "in onderzoek", _("in onderzoek")
-    VERWIJDERVERZOEK_VERSTUURD = "verwijderverzoek verstuurd", _("verwijderverzoek verstuurd")
+    VERWIJDERVERZOEK_VERSTUURD = (
+        "verwijderverzoek verstuurd",
+        _("verwijderverzoek verstuurd"),
+    )
     LICENTIE_BESCHIKBAAR = "licentie beschikbaar", _("licentie beschikbaar")
 
 
@@ -50,14 +60,23 @@ class ClassificationV2(models.TextChoices):
     JA_EASY_ACCESS = "Ja (easy access)", _("Ja (Easy Access)")
     NEE = "Nee", _("Nee")
     ONBEKEND = "Onbekend", _("Onbekend")
-    JA_BIBLIOTHEEK_LICENTIE = "Ja (bibilotheek licentie)", _("Ja (Bibliotheek Licentie)")
+    JA_BIBLIOTHEEK_LICENTIE = (
+        "Ja (bibilotheek licentie)",
+        _("Ja (Bibliotheek Licentie)"),
+    )
     JA_DIRECTE_TOESTEMMING = "Ja (directe toestemming)", _("Ja (Directe Toestemming)")
     JA_PUBLIEK_DOMEIN = "Ja (Publiek domein)", _("Ja (Publiek Domein)")
     JA_STUDENTWERK = "Ja (studentwerk)", _("Ja (Studentwerk)")
     JA_ANDERS = "Ja (anders)", _("Ja (Anders)")
 
-    JA_DIRECTE_TOESTEMMING_TIJDELIJK = "Ja (directe toestemming) - tijdelijk", _("Ja (Directe Toestemming) - Tijdelijk")
-    JA_BIBLIOTHEEK_LICENTIE_TIJDELIJK = "Ja (bibilotheek licentie)- tijdelijk", _("Ja (Bibliotheek Licentie) - Tijdelijk")
+    JA_DIRECTE_TOESTEMMING_TIJDELIJK = (
+        "Ja (directe toestemming) - tijdelijk",
+        _("Ja (Directe Toestemming) - Tijdelijk"),
+    )
+    JA_BIBLIOTHEEK_LICENTIE_TIJDELIJK = (
+        "Ja (bibilotheek licentie)- tijdelijk",
+        _("Ja (Bibliotheek Licentie) - Tijdelijk"),
+    )
     JA_ANDERS_TIJDELIJK = "Ja (anders) - tijdelijk", _("Ja (Anders) - Tijdelijk")
 
     # No classifications
@@ -234,8 +253,12 @@ class CopyrightItem(TimestampedModel):
     # Missing fields from legacy
     period = models.CharField(max_length=50, null=True, blank=True)
     department = models.CharField(max_length=2048, null=True, blank=True)
-    course_code = models.CharField(max_length=2048, null=True, blank=True) # Canvas course code
-    course_name = models.CharField(max_length=2048, null=True, blank=True) # Canvas course name
+    course_code = models.CharField(
+        max_length=2048, null=True, blank=True
+    )  # Canvas course code
+    course_name = models.CharField(
+        max_length=2048, null=True, blank=True
+    )  # Canvas course name
     manual_identifier = models.CharField(max_length=2048, null=True, blank=True)
     scope = models.CharField(max_length=50, null=True, blank=True)
     isbn = models.CharField(max_length=255, null=True, blank=True)
@@ -248,7 +271,6 @@ class CopyrightItem(TimestampedModel):
     reliability = models.IntegerField(default=0)
     pages_x_students = models.IntegerField(default=0)
     count_students_registered = models.IntegerField(default=0)
-
 
     pagecount = models.IntegerField(default=0)
     wordcount = models.IntegerField(default=0)
@@ -263,11 +285,11 @@ class CopyrightItem(TimestampedModel):
     last_canvas_check = models.DateTimeField(null=True, blank=True)
 
     infringement = models.CharField(
-        max_length=50,
-        choices=Infringement.choices,
-        default=Infringement.UNDETERMINED
+        max_length=50, choices=Infringement.choices, default=Infringement.UNDETERMINED
     )
-    possible_fine = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    possible_fine = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True
+    )
 
     class Meta:
         ordering = ["-modified_at"]
@@ -290,36 +312,6 @@ class LegacyCopyrightItem(TimestampedModel):
     )
 
 
-class StagedItem(TimestampedModel):
-    """Unified staging table for both CRC exports and Faculty Sheets."""
-
-    class SourceType(models.TextChoices):
-        CRC_EXPORT = "CRC", "CRC Export"
-        FACULTY_SHEET = "SHEET", "Faculty Excel Sheet"
-
-    target_material_id = models.BigIntegerField(null=True, blank=True, db_index=True)
-    source_type = models.CharField(max_length=10, choices=SourceType.choices)
-    payload = models.JSONField(default=dict)
-    status = models.CharField(max_length=50, default="PENDING")
-    error_message = models.TextField(null=True, blank=True)
-
-
-class ItemUpdate(TimestampedModel):
-    """Stores changes made to a copyright item."""
-
-    change_details = models.JSONField()
-    material_id = models.IntegerField(help_text="ID of the item in the copyright tool")
-
-    # We can link it to the actual item if it exists
-    item = models.ForeignKey(
-        CopyrightItem,
-        on_delete=models.CASCADE,
-        related_name="updates",
-        null=True,
-        blank=True,
-    )
-
-
 class MissingCourse(TimestampedModel):
     """Store cursus codes that do not yet have a 'Course' entry in the db."""
 
@@ -327,3 +319,81 @@ class MissingCourse(TimestampedModel):
 
     def __str__(self):
         return str(self.cursuscode)
+
+
+# -----------------------------------------------------------------------------
+# Audit Trail
+# -----------------------------------------------------------------------------
+
+
+class ChangeLog(models.Model):
+    """
+    Complete audit trail for all changes to CopyrightItems.
+
+    Records what changed, when, who made the change, and the source.
+    Supports both batch ingestion and manual edits.
+    """
+
+    class ChangeSource(models.TextChoices):
+        QLIK_INGESTION = "QLIK", _("Qlik Ingestion")
+        FACULTY_INGESTION = "FACULTY", _("Faculty Ingestion")
+        MANUAL_EDIT = "MANUAL", _("Manual Edit")
+        ENRICHMENT = "ENRICHMENT", _("Enrichment Process")
+        MIGRATION = "MIGRATION", _("Data Migration")
+        SYSTEM = "SYSTEM", _("System Process")
+
+    # What changed
+    item = models.ForeignKey(
+        CopyrightItem,
+        on_delete=models.CASCADE,
+        related_name="change_logs",
+        help_text="The item that was changed",
+    )
+
+    # Change details
+    changes = models.JSONField(
+        help_text="Dictionary of changed fields: {'field_name': {'old': ..., 'new': ...}}"
+    )
+
+    # When & Who
+    changed_at = models.DateTimeField(
+        auto_now_add=True, db_index=True, help_text="When the change occurred"
+    )
+    changed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="changes_made",
+        null=True,
+        blank=True,
+        help_text="User who made the change (null for system changes)",
+    )
+
+    # Source tracking
+    change_source = models.CharField(
+        max_length=20, choices=ChangeSource.choices, help_text="Source of the change"
+    )
+
+    # Link to ingestion batch if applicable
+    batch = models.ForeignKey(
+        "ingest.IngestionBatch",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="changes",
+        help_text="Ingestion batch that caused this change (if applicable)",
+    )
+
+    class Meta:
+        db_table = "change_logs"
+        verbose_name = "Change Log"
+        verbose_name_plural = "Change Logs"
+        ordering = ["-changed_at"]
+        indexes = [
+            models.Index(fields=["item", "-changed_at"]),
+            models.Index(fields=["changed_by", "-changed_at"]),
+            models.Index(fields=["batch"]),
+            models.Index(fields=["change_source", "-changed_at"]),
+        ]
+
+    def __str__(self):
+        return f"Change to {self.item.material_id} at {self.changed_at.strftime('%Y-%m-%d %H:%M')}"

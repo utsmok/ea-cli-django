@@ -1,37 +1,37 @@
-import logging
 from pathlib import Path
-from django.core.management.base import BaseCommand
-from django.conf import settings
-from apps.ingest.utils import read_faculty_sheets, sanitize_payload
-from apps.core.models import StagedItem
 
-logger = logging.getLogger(__name__)
+from django.conf import settings
+from django.contrib.auth import get_user_model
+from django.core.files import File
+from django.core.management.base import BaseCommand
+
+from apps.ingest.models import IngestionBatch
+from apps.ingest.tasks import process_batch, stage_batch
+
 
 class Command(BaseCommand):
-    help = "Ingest Faculty Sheets (updates) into StagedItem table."
+    help = "Ingest Faculty Sheets (workflow workbooks) via the Phase A ingestion pipeline (IngestionBatch)."
 
     def add_arguments(self, parser):
         parser.add_argument(
-            "--dir",
-            type=str,
-            help="Path to the faculty sheets directory."
+            "--dir", type=str, help="Path to the faculty sheets directory."
         )
         parser.add_argument(
             "--legacy-path",
             action="store_true",
-            help="Look in the legacy ea-cli/faculty_sheets folder."
+            help="Look in the legacy ea-cli/faculty_sheets folder.",
         )
         parser.add_argument(
             "--sheet-name",
             type=str,
             default="Data entry",
-            help="Name of the worksheet to read (default 'Data entry')."
+            help="Deprecated (kept for compatibility). Phase A pipeline always reads the first sheet.",
         )
         parser.add_argument(
             "--clear",
             action="store_true",
             default=True,
-            help="Clear existing StagedItem records of type 'SHEET' before ingesting (default True)."
+            help="Deprecated (kept for compatibility). No-op in Phase A pipeline.",
         )
 
     def handle(self, *args, **options):
@@ -52,58 +52,57 @@ class Command(BaseCommand):
             self.stderr.write(f"Directory not found: {target_dir}")
             return
 
-        # Process
-        self.stdout.write(f"Reading faculty sheets from {target_dir}...")
-        try:
-            df = read_faculty_sheets(target_dir, data_entry_name=options["sheet_name"])
+        self.stdout.write(f"Ingesting faculty sheets from {target_dir}...")
 
-            if df.is_empty():
-                self.stdout.write("No data found or directory empty.")
-                return
+        User = get_user_model()
+        user, _ = User.objects.get_or_create(username="system")
+        if not user.has_usable_password():
+            user.set_unusable_password()
+            user.save(update_fields=["password"])
 
-            count = len(df)
-            self.stdout.write(f"Read {count} records.")
+        # Expect a tree like: <root>/<FACULTY>/(inbox|in_progress|done).xlsx
+        workbooks = []
+        for faculty_dir in sorted([p for p in target_dir.iterdir() if p.is_dir()]):
+            faculty_code = faculty_dir.name
+            for bucket in ["inbox", "in_progress", "done"]:
+                path = faculty_dir / f"{bucket}.xlsx"
+                if path.exists():
+                    workbooks.append((faculty_code, bucket, path))
 
-            # Convert to dicts
-            records = df.to_dicts()
+        if not workbooks:
+            self.stdout.write("No faculty workbook files found.")
+            return
 
-            # Sanitize payloads
-            sanitized_records = [sanitize_payload(r) for r in records]
+        ok = 0
+        failed = 0
+        for faculty_code, bucket, path in workbooks:
+            self.stdout.write(f"- Processing {faculty_code}/{path.name}...")
+            batch = IngestionBatch.objects.create(
+                source_type=IngestionBatch.SourceType.FACULTY,
+                uploaded_by=user,
+                faculty_code=faculty_code,
+            )
 
-            # Clear old data
-            if options["clear"]:
-                deleted, _ = StagedItem.objects.filter(source_type=StagedItem.SourceType.FACULTY_SHEET).delete()
-                self.stdout.write(f"Deleted {deleted} existing StagedItems (SHEET).")
+            with open(path, "rb") as fh:
+                batch.source_file = File(fh, name=f"{faculty_code}_{bucket}.xlsx")
+                batch.save()
 
-            # Create StagedItem objects
-            batch_size = 1000
-            objs = []
+            try:
+                stage_result = stage_batch(batch.id)
+                if not stage_result.get("success"):
+                    raise RuntimeError(f"Staging failed: {stage_result}")
 
-            for i, record in enumerate(sanitized_records):
-                m_id = record.get("material_id")
-                try:
-                    m_id = int(str(m_id).split(".")[0]) if m_id is not None and str(m_id) != "None" else None
-                except Exception:
-                    m_id = None
+                process_result = process_batch(batch.id)
+                if not process_result.get("success"):
+                    raise RuntimeError(f"Processing failed: {process_result}")
 
-                objs.append(StagedItem(
-                    source_type=StagedItem.SourceType.FACULTY_SHEET,
-                    target_material_id=m_id,
-                    payload=record,
-                    status="PENDING"
-                ))
+                ok += 1
+            except Exception as e:
+                failed += 1
+                self.stderr.write(
+                    self.style.ERROR(f"  Failed {faculty_code}/{path.name}: {e}")
+                )
 
-                if len(objs) >= batch_size:
-                    StagedItem.objects.bulk_create(objs)
-                    self.stdout.write(f"Saved {i+1} records...")
-                    objs = []
-
-            if objs:
-                StagedItem.objects.bulk_create(objs)
-                self.stdout.write(f"Saved remaining {len(objs)} records.")
-
-            self.stdout.write(self.style.SUCCESS("Faculty ingestion complete."))
-
-        except Exception as e:
-            self.stderr.write(self.style.ERROR(f"Ingestion failed: {e}"))
-            raise e
+        self.stdout.write(
+            self.style.SUCCESS(f"Faculty ingestion complete. OK={ok}, Failed={failed}")
+        )

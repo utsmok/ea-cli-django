@@ -1,28 +1,55 @@
-import logging
 from django.core.management.base import BaseCommand
-from apps.core.services.pipeline import PipelineService
 
-logger = logging.getLogger(__name__)
+from apps.ingest.models import IngestionBatch
+from apps.ingest.tasks import process_batch
+
 
 class Command(BaseCommand):
-    help = "Process StagedItems into CopyrightItems."
+    help = "Process staged ingestion batches into CopyrightItems (Phase A pipeline)."
 
     def add_arguments(self, parser):
         parser.add_argument(
             "--batch-size",
             type=int,
             default=500,
-            help="Number of items to process per batch."
+            help="Max number of batches to process in this run.",
+        )
+        parser.add_argument(
+            "--batch-id",
+            type=int,
+            default=None,
+            help="Optional batch id to process. If omitted, processes all STAGED batches.",
         )
 
     def handle(self, *args, **options):
-        batch_size = options["batch_size"]
+        limit = options["batch_size"]
+        batch_id = options.get("batch_id")
 
-        self.stdout.write("Starting processing pipeline...")
-        try:
-            service = PipelineService()
-            service.process_staged_items(batch_size=batch_size)
-            self.stdout.write(self.style.SUCCESS("Processing complete."))
-        except Exception as e:
-            self.stderr.write(self.style.ERROR(f"Processing failed: {e}"))
-            raise e
+        if batch_id:
+            result = process_batch(batch_id)
+            self.stdout.write(
+                self.style.SUCCESS(f"Processed batch {batch_id}: {result}")
+            )
+            return
+
+        qs = IngestionBatch.objects.filter(
+            status=IngestionBatch.Status.STAGED
+        ).order_by("uploaded_at")
+        batches = list(qs[:limit])
+        if not batches:
+            self.stdout.write("No STAGED batches found.")
+            return
+
+        ok = 0
+        failed = 0
+        for b in batches:
+            try:
+                result = process_batch(b.id)
+                if not result.get("success"):
+                    raise RuntimeError(result)
+                ok += 1
+            except Exception as e:
+                failed += 1
+                self.stderr.write(self.style.ERROR(f"Failed batch {b.id}: {e}"))
+
+        self.stdout.write(self.style.SUCCESS(f"Done. OK={ok}, Failed={failed}"))

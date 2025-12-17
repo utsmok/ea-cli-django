@@ -6,9 +6,14 @@
     <!-- Toolbar -->
     <div class="flex justify-between mb-4">
         <h1 class="text-2xl font-bold">Copyright Dashboard</h1>
-        <button @click="showUploadModal = true" class="btn btn-primary">
-            Upload Excel
-        </button>
+        <div class="flex gap-2">
+            <a class="btn" href="{% url 'api:download_faculty_sheets' %}">
+                Download faculty sheets
+            </a>
+            <button @click="showUploadModal = true" class="btn btn-primary">
+                Upload Excel
+            </button>
+        </div>
     </div>
 
     <!-- The Grid (HTMX Target) -->
@@ -25,7 +30,24 @@
             <h3 class="font-bold text-lg">Upload Data</h3>
             <form hx-post="{% url 'api:trigger_ingest' %}"
                   hx-swap="none"
+                  hx-encoding="multipart/form-data"
+                  enctype="multipart/form-data"
                   @htmx:after-request="showUploadModal = false">
+                {% csrf_token %}
+
+                <label class="form-control w-full max-w-xs">
+                    <div class="label"><span class="label-text">Source type</span></div>
+                    <select name="source_type" class="select select-bordered">
+                        <option value="QLIK">Qlik export</option>
+                        <option value="FACULTY">Faculty sheet</option>
+                    </select>
+                </label>
+
+                <label class="form-control w-full max-w-xs mt-2">
+                    <div class="label"><span class="label-text">Faculty code (for faculty sheets)</span></div>
+                    <input type="text" name="faculty_code" placeholder="EEMCS" class="input input-bordered" />
+                </label>
+
                 <input type="file" name="file" class="file-input w-full max-w-xs" />
                 <div class="modal-action">
                     <button type="submit" class="btn btn-success">Upload</button>
