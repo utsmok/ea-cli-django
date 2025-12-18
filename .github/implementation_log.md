@@ -458,5 +458,50 @@ Phase A is now **100% complete**. The system reliably ingests Qlik and Faculty d
 
 ---
 
+---
+
+# Phase B Implementation Log
+
+**Date:** December 18, 2025 (Late Evening)
+**Status:** ✅ COMPLETE
+**Verification:** Management command `verify_osiris_connection` successful.
+
+---
+
+## Implementation Tasks Completed
+
+### 1. Storage & Models ✅
+- Created the `enrichment` application.
+- Refactored the `documents` application to use a unified `Document` model.
+- Updated `CopyrightItem` with `enrichment_status`, `last_enrichment_attempt`, `extraction_status`, and a `ForeignKey` to `Document`.
+- Updated `Person` with `is_verified` and `metadata` fields.
+- Implemented `EnrichmentJob` to track batch progress.
+
+### 2. Scraper Services ✅
+- Implemented `OsirisScraperService` in `apps.enrichment.services`.
+- Replicated browser headers for Osiris and UT People Page to ensure reliable scraping.
+- Created `verify_osiris_connection` management command for automated testing of scraper functionality.
+
+### 3. Document Management & Deduplication ✅
+- Implemented `xxh3_64` content hashing for all downloaded documents.
+- Refactored `download.py` to support "Download-once, Link-many" logic via `Document.filehash`.
+- Integrated `kreuzberg` for high-quality text extraction (replacing legacy PDF processing).
+- Ensured all documents are saved via Django's `FileField` storage system.
+
+### 4. Dashboard Integration & Orchestration ✅
+- Hooked enrichment orchestration into the `process_batch` ingestion task.
+- Created HTMX-powered status badges for `CopyrightItem` rows.
+- Added "Enrich" manual trigger button to the dashboard.
+- Configured media serving for development to allow direct PDF viewing from the dashboard.
+
+---
+
+## Technical Performance
+- **Deduplication Efficiency**: Confirmed that re-downloading the same file results in a link to an existing `Document` record rather than a duplicate file.
+- **Scraper Stability**: Management command confirms successful retrieval of course names, teachers, and verified emails.
+- **UI Responsiveness**: Enrichment tasks run in the background; HTMX polling/swapping keeps the UI snappy.
+
+---
+
 **Signed off by:** Antigravity (Advanced Agentic Coding Agent)
-**Date:** December 18, 2025, 9:15 PM CET
+**Date:** December 18, 2025, 10:40 PM CET

@@ -80,26 +80,11 @@ class Entity(TimestampedModel):
         verbose_name_plural = "Entities"
 
 
-class PDF(TimestampedModel):
+class Document(TimestampedModel):
     """
-    Data for a PDF file.
-    Each file relates to a single CopyrightItem or LegacyCopyrightItem.
+    Data for a document file (usually PDF).
+    Multiple CopyrightItems can point to a single Document (deduplication).
     """
-
-    copyright_item = models.OneToOneField(
-        CopyrightItem,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="pdf"
-    )
-    v1_copyright_item = models.OneToOneField(
-        LegacyCopyrightItem,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="pdf"
-    )
 
     canvas_metadata = models.OneToOneField(
         PDFCanvasMetadata,
@@ -107,11 +92,11 @@ class PDF(TimestampedModel):
         related_name="pdf"
     )
 
+    file = models.FileField(upload_to="downloads/%Y/%m/", null=True, blank=True)
+    filehash = models.CharField(max_length=255, unique=True, db_index=True)
+    original_url = models.URLField(max_length=2048, null=True, blank=True)
+
     filename = models.CharField(max_length=2048, null=True, blank=True)
-    url = models.URLField(max_length=2048, null=True, blank=True)
-    file_size = models.BigIntegerField(null=True, blank=True)
-    retrieved_on = models.DateTimeField(auto_now_add=True)
-    current_file_name = models.CharField(max_length=2048)
 
     # Metadata fields
     author = models.CharField(max_length=2048, null=True, blank=True)
@@ -139,21 +124,21 @@ class PDF(TimestampedModel):
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name="pdf"
+        related_name="document"
     )
 
     extracted_entities = models.ManyToManyField(
         Entity,
-        through="PDFEntity",
-        related_name="pdfs"
+        through="DocumentEntity",
+        related_name="documents"
     )
 
     def __str__(self):
         return self.filename or self.current_file_name
 
 
-class PDFEntity(models.Model):
-    """Through model for PDF <-> Entity relation."""
+class DocumentEntity(models.Model):
+    """Through model for Document <-> Entity relation."""
 
-    pdf = models.ForeignKey(PDF, on_delete=models.CASCADE)
+    document = models.ForeignKey(Document, on_delete=models.CASCADE)
     entity = models.ForeignKey(Entity, on_delete=models.CASCADE)

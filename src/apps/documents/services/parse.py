@@ -17,7 +17,7 @@ from pathlib import Path
 from django.conf import settings
 from xxhash import xxh3_64_hexdigest
 
-from apps.documents.models import PDF, PDFText
+from apps.documents.models import Document, PDFText
 
 logger = logging.getLogger(__name__)
 
@@ -187,28 +187,33 @@ async def parse_pdfs(
 
     # Get PDFs that need processing
     @sync_to_async
-    def get_pdfs_to_process():
-        queryset = PDF.objects.filter(extraction_attempted=False)
+    def get_documents_to_process():
+        queryset = Document.objects.filter(extraction_attempted=False)
         if filter_ids:
-            queryset = queryset.filter(copyright_item_id__in=filter_ids)
+            queryset = queryset.filter(items__material_id__in=filter_ids)
         return list(queryset)
 
-    pdfs = await get_pdfs_to_process()
+    documents = await get_documents_to_process()
 
-    if not pdfs:
-        logger.info("No PDFs found that need processing")
+    if not documents:
+        logger.info("No documents found that need processing")
         return {"processed": 0, "successful": 0, "failed": 0}
 
-    logger.info(f"Processing {len(pdfs)} PDFs")
+    logger.info(f"Processing {len(documents)} documents")
 
     processed = 0
     successful = 0
     failed = 0
 
-    for pdf in pdfs:
+    for doc in documents:
         try:
             # Construct file path
-            file_path = settings.PDF_DOWNLOAD_DIR / pdf.current_file_name
+            if not doc.file:
+                logger.warning(f"Document {doc.id} has no file")
+                failed += 1
+                continue
+
+            file_path = Path(doc.file.path)
 
             if not file_path.exists():
                 logger.warning(f"PDF file not found: {file_path}")
@@ -216,17 +221,19 @@ async def parse_pdfs(
                 continue
 
             # Hash the file
-            file_hash = hash_pdf(file_path)
-            if file_hash:
-                pdf.filehash = file_hash
+            # Hash should already be there from download, but recalculate if missing
+            if not doc.filehash:
+                file_hash = hash_pdf(file_path)
+                if file_hash:
+                    doc.filehash = file_hash
 
             # Extract text if not skipping
             if not skip_text:
-                pdf.extraction_attempted = True
+                doc.extraction_attempted = True
                 extraction_result = await extract_text_from_pdf(file_path)
 
                 if extraction_result and len(extraction_result.get("content", "")) > 0:
-                    pdf.extraction_successful = True
+                    doc.extraction_successful = True
 
                     # Combine chunks and entities for storage
                     # Chunks now also include any extracted entities for that PDF
@@ -252,44 +259,43 @@ async def parse_pdfs(
                         )
 
                     pdf_text = await create_pdf_text()
-                    pdf.extracted_text = pdf_text
+                    doc.extracted_text = pdf_text
 
-                    # Update PDF metadata
+                    # Update document metadata
                     if extraction_result.get("title"):
-                        pdf.title = extraction_result["title"]
+                        doc.title = extraction_result["title"]
                     if extraction_result.get("author"):
-                        pdf.author = extraction_result["author"]
+                        doc.author = extraction_result["author"]
                     if extraction_result.get("creator"):
-                        pdf.creator = extraction_result["creator"]
+                        doc.creator = extraction_result["creator"]
                     if extraction_result.get("subject"):
-                        pdf.subject = extraction_result["subject"]
+                        doc.subject = extraction_result["subject"]
                     if extraction_result.get("summary"):
-                        pdf.summary = extraction_result["summary"]
+                        doc.summary = extraction_result["summary"]
                     if extraction_result.get("description"):
-                        pdf.description = extraction_result["description"]
+                        doc.description = extraction_result["description"]
                     if extraction_result.get("num_pages"):
-                        pdf.num_pages = extraction_result["num_pages"]
+                        doc.num_pages = extraction_result["num_pages"]
                     if extraction_result.get("keywords"):
-                        # Store keywords as JSON on PDF as well
-                        pdf.keywords = extraction_result["keywords"]
+                        doc.keywords = extraction_result["keywords"]
 
                     successful += 1
                 else:
-                    pdf.extraction_successful = False
+                    doc.extraction_successful = False
                     failed += 1
             else:
                 successful += 1
 
-            # Save PDF record
+            # Save Document record
             @sync_to_async
-            def save_pdf():
-                pdf.save()
+            def save_doc():
+                doc.save()
 
-            await save_pdf()
+            await save_doc()
             processed += 1
 
         except Exception as e:
-            logger.error(f"Error processing PDF {pdf.id}: {e}")
+            logger.error(f"Error processing Document {doc.id}: {e}")
             import traceback
 
             traceback.print_exc()

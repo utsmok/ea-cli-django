@@ -1,12 +1,43 @@
-<div class="grid">
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
   {% for item in items %}
-    <div class="card">
-      <div class="card-body">
-        <h3>{{ item.filename|default:"Untitled" }}</h3>
-        <p>Material ID: {{ item.material_id }}</p>
+    <div class="card bg-base-100 shadow-xl border border-base-300">
+      <div class="card-body p-4">
+        <div class="flex justify-between items-start">
+            <h3 class="font-bold truncate" title="{{ item.filename }}">{{ item.filename|default:"Untitled" }}</h3>
+            <div id="status-{{ item.material_id }}">
+                {% if item.enrichment_status == "COMPLETED" %}
+                    <span class="badge badge-success">Completed</span>
+                    {% if item.document %}
+                        <a href="{{ item.document.file.url }}" class="ml-2 underline text-xs" target="_blank">View PDF</a>
+                    {% endif %}
+                {% elif item.enrichment_status == "RUNNING" %}
+                    <span class="badge badge-info animate-pulse">Running...</span>
+                {% elif item.enrichment_status == "FAILED" %}
+                    <span class="badge badge-error">Failed</span>
+                {% else %}
+                    <span class="badge badge-ghost">Pending</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="text-xs opacity-70 mt-1">
+            <p>ID: {{ item.material_id }}</p>
+            <p>Course: {{ item.course_code|default:"N/A" }}</p>
+        </div>
+
+        <div class="card-actions justify-end mt-4">
+          <button class="btn btn-xs btn-outline"
+                  hx-post="{% url 'enrichment:trigger_item' item.material_id %}"
+                  hx-target="#status-{{ item.material_id }}"
+                  hx-swap="outerHTML">
+            Enrich
+          </button>
+        </div>
       </div>
     </div>
   {% empty %}
-    <p>No items.</p>
+    <div class="col-span-full py-10 text-center opacity-50">
+        <p>No items found. Upload an Excel file to get started.</p>
+    </div>
   {% endfor %}
 </div>

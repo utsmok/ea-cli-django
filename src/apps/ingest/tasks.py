@@ -138,6 +138,10 @@ def process_batch(batch_id: int) -> dict[str, Any]:
             f"{batch.items_failed} failed"
         )
 
+        # Trigger Phase B Enrichment
+        from apps.enrichment.tasks import trigger_batch_enrichment
+        trigger_batch_enrichment(batch_id)
+
         return {
             "success": True,
             "batch_id": batch_id,

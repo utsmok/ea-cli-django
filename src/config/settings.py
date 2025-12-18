@@ -123,9 +123,18 @@ LOGGING = {
 }
 
 # Canvas LMS API Configuration
-CANVAS_API_URL = os.getenv("CANVAS_API_URL", "https://utwente.instructure.com/api/v1")
+CANVAS_API_URL = env("CANVAS_API_URL", default="https://utwente.instructure.com/api/v1")
 # Support both CANVAS_API_TOKEN and CANVAS_API_KEY (legacy name)
-CANVAS_API_TOKEN = os.getenv("CANVAS_API_TOKEN") or os.getenv("CANVAS_API_KEY", "")
+CANVAS_API_TOKEN = env("CANVAS_API_TOKEN", default="") or env("CANVAS_API_KEY", default="")
+
+# Osiris Scraper Settings
+OSIRIS_BASE_URL = env("OSIRIS_BASE_URL", default="https://utwente.osiris-student.nl")
+OSIRIS_HEADERS = {
+    "accept": "application/json, text/plain, */*",
+    "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+    "client_type": "web",
+    "taal": "NL",
+}
 
 # PDF Download Directory
 PDF_DOWNLOAD_DIR = BASE_DIR / "documents" / "downloads"

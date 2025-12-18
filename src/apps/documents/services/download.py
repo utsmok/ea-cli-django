@@ -12,7 +12,7 @@ import httpx
 from django.conf import settings
 
 from apps.core.models import CopyrightItem
-from apps.documents.models import PDF, PDFCanvasMetadata
+from apps.documents.models import Document, PDFCanvasMetadata
 
 logger = logging.getLogger(__name__)
 
@@ -199,18 +199,30 @@ async def download_undownloaded_pdfs(limit: int = 0) -> dict:
                         file_path, pdf_metadata_obj = result
 
                         @sync_to_async
-                        def create_pdf_record():
-                            return PDF.objects.create(
-                                copyright_item=item,
-                                canvas_metadata=pdf_metadata_obj,
-                                current_file_name=file_path.name,
-                                filename=pdf_metadata_obj.filename,
-                                url=item.url,
-                                file_size=file_path.stat().st_size,
-                                retrieved_on=datetime.datetime.now(datetime.UTC),
-                            )
+                        def create_or_link_document():
+                            import xxhash
+                            file_bytes = file_path.read_bytes()
+                            fhash = xxhash.xxh3_64_hexdigest(file_bytes)
 
-                        await create_pdf_record()
+                            doc, created = Document.objects.get_or_create(
+                                filehash=fhash,
+                                defaults={
+                                    "canvas_metadata": pdf_metadata_obj,
+                                    "filename": pdf_metadata_obj.filename,
+                                    "original_url": item.url,
+                                }
+                            )
+                            if created:
+                                from django.core.files.base import ContentFile
+                                doc.file.save(file_path.name, ContentFile(file_bytes), save=True)
+                                # Remove the temporary file
+                                file_path.unlink(missing_ok=True)
+
+                            item.document = doc
+                            item.filehash = fhash
+                            item.save()
+
+                        await create_or_link_document()
                         downloaded += 1
                         return True
                     else:

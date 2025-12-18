@@ -105,6 +105,13 @@ class Lengte(models.TextChoices):
     ONBEKEND = "Onbekend", _("Onbekend")
 
 
+class EnrichmentStatus(models.TextChoices):
+    PENDING = "PENDING", _("Pending")
+    RUNNING = "RUNNING", _("Running")
+    COMPLETED = "COMPLETED", _("Completed")
+    FAILED = "FAILED", _("Failed")
+
+
 # -----------------------------------------------------------------------------
 # Abstract Base
 # -----------------------------------------------------------------------------
@@ -163,6 +170,9 @@ class Person(TimestampedModel):
         related_name="employees",
     )
     orgs = models.ManyToManyField(Organization, related_name="personnel", blank=True)
+
+    is_verified = models.BooleanField(default=False)
+    metadata = models.JSONField(null=True, blank=True)
 
     def __str__(self):
         return self.main_name or self.input_name
@@ -300,6 +310,26 @@ class CopyrightItem(TimestampedModel):
 
     courses = models.ManyToManyField(Course, related_name="copyright_items", blank=True)
     canvas_course_id = models.BigIntegerField(null=True, blank=True, db_index=True)
+
+    # Enrichment tracking
+    enrichment_status = models.CharField(
+        max_length=20,
+        choices=EnrichmentStatus.choices,
+        default=EnrichmentStatus.PENDING,
+    )
+    last_enrichment_attempt = models.DateTimeField(null=True, blank=True)
+    extraction_status = models.CharField(
+        max_length=20,
+        choices=EnrichmentStatus.choices,
+        default=EnrichmentStatus.PENDING,
+    )
+    document = models.ForeignKey(
+        "documents.Document",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="items",
+    )
 
     class Meta:
         ordering = ["-modified_at"]
