@@ -8,7 +8,7 @@
 
 ## Executive Summary 🚀
 - Phase A (Core Data & Ingestion) is functionally complete: the Django ingestion pipeline (Qlik + Faculty), staging models, batch processor, standardizer, merge rules, excel export baseline, dashboard upload UI, and management commands are implemented and thoroughly tested.
-- Remaining high-priority work: Step 9 (Excel export parity & formatting), Step 10 (run legacy data migration to load enrichment data), final validation against legacy outputs, and a few polish items (formatting, backup, large-scale testing).
+- Remaining high-priority work: Step 9 (Excel export parity & formatting) and Step 10 (run legacy data migration to load enrichment data). Note: key parts of Step 9 (two-sheet workbook structure, per-faculty bucket workbooks, backup strategy and update-tracking CSV/text) are already implemented in the current codebase (ExportService + ExcelBuilder), but styling/conditional-formatting parity and test updates remain. Final validation against legacy outputs and a few polish items (exact formatting, Windows locking edge-cases, large-scale testing) are still outstanding.
 - I archived the previous planning and session docs to `.github/older_docs_for_reference/` and left `agents.md` + this `dev_plan.md` in the root.
 
 ---
@@ -19,7 +19,7 @@
 - Standardizer service (Polars): clean, testable transformations for Qlik & Faculty
 - Merge rules & comparison strategies: explicit QLIK / FACULTY ownership
 - Batch processor: transactional, logs ChangeLog, records failures
-- Excel export: baseline export builder returns BytesIO; per-faculty sheets and overview implemented
+- Excel export: ExportService and `ExcelBuilder` implemented. The exporter creates per-faculty folders and workflow bucket workbooks (inbox/in_progress/done/overview), each workbook contains two sheets ("Complete data" + "Data entry"). Backup/rotation, `update_info_*.txt`, and `update_overview.csv` are implemented; some styling and conditional-formatting to reach byte-for-byte legacy parity remains and a couple of tests need adjusting to the new API.
 - Dashboard UI: upload, batch listing, batch detail, status API, download endpoints
 - Management commands: `process_batch`, `load_faculties`, `assign_faculties`, `load_legacy_data` (created, not yet executed)
 - Test coverage: ~48/49 tests passing; many unit and integration tests implemented
@@ -30,23 +30,24 @@
 ## Phase A — Outstanding Tasks (priority list) ⚠️
 
 1. Step 9: Excel Export — Legacy parity & polish 🔧
-   - 9.1 Load enrichment data into Django (run `load_legacy_data`) (blocker for enriched exports)
-   - 9.2 Two-sheet structure ("Complete data" + "Data entry")
-   - 9.3 Excel styling & conditional formatting to match legacy precisely
-   - 9.4 Workbook protection & locking behavior (fix openpyxl warnings)
-   - 9.5 Backup system & summary CSV/text (timestamped backups)
-   - 9.6 Export update tracking (manifest & summary statistics)
-   - Verification: byte-for-byte or functional parity tests with legacy exports and round-trip tests
+   - 9.1 Load enrichment data into Django (run `load_legacy_data`) — command exists and is ready; run `--dry-run` then actual import (blocker for enriched exports)
+   - 9.2 Two-sheet structure ("Complete data" + "Data entry") — IMPLEMENTED via `ExcelBuilder.build_workbook_for_dataframe`
+   - 9.3 Excel styling & conditional formatting to match legacy precisely — PARTIAL: many styling helpers and validations implemented, but a final pass is required to match legacy visuals and conditional rules
+   - 9.4 Workbook protection & locking behavior (fix openpyxl warnings) — PARTIAL: sheet protection / lock/unlock behavior implemented; some openpyxl deprecation/warning handling and Windows file-lock edge cases remain
+   - 9.5 Backup system & summary CSV/text (timestamped backups) — IMPLEMENTED (`ExportService` backs up existing export tree and writes `update_info_*.txt`)
+   - 9.6 Export update tracking (manifest & summary statistics) — IMPLEMENTED (`update_overview.csv` and per-faculty update info files)
+   - 9.7 Tests & parity automation — NEW: update unit tests (e.g., `test_excel_builder.py`) to use the new `ExcelBuilder` / `ExportService` API and add automated parity/round-trip checks; some existing tests still expect the legacy API and must be updated
+   - Verification: byte-for-byte or functional parity tests with legacy exports and round-trip tests (add automated comparisons once styling parity is complete)
 
 2. Step 10: Legacy data migration (ready but not executed)
-   - Ensure path to `ea-cli/db.sqlite3` or production legacy DB available
-   - Run `load_legacy_data` with `--dry-run` → inspect counts → run actual import
-   - Run `verify_migration` management command and fix mapping edge cases
+   - `load_legacy_data` management command exists and is ready; provide the legacy DB path and run `--dry-run` to inspect counts, then run actual import
+   - Note: there is currently no `verify_migration` management command in the repository — create one (or add post-import verification to `load_legacy_data`) to validate mapping and surfacing edge-cases after import
+   - After import, run export parity checks (exports should contain enrichment: courses, persons, course->person links)
 
 3. Final verification & acceptance
-   - Run full test suite and update failing tests if any
-   - Run export parity comparison (visual + automated checks)
-   - Run scale/perf checks with a large Qlik export (recommended; see Risks)
+   - Run full test suite and update failing tests (some unit tests reference the legacy ExcelBuilder API and require changes)
+   - Add automated export parity checks (visual diffs and functional checks) and run comparisons with legacy outputs
+   - Run scale/perf checks with a large Qlik export (recommended; see Risks) and ensure ExportService holds up (Polars helps but DB writes may need tuning)
 
 4. Minor polish & tech debt
    - Fix openpyxl deprecation warnings (cell protection API changes)
@@ -104,9 +105,11 @@ Phase C — Dashboard & Classification
 
 ## Immediate next actions (recommended) ✅
 1. Run `load_legacy_data --dry-run` with legacy DB path and inspect counts — *Owner: infra/dev*
-2. Implement Step 9.2–9.4 (two-sheet, formatting, protection) — *Owner: dev*
-3. Run export parity and round-trip tests; fix issues iteratively — *Owner: QA/dev*
-4. Run scale tests with representative large Qlik export (measure time & memory), and tune DB bulk operations if needed — *Owner: dev/ops*
+2. Update tests to match the refactored export API (fix `test_excel_builder.py` to use `ExcelBuilder.build_workbook_for_dataframe` or test `ExportService.export_workflow_tree`) — *Owner: dev*
+3. Finish styling & conditional formatting parity (add targeted tests for conditional rules and cell protection behavior) — *Owner: dev*
+4. Implement a `verify_migration` management command or add verification to `load_legacy_data` to validate mapping counts and edge cases after import — *Owner: dev/infra*
+5. Run export parity and round-trip tests; fix issues iteratively — *Owner: QA/dev*
+6. Run scale tests with representative large Qlik export (measure time & memory), and tune DB bulk operations if needed — *Owner: dev/ops*
 
 ---
 
@@ -133,4 +136,4 @@ Files moved include:
 ---
 
 ## Wrap up / Quick status (2 sentences) ✨
-Phase A is production-ready for command-line usage and mostly ready for web-based use; final, high-priority work is export parity (formatting, protection, backups) and running the legacy migration to enrich exports. My next step (if you want me to proceed) is to run `load_legacy_data --dry-run` (I will need the legacy DB path) and then implement the Step 9 export parity tasks.
+Phase A is nearly complete: ingestion, merge rules, standardizer, processor, and dashboard are implemented; ExportService + ExcelBuilder implement per-faculty exports, backups, and update tracking. Remaining high-priority work: finalize styling/conditional formatting parity, update tests to the refactored API, implement a `verify_migration` check, and run the legacy migration (`load_legacy_data --dry-run` first) followed by export parity validation.

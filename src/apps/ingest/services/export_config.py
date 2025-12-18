@@ -4,9 +4,21 @@ Export column configuration.
 Defines which columns appear in exports and how they're formatted.
 Based on legacy settings.yaml data_settings.
 """
-from dataclasses import dataclass
 
-from . import export_config
+from dataclasses import dataclass
+from typing import Optional
+
+
+@dataclass
+class ConditionalStyle:
+    """Style information for conditional formatting."""
+
+    activate_on: list[str]  # Cell values that trigger this style
+    bg_color: str = ""  # Background color (hex without #)
+    text_color: str = ""  # Text color (hex without #)
+    border_color: str = ""  # Border color (hex without #)
+    bold: bool = False  # Whether text should be bold
+
 
 @dataclass
 class ColumnConfig:
@@ -16,9 +28,10 @@ class ColumnConfig:
     new_name: str | None = None  # Display name in export (if different)
     is_editable: bool = False  # Whether faculty can edit this field
     is_url: bool = False  # Whether to format as hyperlink
-    is_new: bool = False # Whether the column is new
+    is_new: bool = False  # Whether the column is new
     dropdown_options: str | None = None  # Dropdown validation options
     default_val: str | None = None  # Default value for new rows
+    conditional_style: Optional[ConditionalStyle] = None  # Conditional formatting style
 
 
 # Data entry columns (editable subset shown to faculty)
@@ -26,7 +39,15 @@ DATA_ENTRY_COLUMNS = [
     ColumnConfig(name="material_id"),
     ColumnConfig(name="period"),
     ColumnConfig(name="url", is_url=True),
-    ColumnConfig(name="file_exists"),
+    ColumnConfig(
+        name="file_exists",
+        conditional_style=ConditionalStyle(
+            activate_on=['"No"'],
+            text_color="556b2f",  # darkolivegreen
+            bg_color="ffb6c1",  # lightpink
+            border_color="ffa500",  # orange
+        ),
+    ),
     ColumnConfig(name="last_canvas_check", new_name="latest_filecheck_date"),
     ColumnConfig(
         name="workflow_status",
@@ -34,6 +55,13 @@ DATA_ENTRY_COLUMNS = [
         is_editable=True,
         dropdown_options='"ToDo,Done,InProgress"',
         default_val="ToDo",
+        conditional_style=ConditionalStyle(
+            activate_on=['"ToDo"'],
+            text_color="bdb76b",  # darkkhaki
+            bg_color="87ceeb",  # skyblue
+            border_color="fdf5e6",  # oldlace
+            bold=True,
+        ),
     ),
     ColumnConfig(
         name="manual_classification",
@@ -55,6 +83,13 @@ DATA_ENTRY_COLUMNS = [
         name="v2_lengte",
         is_editable=True,
         dropdown_options='"Kort,Midden,Lang"',  # Lengte enum values
+        conditional_style=ConditionalStyle(
+            activate_on=['"Lang"'],
+            text_color="8a2be2",  # blueviolet
+            bg_color="e9967a",  # darksalmon
+            border_color="2f4f4f",  # darkslategrey
+            bold=True,
+        ),
     ),
     ColumnConfig(name="remarks", is_editable=True),
     ColumnConfig(name="ml_prediction"),

@@ -4,16 +4,15 @@ Excel export service for backward compatibility.
 Generates faculty-oriented Excel workbooks that mirror the legacy data-entry
 layout and formatting. This is a port of `ea-cli/easy_access/sheets/sheet.py`.
 """
+
 from __future__ import annotations
 
 import hashlib
 from io import BytesIO
-from typing import Any, Iterable
 
 import polars as pl
 from loguru import logger
 from openpyxl import Workbook
-from openpyxl.cell import Cell
 from openpyxl.styles import Alignment, Font, NamedStyle, PatternFill
 from openpyxl.utils import get_column_letter, quote_sheetname
 from openpyxl.workbook.defined_name import DefinedName
@@ -24,7 +23,6 @@ from openpyxl.worksheet.worksheet import Worksheet
 
 from apps.core.models import (
     ClassificationV2,
-    CopyrightItem,
     Lengte,
     OvernameStatus,
     WorkflowStatus,
@@ -38,6 +36,7 @@ ENUM_MAP = {
     "v2_lengte": Lengte,
     "workflow_status": WorkflowStatus,
 }
+
 
 class ExcelBuilder:
     """
@@ -63,20 +62,19 @@ class ExcelBuilder:
         # 1. Complete data sheet (read-only)
         ws_complete = wb.active
         ws_complete.title = self.COMPLETE_SHEET_NAME
-        
+
         # Create ColumnConfig objects for the complete data sheet
-        complete_data_configs = [export_config.ColumnConfig(name=col) for col in export_config.COMPLETE_DATA_COLUMN_ORDER]
-        
-        self._write_dataframe_to_sheet(
-            ws_complete, df, complete_data_configs
-        )
+        complete_data_configs = [
+            export_config.ColumnConfig(name=col)
+            for col in export_config.COMPLETE_DATA_COLUMN_ORDER
+        ]
+
+        self._write_dataframe_to_sheet(ws_complete, df, complete_data_configs)
         self._protect_sheet_all_locked(ws_complete)
 
         # 2. Data entry sheet (editable)
         ws_entry = wb.create_sheet(title=self.DATA_ENTRY_SHEET_NAME)
-        self._write_dataframe_to_sheet(
-            ws_entry, df, export_config.DATA_ENTRY_COLUMNS
-        )
+        self._write_dataframe_to_sheet(ws_entry, df, export_config.DATA_ENTRY_COLUMNS)
         self._apply_styling_and_validation(ws_entry, df)
         # Create an Excel table object
         self._create_table(ws_entry, df.height, style_iter)
@@ -90,12 +88,12 @@ class ExcelBuilder:
     ) -> None:
         """Writes a dataframe to a worksheet, using ColumnConfig for headers."""
         db_columns = [c.name for c in columns]
-        
+
         # Ensure all columns exist in the dataframe, adding null ones if missing.
         for col in db_columns:
             if col not in df.columns:
                 df = df.with_columns(pl.lit(None, dtype=pl.Utf8).alias(col))
-        
+
         # Write headers using new_name if available
         header_font = Font(bold=True)
         header_fill = PatternFill("solid", fgColor="DDDDDD")
@@ -122,9 +120,7 @@ class ExcelBuilder:
             name="wordwrap", alignment=Alignment(wrapText=True)
         )
 
-        for col_idx, col_config in enumerate(
-            export_config.DATA_ENTRY_COLUMNS, start=1
-        ):
+        for col_idx, col_config in enumerate(export_config.DATA_ENTRY_COLUMNS, start=1):
             # Calculate column widths
             col_letter = get_column_letter(col_idx)
             max_width = len(col_config.new_name or col_config.name)
@@ -152,12 +148,12 @@ class ExcelBuilder:
                 # If the column is in our enum map, use the enum's labels instead
                 if col_config.name in ENUM_MAP:
                     enum_class = ENUM_MAP[col_config.name]
-                    options_str = f'"{",".join(str(label) for label in enum_class.labels)}"'
-                
-                self._add_list_validation(
-                    ws, options_str, col_letter, max_row
-                )
-            
+                    options_str = (
+                        f'"{",".join(str(label) for label in enum_class.labels)}"'
+                    )
+
+                self._add_list_validation(ws, options_str, col_letter, max_row)
+
             # Apply hyperlink style
             if col_config.is_url:
                 for row_num in range(2, max_row + 2):
@@ -166,6 +162,11 @@ class ExcelBuilder:
                         cell.hyperlink = cell.value
                         cell.style = "Hyperlink"
 
+            # Apply conditional formatting
+            if col_config.conditional_style:
+                self._add_conditional_formatting(
+                    ws, col_letter, max_row, col_config.conditional_style
+                )
 
         # Apply protection
         unlocked_letters = {
@@ -174,6 +175,60 @@ class ExcelBuilder:
             if col.is_editable or col.is_url
         }
         self._protect_sheet_editable(ws, unlocked_letters)
+
+    def _add_conditional_formatting(
+        self,
+        ws: Worksheet,
+        col_letter: str,
+        max_row: int,
+        style: export_config.ConditionalStyle,
+    ):
+        """Applies conditional formatting to a column."""
+        from openpyxl.formatting.rule import CellIsRule
+        from openpyxl.styles import Border, Font, PatternFill, Side
+
+        try:
+            # Create fill pattern
+            fill = None
+            if style.bg_color:
+                fill = PatternFill(
+                    start_color=style.bg_color.upper(),
+                    end_color=style.bg_color.upper(),
+                    fill_type="solid",
+                )
+
+            # Create border
+            border = None
+            if style.border_color:
+                side = Side(style="thin", color=style.border_color.upper())
+                border = Border(left=side, right=side, top=side, bottom=side)
+
+            # Create font
+            font = None
+            if style.text_color or style.bold:
+                font = Font(
+                    color=style.text_color.upper() if style.text_color else "000000",
+                    bold=style.bold,
+                )
+
+            # Create conditional formatting rule
+            rule = CellIsRule(
+                operator="equal",
+                formula=style.activate_on,
+                fill=fill,
+                border=border,
+                font=font,
+            )
+
+            # Apply to column range
+            ws.conditional_formatting.add(
+                f"{col_letter}2:{col_letter}{max_row + 1}",
+                rule,
+            )
+        except Exception as e:
+            logger.warning(
+                f"Could not add conditional formatting to column {col_letter}: {e}"
+            )
 
     def _add_list_validation(
         self, ws: Worksheet, options_str: str, col_letter: str, max_row: int
@@ -236,14 +291,16 @@ class ExcelBuilder:
 
     def _protect_sheet_editable(self, ws: Worksheet, editable_letters: set[str]):
         """Protects a sheet, leaving only specified columns editable."""
+        from openpyxl.styles.protection import Protection
+
         # Lock all cells by default
         for row in ws.iter_rows():
             for cell in row:
-                cell.protection = cell.protection.copy(locked=True)
+                cell.protection = Protection(locked=True, hidden=False)
         # Unlock editable columns
         for col_letter in editable_letters:
             for cell in ws[col_letter]:
-                cell.protection = cell.protection.copy(locked=False)
+                cell.protection = Protection(locked=False, hidden=False)
         # Enable sheet protection
         ws.protection.sheet = True
         ws.protection.enable()

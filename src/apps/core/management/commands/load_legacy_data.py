@@ -38,17 +38,26 @@ class Command(BaseCommand):
             action="store_true",
             help="Skip faculty loading (use if already loaded via load_faculties)",
         )
+        parser.add_argument(
+            "--dry-run",
+            action="store_true",
+            help="Show what would be loaded without actually loading it",
+        )
 
     def handle(self, *args, **options):
         db_path = Path(options["db_path"])
+        dry_run = options["dry_run"]
+
         if not db_path.exists():
-            self.stdout.write(
-                self.style.ERROR(f"Database not found: {db_path}")
-            )
+            self.stdout.write(self.style.ERROR(f"Database not found: {db_path}"))
             self.stdout.write(
                 "Please provide the path to the legacy SQLite database using --db-path"
             )
             return
+
+        if dry_run:
+            self.stdout.write(self.style.WARNING("\n=== DRY RUN MODE ==="))
+            self.stdout.write("No data will be loaded. Inspecting legacy database...\n")
 
         self.stdout.write(f"Loading data from: {db_path}")
 
@@ -56,6 +65,62 @@ class Command(BaseCommand):
         conn = sqlite3.connect(db_path)
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
+
+        # Get counts from legacy database
+        cursor.execute("SELECT COUNT(*) FROM organization_data")
+        org_count = cursor.fetchone()[0]
+
+        cursor.execute("SELECT COUNT(*) FROM course_data")
+        course_count = cursor.fetchone()[0]
+
+        cursor.execute("SELECT COUNT(*) FROM person_data")
+        person_count = cursor.fetchone()[0]
+
+        cursor.execute("SELECT COUNT(*) FROM course_employee")
+        rel_count = cursor.fetchone()[0]
+
+        if dry_run:
+            self.stdout.write(self.style.SUCCESS("\n=== Legacy Database Contents ==="))
+            self.stdout.write(f"  Organizations: {org_count}")
+            self.stdout.write(f"  Courses: {course_count}")
+            self.stdout.write(f"  Persons: {person_count}")
+            self.stdout.write(f"  Course-Person links: {rel_count}")
+
+            self.stdout.write(self.style.SUCCESS("\n=== Current Django Database ==="))
+            self.stdout.write(
+                f"  Organizations (non-faculty): {Organization.objects.exclude(hierarchy_level=1).count()}"
+            )
+            self.stdout.write(f"  Courses: {Course.objects.count()}")
+            self.stdout.write(f"  Persons: {Person.objects.count()}")
+            self.stdout.write(
+                f"  Course-Person links: {CourseEmployee.objects.count()}"
+            )
+
+            # Sample data
+            self.stdout.write(self.style.SUCCESS("\n=== Sample Courses (first 5) ==="))
+            cursor.execute("SELECT cursuscode, name, year FROM course_data LIMIT 5")
+            for row in cursor.fetchall():
+                self.stdout.write(
+                    f"  {row['cursuscode']} - {row['name']} ({row['year']})"
+                )
+
+            self.stdout.write(self.style.SUCCESS("\n=== Sample Persons (first 5) ==="))
+            cursor.execute(
+                "SELECT input_name, main_name, match_confidence FROM person_data LIMIT 5"
+            )
+            for row in cursor.fetchall():
+                conf = row["match_confidence"] if row["match_confidence"] else 0
+                self.stdout.write(
+                    f"  {row['input_name']} -> {row['main_name']} (confidence: {conf:.2f})"
+                )
+
+            conn.close()
+            self.stdout.write(
+                self.style.WARNING(
+                    "\nDry run complete. Use without --dry-run to load data.\n"
+                )
+            )
+            return
 
         if options["clear"]:
             self.clear_existing_data()
@@ -106,27 +171,28 @@ class Command(BaseCommand):
         Organization.objects.exclude(hierarchy_level=1).delete()
 
         self.stdout.write(
-            self.style.WARNING(
-                f"Cleared existing data: {sum(counts.values())} records"
-            )
+            self.style.WARNING(f"Cleared existing data: {sum(counts.values())} records")
         )
 
     def load_organizations(self, cursor):
         """Load organization hierarchy (faculties and departments)."""
-        cursor.execute("SELECT * FROM organization")
+        cursor.execute("SELECT * FROM organization_data")
         rows = cursor.fetchall()
 
         created = 0
         for row in rows:
+            row = dict(row)  # Convert sqlite3.Row to dict
             try:
                 # Get or create parent organization
                 parent = None
-                if row["parent_id"]:
+                if row.get("parent_organization_id"):
                     try:
-                        parent = Organization.objects.get(pk=row["parent_id"])
+                        parent = Organization.objects.get(
+                            pk=row["parent_organization_id"]
+                        )
                     except Organization.DoesNotExist:
                         logger.warning(
-                            f"Parent organization {row['parent_id']} not found for {row['name']}"
+                            f"Parent organization {row['parent_organization_id']} not found for {row['name']}"
                         )
 
                 # Create organization
@@ -152,23 +218,20 @@ class Command(BaseCommand):
 
     def load_courses(self, cursor):
         """Load courses from legacy database."""
-        cursor.execute("SELECT * FROM course")
+        cursor.execute("SELECT * FROM course_data")
         rows = cursor.fetchall()
 
         created = 0
         for row in rows:
+            row = dict(row)  # Convert sqlite3.Row to dict
             try:
                 # Map faculty if exists
                 faculty = None
-                if row["faculty_id"]:
+                if row.get("faculty_id"):
                     try:
-                        # Faculty records should be Organization with hierarchy_level=1
-                        org = Organization.objects.get(
-                            pk=row["faculty_id"], hierarchy_level=1
-                        )
-                        # Convert to Faculty proxy model
-                        faculty = Faculty.objects.get(pk=org.pk)
-                    except (Organization.DoesNotExist, Faculty.DoesNotExist):
+                        # faculty_id is an abbreviation string
+                        faculty = Faculty.objects.get(abbreviation=row["faculty_id"])
+                    except Faculty.DoesNotExist:
                         logger.warning(
                             f"Faculty {row['faculty_id']} not found for course {row['name']}"
                         )
@@ -181,7 +244,7 @@ class Command(BaseCommand):
                         "name": row["name"],
                         "short_name": row["short_name"],
                         "faculty": faculty,
-                        "programme_text": row["programme_text"],
+                        "programme_text": row["programme"],
                     },
                 )
 
@@ -189,27 +252,28 @@ class Command(BaseCommand):
                     created += 1
 
             except Exception as e:
-                logger.error(f"Error loading course {row.get('name', '?')}: {e}")
+                try:
+                    logger.error(f"Error loading course {row['name']}: {e}")
+                except:
+                    logger.error(f"Error loading course: {e}")
 
         return created
 
     def load_persons(self, cursor):
         """Load persons from legacy database."""
-        cursor.execute("SELECT * FROM person")
+        cursor.execute("SELECT * FROM person_data")
         rows = cursor.fetchall()
 
         created = 0
         for row in rows:
+            row = dict(row)  # Convert sqlite3.Row to dict
             try:
                 # Map faculty if exists
                 faculty = None
-                if row["faculty_id"]:
+                if row.get("faculty_id"):
                     try:
-                        org = Organization.objects.get(
-                            pk=row["faculty_id"], hierarchy_level=1
-                        )
-                        faculty = Faculty.objects.get(pk=org.pk)
-                    except (Organization.DoesNotExist, Faculty.DoesNotExist):
+                        faculty = Faculty.objects.get(abbreviation=row["faculty_id"])
+                    except Faculty.DoesNotExist:
                         pass
 
                 person, was_created = Person.objects.update_or_create(
@@ -227,17 +291,21 @@ class Command(BaseCommand):
                     created += 1
 
             except Exception as e:
-                logger.error(f"Error loading person {row.get('input_name', '?')}: {e}")
+                try:
+                    logger.error(f"Error loading person {row['input_name']}: {e}")
+                except:
+                    logger.error(f"Error loading person: {e}")
 
         return created
 
     def load_course_employees(self, cursor):
         """Load course-person relationships."""
-        cursor.execute("SELECT * FROM courseemployee")
+        cursor.execute("SELECT * FROM course_employee")
         rows = cursor.fetchall()
 
         created = 0
         for row in rows:
+            row = dict(row)  # Convert sqlite3.Row to dict
             try:
                 course = Course.objects.get(cursuscode=row["course_id"])
                 person = Person.objects.get(pk=row["person_id"])
