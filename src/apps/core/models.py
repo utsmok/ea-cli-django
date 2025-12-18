@@ -242,6 +242,8 @@ class CopyrightItem(TimestampedModel):
         max_length=100,
         choices=Classification.choices,
         default=Classification.NIET_GEANALYSEERD,
+        null=True,
+        blank=True,
     )
 
     isbn = models.CharField(max_length=255, null=True, blank=True)
@@ -254,6 +256,7 @@ class CopyrightItem(TimestampedModel):
     reliability = models.IntegerField(default=0)
     pages_x_students = models.IntegerField(default=0)
     count_students_registered = models.IntegerField(default=0)
+    retrieved_from_copyright_on = models.DateTimeField(null=True, blank=True)
 
     pagecount = models.IntegerField(default=0)
     wordcount = models.IntegerField(default=0)
@@ -266,7 +269,9 @@ class CopyrightItem(TimestampedModel):
         db_index=True,
     )
     manual_classification = models.CharField(
-        max_length=2048, choices=Classification.choices, default=Classification.ONBEKEND
+        max_length=2048, choices=Classification.choices, default=Classification.ONBEKEND,
+        null=True,
+        blank=True,
     )
     manual_identifier = models.CharField(max_length=2048, null=True, blank=True)
     scope = models.CharField(max_length=50, null=True, blank=True)

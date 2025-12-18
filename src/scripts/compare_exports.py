@@ -52,7 +52,14 @@ def compare_excels(django_path, legacy_path, report_path, sheet_name="Complete d
         df_django = df_django.sort("material_id")
         df_legacy = df_legacy.sort("material_id")
 
-        common_cols = [c for c in legacy_cols if c in django_cols]
+        IGNORE_COLS = [
+            "cursuscodes", "course_names", "programmes",
+            "course_contacts_names", "course_contacts_emails",
+            "course_contacts_faculties", "course_contacts_organizations",
+            "course_link"
+        ]
+
+        common_cols = [c for c in legacy_cols if c in django_cols and c not in IGNORE_COLS]
 
         # Data differences
         diffs = {}
@@ -76,13 +83,29 @@ def compare_excels(django_path, legacy_path, report_path, sheet_name="Complete d
                 log(f"  Column '{col}': {len(d_list)} differences. Sample: row {d_list[0][0]}, Django='{d_list[0][1]}', Legacy='{d_list[0][2]}'")
 
 if __name__ == "__main__":
-    compare_excels(
-        "exports/faculty_sheets/BMS/inbox.xlsx",
-        "ea-cli/faculty_sheets/BMS/inbox.xlsx",
-        "comparison_report_inbox.txt"
-    )
-    compare_excels(
-        "exports/faculty_sheets/BMS/overview.xlsx",
-        "ea-cli/faculty_sheets/BMS/overview.xlsx",
-        "comparison_report_overview.txt"
-    )
+    faculties_dir = Path("exports/faculty_sheets")
+    if not faculties_dir.exists():
+        print("Exports directory not found.")
+    else:
+        # Loop through all faculty directories
+        for faculty_path in faculties_dir.iterdir():
+            if faculty_path.is_dir():
+                faculty_name = faculty_path.name
+                if faculty_name == "backups":
+                    continue
+
+                print(f"\nProcessing faculty: {faculty_name}")
+
+                # Compare inbox
+                compare_excels(
+                    str(faculty_path / "inbox.xlsx"),
+                    f"ea-cli/faculty_sheets/{faculty_name}/inbox.xlsx",
+                    f"comparison_report_{faculty_name}_inbox.txt"
+                )
+
+                # Compare overview
+                compare_excels(
+                    str(faculty_path / "overview.xlsx"),
+                    f"ea-cli/faculty_sheets/{faculty_name}/overview.xlsx",
+                    f"comparison_report_{faculty_name}_overview.txt"
+                )

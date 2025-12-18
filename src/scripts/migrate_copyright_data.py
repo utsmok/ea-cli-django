@@ -28,9 +28,23 @@ def migrate():
         row = dict(row)
         try:
             # Resolve faculty
+            faculty_abbr = None
+            dept = row.get("department")
+            if dept:
+                # Use mapping as in legacy
+                from config.university import DEPARTMENT_MAPPING
+                faculty_abbr = DEPARTMENT_MAPPING.get(dept)
+
+            # Fallback to legacy faculty_id column if mapping failed but abbreviation exists
+            if not faculty_abbr:
+                faculty_abbr = row.get("faculty_id")
+                # Handle EWI -> EEMCS mapping specifically if it appears
+                if faculty_abbr == "EWI":
+                    faculty_abbr = "EEMCS"
+
             faculty = None
-            if row.get("faculty_id"):
-                faculty = Faculty.objects.filter(abbreviation=row["faculty_id"]).first()
+            if faculty_abbr:
+                faculty = Faculty.objects.filter(abbreviation=faculty_abbr).first()
 
             item, created = CopyrightItem.objects.update_or_create(
                 material_id=row["material_id"],
@@ -45,7 +59,7 @@ def migrate():
                     "owner": row.get("owner"),
                     "filetype": row.get("filetype", "unknown"),
                     "classification": row.get("classification", "lange overname"),
-                    "ml_prediction": row.get("ml_prediction"),
+                    "ml_classification": row.get("ml_prediction"),
                     "manual_classification": row.get("manual_classification") or "onbekend",
                     "manual_identifier": row.get("manual_identifier"),
                     "v2_manual_classification": row.get("v2_manual_classification") or "Onbekend",

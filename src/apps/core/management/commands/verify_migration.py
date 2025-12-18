@@ -10,7 +10,8 @@ Checks:
 from django.core.management.base import BaseCommand
 from django.db.models import Count, Q
 
-from apps.core.models import Course, CourseEmployee, Faculty, Organization, Person
+from apps.core.models import Course, CourseEmployee, Faculty, Organization, Person, CopyrightItem
+from apps.ingest.models import ChangeLog
 
 
 class Command(BaseCommand):
@@ -54,11 +55,29 @@ class Command(BaseCommand):
         persons = Person.objects.count()
         relationships = CourseEmployee.objects.count()
 
+        total_items = CopyrightItem.objects.count()
+        migrated_logs = ChangeLog.objects.filter(
+            change_source=ChangeLog.ChangeSource.MIGRATION
+        ).count()
+
         self.stdout.write(f"  Faculties: {faculties}")
         self.stdout.write(f"  Organizations (non-faculty): {organizations}")
         self.stdout.write(f"  Courses: {courses}")
         self.stdout.write(f"  Persons: {persons}")
         self.stdout.write(f"  Course-Person relationships: {relationships}")
+        self.stdout.write(f"  Copyright Items: {total_items}")
+        self.stdout.write(f"  MIGRATION changelogs: {migrated_logs}")
+
+        if total_items != migrated_logs:
+            self.stdout.write(
+                self.style.WARNING(
+                    f"  ⚠ Mismatch: {total_items - migrated_logs} items without MIGRATION changelog"
+                )
+            )
+        else:
+            self.stdout.write(
+                self.style.SUCCESS("  ✓ All items accounted for by migration logs")
+            )
 
         # Warnings
         if courses == 0:

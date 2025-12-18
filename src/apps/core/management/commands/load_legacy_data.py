@@ -277,8 +277,9 @@ class Command(BaseCommand):
                         pass
 
                 person, was_created = Person.objects.update_or_create(
-                    input_name=row["input_name"],
+                    id=row["id"],
                     defaults={
+                        "input_name": row["input_name"],
                         "main_name": row["main_name"],
                         "match_confidence": row["match_confidence"],
                         "email": row["email"],
@@ -313,7 +314,7 @@ class Command(BaseCommand):
                 _, was_created = CourseEmployee.objects.get_or_create(
                     course=course,
                     person=person,
-                    defaults={"role": row["role"]},
+                    role=row["role"],
                 )
 
                 if was_created:

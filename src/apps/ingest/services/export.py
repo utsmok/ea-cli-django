@@ -191,46 +191,79 @@ class ExportService:
         model_fields = {f.name for f in CopyrightItem._meta.get_fields()}
 
         # 3. Determine which columns can be fetched directly from the DB
+        # Note: ml_prediction (legacy) == ml_classification (Django)
         db_cols = [col for col in all_export_cols if col in model_fields and col != "faculty"]
+        if "ml_prediction" in all_export_cols and "ml_classification" in model_fields:
+            db_cols.append("ml_classification")
+
+        # We also need internal fields for computation
+        fetch_cols = list(set(db_cols) | {"canvas_course_id"})
 
         # 4. Fetch the items from the database with related data
         items = CopyrightItem.objects.filter(faculty__abbreviation=faculty).prefetch_related(
-            "courses__teachers__faculty",
-            "courses__teachers__orgs",
+            "courses__courseemployee_set__person__faculty",
+            "courses__courseemployee_set__person__orgs",
         )
 
         values = []
         for item in items:
-            item_data = {col: getattr(item, col, None) for col in db_cols}
+            # Initialize ALL export columns to None to ensure consistency for Polars
+            item_data = {col: None for col in all_export_cols}
+
+            # Fill in fields from fetched data
+            for col in fetch_cols:
+                val = getattr(item, col, None)
+                target_col = col
+                if col == "ml_classification":
+                    target_col = "ml_prediction"
+
+                # Strip timezone from datetime objects for Excel (openpyxl) compatibility
+                if isinstance(val, datetime) and getattr(val, "tzinfo", None) is not None:
+                    val = val.replace(tzinfo=None)
+                # Legacy Parity: file_exists should be Yes/No
+                elif col == "file_exists":
+                    val = "Yes" if val else "No"
+                # Legacy Parity: in_collection False should be NULL (None)
+                elif col == "in_collection" and val is False:
+                    val = None
+                # Legacy Parity: map 'onbekend' back to None if it was NULL in legacy
+                elif col == "manual_classification" and val == "onbekend":
+                    val = None
+
+                # We put it in item_data anyway (internal ones will be dropped from DF)
+                item_data[target_col] = val
+
             item_data["faculty"] = item.faculty.abbreviation if item.faculty else None
 
             # Enrichment data aggregation
             courses = item.courses.all()
             if courses:
+                # Legacy Parity: use sorted() for consistency
+                # In legacy, order was often non-deterministic but sorted usually matches best.
                 item_data["cursuscodes"] = " | ".join(sorted({str(c.cursuscode) for c in courses}))
-                item_data["course_names"] = " | ".join(sorted({c.name for c in courses if c.name}))
-                item_data["programmes"] = " | ".join(sorted({c.programme_text for c in courses if c.programme_text}))
+                item_data["course_names"] = " | ".join(sorted({c.name.replace(",", " | ") for c in courses if c.name}))
+                item_data["programmes"] = " | ".join(sorted({c.programme_text.replace(",", " | ") for c in courses if c.programme_text}))
 
-                # Contacts (teachers with role 'contacts' - though our CourseEmployee might not have 'role' filled yet correctly)
-                # Legacy code filtered by role='contacts'. Let's check our CourseEmployee.
-                # In this implementation, we take all teachers linked to the course for now.
-
-                contacts = []
+                # Contacts (teachers with role 'contacts')
+                contacts = set()
                 for course in courses:
-                    # We need to access CourseEmployee to filter by role if possible,
-                    # but our prefetch is on 'teachers'.
-                    # Let's use the through model if needed, or just all teachers.
-                    for person in course.teachers.all():
-                        contacts.append(person)
+                    # Filter from prefetched set
+                    for emp in course.courseemployee_set.all():
+                        if emp.role == "contacts":
+                            contacts.add(emp.person)
 
                 if contacts:
-                    item_data["course_contacts_names"] = " | ".join(sorted({p.main_name for p in contacts if p.main_name}))
-                    item_data["course_contacts_emails"] = " | ".join(sorted({p.email for p in contacts if p.email}))
-                    item_data["course_contacts_faculties"] = " | ".join(sorted({p.faculty.abbreviation for p in contacts if p.faculty}))
+                    # Sort to be deterministic
+                    sorted_contacts = sorted(list(contacts), key=lambda p: p.main_name if p.main_name else "")
+                    item_data["course_contacts_names"] = " | ".join(sorted({p.main_name for p in sorted_contacts if p.main_name}))
+                    item_data["course_contacts_emails"] = " | ".join(sorted({p.email for p in sorted_contacts if p.email}))
+                    item_data["course_contacts_faculties"] = " | ".join(sorted({p.faculty.abbreviation for p in sorted_contacts if p.faculty}))
 
                     orgs = set()
                     for p in contacts:
-                        orgs.update({o.full_abbreviation for o in p.orgs.all() if o.full_abbreviation})
+                        for org in p.orgs.all():
+                            if org.full_abbreviation:
+                                orgs.add(org.full_abbreviation.replace(",", " | "))
                     item_data["course_contacts_organizations"] = " | ".join(sorted(orgs))
 
             values.append(item_data)
@@ -251,14 +284,20 @@ class ExportService:
                             pl.lit(f"{base_url}/courses/"),
                             pl.col("canvas_course_id").cast(pl.Utf8),
                             pl.lit("/files/search?search_term="),
-                            pl.col("filename").str.replace_all(" ", "%20"),
+                            pl.col("filename").map_elements(lambda x: str(x).replace(" ", "%20") if x else "", return_dtype=pl.Utf8),
                         ],
                         separator="",
                     )
                 )
-                .otherwise(pl.lit(None, dtype=pl.Utf8))
+                .otherwise(pl.lit(""))
                 .alias("course_link")
             )
+
+        # Drop internal columns not meant for export (like canvas_course_id which we only used for course_link)
+        # and re-order to match COMPLETE_DATA_COLUMN_ORDER
+        all_export_cols = export_config.COMPLETE_DATA_COLUMN_ORDER
+        # Ensure only columns in all_export_cols are kept and in that order
+        df = df.select([col for col in all_export_cols if col in df.columns])
 
         # 6. Ensure all columns from the config exist, adding nulls for any missing ones
         for col in all_export_cols:
@@ -306,24 +345,20 @@ class ExportService:
             "in_progress": in_progress_df,
             "done": done_df,
         }
-
-    def _atomic_save_workbook(self, wb, target_path: Path) -> None:
+    def _atomic_save_workbook(self, wb, target_path: Path):
+        """Save a workbook to a temporary file then rename it to target_path."""
         target_path.parent.mkdir(parents=True, exist_ok=True)
-        tmp_path = target_path.with_suffix(target_path.suffix + ".tmp")
+        temp_path = target_path.with_suffix(".tmp")
         try:
-            wb.save(tmp_path)
-            os.replace(tmp_path, target_path)
-        except PermissionError as e:
-            raise ExportAbortedError(
-                f"Could not save {target_path.name}. Please ensure the file is not open in another program."
-            ) from e
-        finally:
-            try:
-                if tmp_path.exists():
-                    tmp_path.unlink(missing_ok=True)
-            except Exception:
-                # Best-effort cleanup
-                pass
+            wb.save(temp_path)
+            if target_path.exists():
+                target_path.unlink()
+            temp_path.rename(target_path)
+        except Exception as e:
+            print(f"\nERROR SAVING WORKBOOK TO {target_path}: {type(e).__name__}: {e}")
+            if temp_path.exists():
+                temp_path.unlink()
+            raise e
 
     def _append_update_overview_csv(
         self, output_dir: Path, rows: list[tuple[str, str, BucketStats]]
