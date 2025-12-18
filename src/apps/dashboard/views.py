@@ -11,6 +11,6 @@ def grid_partial(request):
     # Standard filtering logic here
     items = CopyrightItem.objects.all()[:50]
 
-    if getattr(request, "htmx", False):
+    if request.headers.get("HX-Request"):
         return TemplateResponse(request, "dashboard/_grid.html", {"items": items})
     return TemplateResponse(request, "dashboard/dashboard.html", {"items": items})

@@ -11,13 +11,18 @@ PROJECT_ROOT = BASE_DIR.parent  # c:\dev\ea-cli-django (root of project)
 # Load .env using python-dotenv (handles spaces around = better)
 load_dotenv(PROJECT_ROOT / ".env")
 
-env = environ.Env(DEBUG=(bool, False))
+# Default DEBUG to True for development convenience if .env is missing
+env = environ.Env(DEBUG=(bool, True))
 # Note: we intentionally do not call django-environ's `read_env()` here because
 # it is stricter about whitespace around '=' than python-dotenv, and can emit
 # noisy warnings. Values from `.env` are already loaded into `os.environ`.
 
 SECRET_KEY = env("SECRET_KEY", default="dev-secret-key")
 DEBUG = env("DEBUG")
+
+# Redirects
+LOGIN_REDIRECT_URL = "/"
+LOGOUT_REDIRECT_URL = "/"
 ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["*"])
 
 INSTALLED_APPS = [
@@ -80,7 +85,12 @@ _db_url = os.getenv(
 # If 'db:' appears in URL (Docker internal hostname), replace with 'localhost:'
 if "@db:" in _db_url:
     _db_url = _db_url.replace("@db:", "@localhost:")
-DATABASES = {"default": env.db_url_config(_db_url)}
+DATABASES = {
+    "default": env.db_url_config(_db_url)
+}
+DATABASES["default"]["TEST"] = {
+    "NAME": "test_copyright_db_isolated",
+}
 
 AUTH_PASSWORD_VALIDATORS = []
 
@@ -130,10 +140,26 @@ CANVAS_API_TOKEN = env("CANVAS_API_TOKEN", default="") or env("CANVAS_API_KEY", 
 # Osiris Scraper Settings
 OSIRIS_BASE_URL = env("OSIRIS_BASE_URL", default="https://utwente.osiris-student.nl")
 OSIRIS_HEADERS = {
-    "accept": "application/json, text/plain, */*",
-    "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+    "sec-ch-ua-platform": '"Windows"',
+    "authorization": "undefined undefined",
+    "cache-control": "no-cache, no-store, must-revalidate, private",
+    "pragma": "no-cache",
     "client_type": "web",
+    "release_version": "c0d3b6a1d72bf1610166027c903b46fc10580f30",
+    "manifest": "24.46_B346_c0d3b6a1",
+    "sec-ch-ua-mobile": "?0",
+    "sec-ch-ua": '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"',
+    "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+    "accept": "application/json, text/plain, */*",
+    "content-type": "application/json",
     "taal": "NL",
+    "origin": "https//utwente.osiris-student.nl",
+    "sec-fetch-site": "same-origin",
+    "sec-fetch-mode": "cors",
+    "sec-fetch-dest": "empty",
+    "referer": "https//utwente.osiris-student.nl/onderwijscatalogus/extern/cursussen",
+    "accept-encoding": "gzip, deflate, br, zstd",
+    "accept-language": "en-GB,en-US;q=0.9,en;q=0.8",
 }
 
 # PDF Download Directory

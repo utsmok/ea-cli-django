@@ -150,7 +150,7 @@ async def download_undownloaded_pdfs(limit: int = 0) -> dict:
     def get_items_to_download():
         queryset = CopyrightItem.objects.filter(
             file_exists=True,
-            pdf__isnull=True,
+            document__isnull=True,
         ).exclude(url__isnull=True).exclude(url="")
 
         if limit > 0:

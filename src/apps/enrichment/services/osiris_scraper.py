@@ -51,7 +51,13 @@ class OsirisScraperService:
         )
 
         try:
-            response = await self.client.post(search_url, content=body)
+            headers = self.client.headers.copy()
+            headers.update({
+                "host": "utwente.osiris-student.nl",
+                "connection": "keep-alive",
+                "content-length": str(len(body)),
+            })
+            response = await self.client.post(search_url, content=body, headers=headers)
             response.raise_for_status()
             results = response.json().get("hits", {}).get("hits", [])
 
@@ -91,7 +97,12 @@ class OsirisScraperService:
         url = f"{self.base_url}/student/osiris/owc/cursussen/{internal_id}"
 
         try:
-            response = await self.client.get(url)
+            headers = self.client.headers.copy()
+            headers.update({
+                "host": "utwente.osiris-student.nl",
+                "connection": "keep-alive",
+            })
+            response = await self.client.get(url, headers=headers)
             response.raise_for_status()
             details = response.json()
 

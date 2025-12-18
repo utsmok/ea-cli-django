@@ -1,0 +1,73 @@
+============================= test session starts =============================
+platform win32 -- Python 3.13.2, pytest-9.0.2, pluggy-1.6.0 -- C:\dev\ea-cli-django\.venv\Scripts\python.exe
+cachedir: .pytest_cache
+django: version: 6.0, settings: config.settings (from ini)
+rootdir: C:\dev\ea-cli-django
+configfile: pytest.ini
+plugins: anyio-4.12.0, asyncio-1.3.0, cov-7.0.0, django-4.11.1
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 3 items
+
+Creating test database for alias 'default' ('test_copyright_db_isolated')...
+
+Got an error creating the test database: database "test_copyright_db_isolated" already exists
+
+Destroying old test database for alias 'default' ('test_copyright_db_isolated')...
+
+src/apps/enrichment/tests/test_tasks.py::test_enrich_item_persistence Operations to perform:
+  Synchronize unmigrated apps: api, dashboard, messages, staticfiles
+  Apply all migrations: admin, auth, contenttypes, core, documents, enrichment, ingest, sessions, users
+Synchronizing apps without migrations:
+  Creating tables...
+    Running deferred SQL...
+Running migrations:
+  Applying contenttypes.0001_initial... OK
+  Applying contenttypes.0002_remove_content_type_name... OK
+  Applying auth.0001_initial... OK
+  Applying auth.0002_alter_permission_name_max_length... OK
+  Applying auth.0003_alter_user_email_max_length... OK
+  Applying auth.0004_alter_user_username_opts... OK
+  Applying auth.0005_alter_user_last_login_null... OK
+  Applying auth.0006_require_contenttypes_0002... OK
+  Applying auth.0007_alter_validators_add_error_messages... OK
+  Applying auth.0008_alter_user_username_max_length... OK
+  Applying auth.0009_alter_user_last_name_max_length... OK
+  Applying auth.0010_alter_group_name_max_length... OK
+  Applying auth.0011_update_proxy_permissions... OK
+  Applying auth.0012_alter_user_first_name_max_length... OK
+  Applying users.0001_initial... OK
+  Applying admin.0001_initial... OK
+  Applying admin.0002_logentry_remove_auto_add... OK
+  Applying admin.0003_logentry_add_action_flag_choices... OK
+  Applying core.0001_initial... OK
+  Applying documents.0001_initial... OK
+  Applying documents.0002_remove_pdfentity_pdf_remove_pdfentity_entity_and_more... OK
+  Applying ingest.0001_initial... OK
+  Applying core.0002_initial... OK
+  Applying core.0003_initial... OK
+  Applying core.0004_copyrightitem_retrieved_from_copyright_on... OK
+  Applying core.0005_alter_copyrightitem_manual_classification_and_more... OK
+  Applying core.0006_copyrightitem_document_and_more... OK
+  Applying enrichment.0001_initial... OK
+  Applying ingest.0002_initial... OK
+  Applying sessions.0001_initial... OK
+Status: COMPLETED
+Course exists: True
+Course name: Gasdynamics, Internal ID: 116098
+Item-Course link exists: True
+Person Augustijn exists: True
+Person email: d.c.m.augustijn@utwente.nl, Verified: True
+CourseEmployee link exists: True
+Role: contacts
+PASSED
+Downloading 2 PDFs
+Download complete: 2 successful, 0 failed
+src/apps/documents/tests/test_docs.py::test_document_deduplication PASSED
+Processing 2 documents
+Parsing complete: 2 processed, 2 successful, 0 failed
+Destroying test database for alias 'default' ('test_copyright_db_isolated')...
+
+C:\dev\ea-cli-django:0: PytestWarning: Error when trying to teardown test databases: OperationalError('database "test_copyright_db_isolated" is being accessed by other users\nDETAIL:  There is 1 other session using the database.')
+src/apps/documents/tests/test_docs.py::test_extraction_service_call PASSED
+
+============================== 3 passed in 8.08s ==============================

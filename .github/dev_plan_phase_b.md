@@ -127,4 +127,5 @@ Items with a valid `url` containing `/files/` are queued for download.
 - **Document Deduplication**: Implemented content-based hashing (`xxh3_64`) to ensure a single `Document` record per unique file, significantly reducing storage overhead.
 - **Scraper Reliability**: Reproduced browser headers exactly in `OsirisScraperService`, achieving stable data retrieval for courses and persons.
 - **HTMX Integration**: The dashboard now supports real-time enrichment triggering and status updates without full page reloads.
-- **Pipeline Automation**: Enrichment is now a native stage of the data ingestion pipeline, triggered automatically upon batch processing completion.
+- [x] **Pipeline Automation**: Enrichment is now a native stage of the data ingestion pipeline, triggered automatically upon batch processing completion.
+- [x] **Frontend Polish**: Integrated Tailwind/DaisyUI for styling, added responsive navigation, and implemented manual enrichment triggers via HTMX.

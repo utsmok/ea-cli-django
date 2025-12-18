@@ -1,11 +1,76 @@
 <!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Easy Access Platform</title>
-  </head>
-  <body>
+<html lang="en" data-theme="light">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Easy Access Platform</title>
+  <!-- Tailwind CSS & DaisyUI -->
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.min.css" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js" defer></script>
+</head>
+
+<body class="bg-base-200 min-h-screen flex flex-col" hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+
+  <!-- Navbar -->
+  <div class="navbar bg-base-100 shadow-md mb-8">
+    <div class="flex-1">
+      <a href="{% url 'dashboard:index' %}" class="btn btn-ghost text-xl">Easy Access</a>
+    </div>
+    <div class="flex-none">
+      <ul class="menu menu-horizontal px-1">
+        <li><a href="{% url 'dashboard:index' %}">Dashboard</a></li>
+        {% if user.is_staff %}
+        <li><a href="/admin/">Admin</a></li>
+        {% endif %}
+
+        {% if user.is_authenticated %}
+        <li>
+          <details>
+            <summary>
+              {{ user.username }}
+            </summary>
+            <ul class="p-2 bg-base-100 rounded-t-none">
+              <li>
+                <form action="{% url 'admin:logout' %}" method="post">
+                  {% csrf_token %}
+                  <button type="submit">Logout</button>
+                </form>
+              </li>
+            </ul>
+          </details>
+        </li>
+        {% else %}
+        <li><a href="/accounts/login/">Login</a></li>
+        {% endif %}
+      </ul>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <main class="container mx-auto px-4 flex-grow">
+    {% if messages %}
+    <div class="toast toast-end">
+      {% for message in messages %}
+      <div class="alert alert-{{ message.tags|default:'info' }}">
+        <span>{{ message }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
     {% block content %}{% endblock %}
-  </body>
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer footer-center p-4 text-base-content opacity-60">
+    <aside>
+      <p>Copyright © 2025 - Easy Access Platform</p>
+    </aside>
+  </footer>
+
+</body>
+
 </html>

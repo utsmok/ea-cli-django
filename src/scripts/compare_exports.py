@@ -53,10 +53,18 @@ def compare_excels(django_path, legacy_path, report_path, sheet_name="Complete d
         df_legacy = df_legacy.sort("material_id")
 
         IGNORE_COLS = [
-            "cursuscodes", "course_names", "programmes",
-            "course_contacts_names", "course_contacts_emails",
-            "course_contacts_faculties", "course_contacts_organizations",
-            "course_link"
+            "course_link",  # Ignored as per legacy reasons or phase A
+            # Add any other columns to ignore here
+        ]
+
+        ENRICHMENT_COLS = [
+            "course_contacts_names",
+            "course_contacts_emails",
+            "course_contacts_organizations",
+            "course_names",
+            "cursuscodes",
+            "programmes",
+            "filehash"
         ]
 
         common_cols = [c for c in legacy_cols if c in django_cols and c not in IGNORE_COLS]
