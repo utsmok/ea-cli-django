@@ -21,6 +21,7 @@ from apps.ingest.services.merge_rules import (
     get_faculty_strategy,
     get_qlik_strategy,
 )
+from apps.ingest.services.standardizer import safe_datetime
 from config.university import DEPARTMENT_MAPPING_LOWER, FACULTY_NAME_BY_ABBR
 
 
@@ -158,36 +159,57 @@ class BatchProcessor:
         """
         Process a single Qlik entry.
 
-        Can CREATE new items or UPDATE existing items (system fields only).
+        Can CREATE new items or UPDATE existing items.
+        - On CREATE, it populates all available fields.
+        - On UPDATE, it only updates Qlik-owned system fields.
         """
-        # Try to get existing item
+        # A list of all fields on the QlikEntry model that can be transferred to a CopyrightItem
+        ALL_QLIK_STAGED_FIELDS = [
+            f.name
+            for f in QlikEntry._meta.get_fields()
+            if not f.is_relation
+            and f.name
+            not in [
+                "id",
+                "batch",
+                "processed",
+                "processed_at",
+                "row_number",
+                "created_at",
+            ]
+        ]
+
         try:
             item = CopyrightItem.objects.get(material_id=entry.material_id)
             created = False
         except CopyrightItem.DoesNotExist:
-            # Create new item
             item = CopyrightItem(material_id=entry.material_id)
             created = True
 
-        # Collect changes
         changes = {}
-
         faculty_obj = self._resolve_faculty(entry.department)
 
-        # Process all Qlik-managed fields
-        for field_name in QLIK_CREATEABLE_FIELDS:
-            # Get new value from entry
-            new_value = getattr(entry, field_name, None)
-
-            if created:
-                # New item: set all non-null fields
+        if created:
+            # For new items, populate with all available data from the Qlik entry
+            for field_name in ALL_QLIK_STAGED_FIELDS:
+                new_value = getattr(entry, field_name, None)
                 if new_value is not None:
+                    # Special handling for date fields
+                    if field_name == "last_change":
+                        new_value = safe_datetime(new_value)
+                    
                     setattr(item, field_name, new_value)
                     changes[field_name] = {"old": None, "new": new_value}
-            else:
-                # Existing item: use merge strategy
+        else:
+            # For existing items, only update Qlik-owned fields
+            for field_name in QLIK_CREATEABLE_FIELDS:
+                new_value = getattr(entry, field_name, None)
                 old_value = getattr(item, field_name, None)
                 strategy = get_qlik_strategy(field_name)
+
+                # Special handling for date fields
+                if field_name == "last_change":
+                    new_value = safe_datetime(new_value)
 
                 if strategy and strategy.should_update(old_value, new_value):
                     setattr(item, field_name, new_value)

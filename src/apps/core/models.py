@@ -208,6 +208,7 @@ class CourseEmployee(TimestampedModel):
 
 
 class CopyrightItem(TimestampedModel):
+    # Core data
     material_id = models.BigIntegerField(primary_key=True)
     filename = models.CharField(max_length=2048, null=True, blank=True, db_index=True)
     filehash = models.CharField(max_length=255, null=True, blank=True, db_index=True)
@@ -216,12 +217,17 @@ class CopyrightItem(TimestampedModel):
     )
     url = models.URLField(max_length=2048, null=True, blank=True)
 
-    workflow_status = models.CharField(
-        max_length=50,
-        choices=WorkflowStatus.choices,
-        default=WorkflowStatus.TODO,
-        db_index=True,
-    )
+    # CRC extracted metadata
+    title = models.CharField(max_length=2048, null=True, blank=True)
+    author = models.CharField(max_length=2048, null=True, blank=True)
+    publisher = models.CharField(max_length=2048, null=True, blank=True)
+    remarks = models.TextField(null=True, blank=True)
+
+    period = models.CharField(max_length=50, null=True, blank=True)
+    department = models.CharField(max_length=2048, null=True, blank=True)
+    course_code = models.CharField(max_length=2048, null=True, blank=True)
+    course_name = models.CharField(max_length=2048, null=True, blank=True)
+
     status = models.CharField(
         max_length=50, choices=Status.choices, default=Status.PUBLISHED
     )
@@ -229,38 +235,15 @@ class CopyrightItem(TimestampedModel):
     classification = models.CharField(
         max_length=100,
         choices=Classification.choices,
-        default=Classification.LANGE_OVERNAME,
+        default=Classification.NIET_GEANALYSEERD,
     )
-    manual_classification = models.CharField(max_length=2048, null=True, blank=True)
-    v2_manual_classification = models.CharField(
+
+    ml_classification = models.CharField(
         max_length=100,
-        choices=ClassificationV2.choices,
-        default=ClassificationV2.ONBEKEND,
-        db_index=True,
-    )
-    v2_overnamestatus = models.CharField(
-        max_length=100, choices=OvernameStatus.choices, default=OvernameStatus.ONBEKEND
-    )
-    v2_lengte = models.CharField(
-        max_length=50, choices=Lengte.choices, default=Lengte.ONBEKEND
+        choices=Classification.choices,
+        default=Classification.NIET_GEANALYSEERD,
     )
 
-    title = models.CharField(max_length=2048, null=True, blank=True)
-    author = models.CharField(max_length=2048, null=True, blank=True)
-    publisher = models.CharField(max_length=2048, null=True, blank=True)
-    remarks = models.TextField(null=True, blank=True)
-
-    # Missing fields from legacy
-    period = models.CharField(max_length=50, null=True, blank=True)
-    department = models.CharField(max_length=2048, null=True, blank=True)
-    course_code = models.CharField(
-        max_length=2048, null=True, blank=True
-    )  # Canvas course code
-    course_name = models.CharField(
-        max_length=2048, null=True, blank=True
-    )  # Canvas course name
-    manual_identifier = models.CharField(max_length=2048, null=True, blank=True)
-    scope = models.CharField(max_length=50, null=True, blank=True)
     isbn = models.CharField(max_length=255, null=True, blank=True)
     doi = models.CharField(max_length=255, null=True, blank=True)
 
@@ -275,25 +258,57 @@ class CopyrightItem(TimestampedModel):
     pagecount = models.IntegerField(default=0)
     wordcount = models.IntegerField(default=0)
 
+    # Human-managed fields
+    workflow_status = models.CharField(
+        max_length=50,
+        choices=WorkflowStatus.choices,
+        default=WorkflowStatus.TODO,
+        db_index=True,
+    )
+    manual_classification = models.CharField(
+        max_length=2048, choices=Classification.choices, default=Classification.ONBEKEND
+    )
+    manual_identifier = models.CharField(max_length=2048, null=True, blank=True)
+    scope = models.CharField(max_length=50, null=True, blank=True)
+    v2_manual_classification = models.CharField(
+        max_length=100,
+        choices=ClassificationV2.choices,
+        default=ClassificationV2.ONBEKEND,
+        db_index=True,
+    )
+    v2_overnamestatus = models.CharField(
+        max_length=100, choices=OvernameStatus.choices, default=OvernameStatus.ONBEKEND
+    )
+    v2_lengte = models.CharField(
+        max_length=50, choices=Lengte.choices, default=Lengte.ONBEKEND
+    )
+
+    # Added by this codebase
+
+    auditor = models.CharField(max_length=2048, null=True, blank=True)
+    last_change = models.DateTimeField(null=True, blank=True)
     faculty = models.ForeignKey(
         Faculty, on_delete=models.SET_NULL, null=True, blank=True, related_name="items"
     )
-    courses = models.ManyToManyField(Course, related_name="copyright_items", blank=True)
-    canvas_course_id = models.BigIntegerField(null=True, blank=True, db_index=True)
-
     file_exists = models.BooleanField(null=True, blank=True)
     last_canvas_check = models.DateTimeField(null=True, blank=True)
 
-    infringement = models.CharField(
-        max_length=50, choices=Infringement.choices, default=Infringement.UNDETERMINED
-    )
-    possible_fine = models.DecimalField(
-        max_digits=10, decimal_places=2, null=True, blank=True
-    )
+    courses = models.ManyToManyField(Course, related_name="copyright_items", blank=True)
+    canvas_course_id = models.BigIntegerField(null=True, blank=True, db_index=True)
 
     class Meta:
         ordering = ["-modified_at"]
-        indexes = [models.Index(fields=["workflow_status", "faculty"])]
+        indexes = [
+            models.Index(
+                fields=[
+                    "workflow_status",
+                    "faculty",
+                    "material_id",
+                    "v2_manual_classification",
+                    "manual_classification",
+                ]
+            )
+        ]
 
 
 class LegacyCopyrightItem(TimestampedModel):

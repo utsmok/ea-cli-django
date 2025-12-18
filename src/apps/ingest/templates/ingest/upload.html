@@ -1,0 +1,120 @@
+{% extends "ingest/base.html" %}
+
+{% block title %}Upload File - Copyright Ingestion{% endblock %}
+
+{% block content %}
+<h1 style="margin-bottom: 2rem;">Upload File</h1>
+
+<div class="card">
+    <h2>Upload a New File for Ingestion</h2>
+    <p style="color: #7f8c8d; margin-bottom: 2rem;">
+        Upload a Qlik export or Faculty sheet. The file will be staged and processed automatically.
+    </p>
+
+    <form method="post" enctype="multipart/form-data" id="uploadForm">
+        {% csrf_token %}
+
+        <div class="form-group">
+            <label for="source_type">Source Type *</label>
+            <select name="source_type" id="source_type" required>
+                <option value="">-- Select source type --</option>
+                <option value="QLIK">Qlik Export (creates new items)</option>
+                <option value="FACULTY">Faculty Sheet (updates existing items)</option>
+            </select>
+        </div>
+
+        <div class="form-group" id="facultyCodeGroup" style="display: none;">
+            <label for="faculty_code">Faculty Code *</label>
+            <input type="text" name="faculty_code" id="faculty_code" placeholder="e.g., EEMCS, BMS, ET">
+            <small style="color: #7f8c8d;">Required for Faculty sheets. Use the abbreviation (EEMCS, BMS, ET, TNW, ITC, etc.)</small>
+        </div>
+
+        <div class="form-group">
+            <label>File *</label>
+            <div class="upload-area" id="uploadArea">
+                <p style="font-size: 1.2rem; margin-bottom: 1rem;">📁 Drag and drop file here</p>
+                <p style="color: #7f8c8d;">or</p>
+                <input type="file" name="file" id="fileInput" accept=".xlsx,.xls" required style="display: none;">
+                <button type="button" class="btn" onclick="document.getElementById('fileInput').click();" style="margin-top: 1rem;">
+                    Choose File
+                </button>
+            </div>
+            <div id="fileName" style="margin-top: 1rem; color: #27ae60; font-weight: 500;"></div>
+        </div>
+
+        <div class="form-group">
+            <label>
+                <input type="checkbox" name="auto_process" checked>
+                Automatically process after upload
+            </label>
+            <small style="color: #7f8c8d; display: block; margin-left: 1.5rem;">
+                Uncheck to stage only (you can process manually later)
+            </small>
+        </div>
+
+        <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+            <button type="submit" class="btn btn-success">📤 Upload and Process</button>
+            <a href="{% url 'ingest:dashboard' %}" class="btn btn-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+
+<div class="card">
+    <h2>ℹ️ File Format Requirements</h2>
+    <ul style="line-height: 2;">
+        <li><strong>Qlik Exports:</strong> Should contain columns like Material ID, Filename, Title, Author, etc.</li>
+        <li><strong>Faculty Sheets:</strong> Must have "Data entry" sheet with editable fields (workflow_status, classifications, remarks)</li>
+        <li><strong>File Format:</strong> Excel files (.xlsx or .xls)</li>
+        <li><strong>Encoding:</strong> UTF-8 recommended</li>
+    </ul>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Show/hide faculty code field based on source type
+document.getElementById('source_type').addEventListener('change', function() {
+    const facultyGroup = document.getElementById('facultyCodeGroup');
+    const facultyInput = document.getElementById('faculty_code');
+    
+    if (this.value === 'FACULTY') {
+        facultyGroup.style.display = 'block';
+        facultyInput.required = true;
+    } else {
+        facultyGroup.style.display = 'none';
+        facultyInput.required = false;
+    }
+});
+
+// Drag and drop functionality
+const uploadArea = document.getElementById('uploadArea');
+const fileInput = document.getElementById('fileInput');
+const fileName = document.getElementById('fileName');
+
+uploadArea.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    uploadArea.classList.add('dragover');
+});
+
+uploadArea.addEventListener('dragleave', () => {
+    uploadArea.classList.remove('dragover');
+});
+
+uploadArea.addEventListener('drop', (e) => {
+    e.preventDefault();
+    uploadArea.classList.remove('dragover');
+    
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+        fileInput.files = files;
+        fileName.textContent = `✓ Selected: ${files[0].name}`;
+    }
+});
+
+fileInput.addEventListener('change', () => {
+    if (fileInput.files.length > 0) {
+        fileName.textContent = `✓ Selected: ${fileInput.files[0].name}`;
+    }
+});
+</script>
+{% endblock %}

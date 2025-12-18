@@ -56,6 +56,7 @@ class CourseEmployeeAdmin(admin.ModelAdmin):
 class CopyrightItemAdmin(admin.ModelAdmin):
     list_display = [
         "material_id",
+        "url",
         "filename_short",
         "workflow_status",
         "status",
@@ -77,13 +78,65 @@ class CopyrightItemAdmin(admin.ModelAdmin):
         "course_code",
         "course_name",
     ]
-    readonly_fields = ["created_at", "modified_at"]
+    readonly_fields = [
+        "created_at",
+        "modified_at",
+        "material_id",
+        "filename",
+        "filehash",
+        "filetype",
+        "url",
+        "title",
+        "author",
+        "publisher",
+        "period",
+        "department",
+        "course_code",
+        "course_name",
+        "status",
+        "classification",
+        "ml_classification",
+        "isbn",
+        "doi",
+        "owner",
+        "in_collection",
+        "picturecount",
+        "reliability",
+        "pages_x_students",
+        "count_students_registered",
+        "pagecount",
+        "wordcount",
+        "faculty",
+        "file_exists",
+        "last_canvas_check",
+        "courses",
+        "canvas_course_id",
+    ]
     date_hierarchy = "modified_at"
     filter_horizontal = ["courses"]
 
     fieldsets = (
         ("Identity", {"fields": ("material_id", "filehash", "faculty")}),
-        ("File Info", {"fields": ("filename", "filetype", "url", "status")}),
+        (
+            "File Info",
+            {"fields": ("filename", "filetype", "url", "status", "file_exists")},
+        ),
+        (
+            "Classification",
+            {
+                "fields": (
+                    "remarks",
+                    "workflow_status",
+                    "scope",
+                    "manual_identifier",
+                    "manual_classification",
+                    "v2_manual_classification",
+                    "v2_overnamestatus",
+                    "v2_lengte",
+                )
+            },
+        ),
+        ("CRC classification", {"fields": ("classification", "ml_classification")}),
         (
             "Content",
             {
@@ -93,7 +146,8 @@ class CopyrightItemAdmin(admin.ModelAdmin):
                     "publisher",
                     "isbn",
                     "doi",
-                    "remarks",
+                    "owner",
+                    "in_collection",
                 )
             },
         ),
@@ -107,21 +161,6 @@ class CopyrightItemAdmin(admin.ModelAdmin):
                     "course_name",
                     "canvas_course_id",
                     "courses",
-                    "scope",
-                    "manual_identifier",
-                )
-            },
-        ),
-        (
-            "Classification",
-            {
-                "fields": (
-                    "workflow_status",
-                    "classification",
-                    "manual_classification",
-                    "v2_manual_classification",
-                    "v2_overnamestatus",
-                    "v2_lengte",
                 )
             },
         ),
@@ -140,31 +179,9 @@ class CopyrightItemAdmin(admin.ModelAdmin):
             },
         ),
         (
-            "Infringement",
-            {
-                "fields": (
-                    "infringement",
-                    "possible_fine",
-                    "owner",
-                    "in_collection",
-                ),
-                "classes": ("collapse",),
-            },
-        ),
-        (
-            "Canvas Status",
-            {
-                "fields": (
-                    "file_exists",
-                    "last_canvas_check",
-                ),
-                "classes": ("collapse",),
-            },
-        ),
-        (
             "Timestamps",
             {
-                "fields": ("created_at", "modified_at"),
+                "fields": ("created_at", "modified_at", "last_canvas_check"),
                 "classes": ("collapse",),
             },
         ),

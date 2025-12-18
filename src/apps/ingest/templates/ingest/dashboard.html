@@ -1,0 +1,92 @@
+{% extends "ingest/base.html" %}
+
+{% block title %}Dashboard - Copyright Ingestion{% endblock %}
+
+{% block content %}
+<h1 style="margin-bottom: 2rem;">Dashboard</h1>
+
+<div class="stats">
+    <div class="stat-card">
+        <div class="stat-value">{{ stats.total_batches }}</div>
+        <div class="stat-label">Total Batches</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ stats.pending }}</div>
+        <div class="stat-label">Pending</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ stats.processing }}</div>
+        <div class="stat-label">Processing</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ stats.completed }}</div>
+        <div class="stat-label">Completed</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ stats.failed }}</div>
+        <div class="stat-label">Failed</div>
+    </div>
+</div>
+
+<div class="card">
+    <h2>Quick Actions</h2>
+    <div style="display: flex; gap: 1rem;">
+        <a href="{% url 'ingest:upload' %}" class="btn btn-success">📤 Upload New File</a>
+        <a href="{% url 'ingest:batch_list' %}" class="btn">📋 View All Batches</a>
+        <a href="{% url 'ingest:export_faculty_sheets' %}" class="btn btn-secondary">📊 Export Faculty Sheets</a>
+    </div>
+</div>
+
+<div class="card">
+    <h2>Recent Batches</h2>
+    {% if recent_batches %}
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Type</th>
+                <th>Faculty</th>
+                <th>Status</th>
+                <th>Uploaded</th>
+                <th>Stats</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for batch in recent_batches %}
+            <tr>
+                <td><strong>#{{ batch.id }}</strong></td>
+                <td>{{ batch.get_source_type_display }}</td>
+                <td>{{ batch.faculty_code|default:"—" }}</td>
+                <td>
+                    <span class="badge badge-{{ batch.status|lower }}">
+                        {{ batch.get_status_display }}
+                    </span>
+                </td>
+                <td>{{ batch.uploaded_at|date:"Y-m-d H:i" }}</td>
+                <td>
+                    {% if batch.status == 'COMPLETED' or batch.status == 'PARTIAL' %}
+                        <small>
+                            ✅ {{ batch.items_created }} created,
+                            🔄 {{ batch.items_updated }} updated
+                        </small>
+                    {% elif batch.status == 'FAILED' %}
+                        <small style="color: #e74c3c;">❌ Failed</small>
+                    {% else %}
+                        <small style="color: #95a5a6;">⏳ {{ batch.status }}</small>
+                    {% endif %}
+                </td>
+                <td>
+                    <a href="{% url 'ingest:batch_detail' batch.id %}" class="btn" style="padding: 0.5rem 1rem; font-size: 0.875rem;">View</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p style="color: #95a5a6; text-align: center; padding: 2rem;">
+        No batches yet. <a href="{% url 'ingest:upload' %}">Upload your first file</a>.
+    </p>
+    {% endif %}
+</div>
+{% endblock %}

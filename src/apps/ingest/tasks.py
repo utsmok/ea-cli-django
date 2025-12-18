@@ -47,12 +47,15 @@ def stage_batch(batch_id: int) -> dict[str, Any]:
             # Faculty workbooks have two sheets: "Complete data" + "Data entry".
             # We ingest from the Data entry sheet.
             try:
-                df = pl.read_excel(file_path, sheet_name="Data entry")
+                result = pl.read_excel(file_path, sheet_name="Data entry")
+                df = result if isinstance(result, pl.DataFrame) else result["Data entry"]
             except Exception:
                 # Fallback to second sheet by index
-                df = pl.read_excel(file_path, sheet_id=1)
+                result = pl.read_excel(file_path, sheet_id=1)
+                df = result if isinstance(result, pl.DataFrame) else list(result.values())[1]
         else:
-            df = pl.read_excel(file_path, sheet_id=0)  # Read first sheet (zero-indexed)
+            result = pl.read_excel(file_path, sheet_id=0)  # Read first sheet (zero-indexed)
+        df = result if isinstance(result, pl.DataFrame) else list(result.values())[0]
 
         batch.total_rows = len(df)
         batch.save(update_fields=["total_rows"])

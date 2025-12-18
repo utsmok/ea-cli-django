@@ -45,9 +45,11 @@ QLIK_MERGE_RULES: dict[str, ComparisonStrategy] = {
     "picturecount": PREFER_GREATER,  # Take higher count
     "pages_x_students": ALWAYS_UPDATE,
     "reliability": ALWAYS_UPDATE,
-    # Infringement analysis (always update from Qlik)
-    "infringement": ALWAYS_UPDATE,
-    "possible_fine": ALWAYS_UPDATE,
+    # Added from user request
+    "ml_classification": ALWAYS_UPDATE,
+    "last_canvas_check": ALWAYS_UPDATE,
+    "auditor": ALWAYS_UPDATE,
+    "last_change": ALWAYS_UPDATE,
 }
 
 # Fields that Qlik can create on new items

@@ -234,11 +234,13 @@ class FacultyEntryAdmin(admin.ModelAdmin):
         if obj.processed:
             return format_html(
                 '<span style="background: #10b981; color: white; padding: 2px 6px; '
-                'border-radius: 3px; font-size: 11px;">✓</span>'
+                'border-radius: 3px; font-size: 11px;">{}</span>',
+                "✓",
             )
         return format_html(
             '<span style="background: #6b7280; color: white; padding: 2px 6px; '
-            'border-radius: 3px; font-size: 11px;">○</span>'
+            'border-radius: 3px; font-size: 11px;">{}</span>',
+            "○",
         )
 
     processed_badge.short_description = "Done"
@@ -374,11 +376,13 @@ class QlikEntryAdmin(admin.ModelAdmin):
         if obj.processed:
             return format_html(
                 '<span style="background: #10b981; color: white; padding: 2px 6px; '
-                'border-radius: 3px; font-size: 11px;">✓</span>'
+                'border-radius: 3px; font-size: 11px;">{}</span>',
+                "✓",
             )
         return format_html(
             '<span style="background: #6b7280; color: white; padding: 2px 6px; '
-            'border-radius: 3px; font-size: 11px;">○</span>'
+            'border-radius: 3px; font-size: 11px;">{}</span>',
+            "○",
         )
 
     processed_badge.short_description = "Done"

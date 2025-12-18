@@ -41,6 +41,12 @@ class BucketStats:
         return self.new - self.old
 
 
+class ExportAbortedError(Exception):
+    """Custom exception for when an export is aborted, e.g., due to file locks."""
+
+    pass
+
+
 class ExportService:
     """Exports copyright items into the legacy workflow folder structure."""
 
@@ -72,18 +78,24 @@ class ExportService:
                 settings.PROJECT_ROOT / "exports" / "faculty_sheets",
             )
         )
+        
+        # New backup strategy: move the entire directory
+        self._backup_entire_export_dir(output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
+
 
         faculties = self._get_faculty_codes()
         if self.faculty_abbr:
             faculties = [self.faculty_abbr]
-
+        print(f"Exporting faculties: {', '.join(faculties)}")
         builder = ExcelBuilder()
         exported_files: list[Path] = []
         summary_rows: list[tuple[str, str, BucketStats]] = []
+        style_iter = 9
 
         for faculty in faculties:
             faculty_df = self._fetch_faculty_dataframe(faculty)
+            print(f"  - {faculty}: {faculty_df.height} items")
             if faculty_df.is_empty():
                 logger.info("No items for faculty %s; skipping", faculty)
                 continue
@@ -98,27 +110,22 @@ class ExportService:
             stats_by_bucket: dict[str, BucketStats] = {}
             for bucket_name, bucket_df in buckets.items():
                 if bucket_df.is_empty():
-                    logger.info(
-                        "No items for %s -> %s; skipping file creation",
-                        faculty,
-                        bucket_name,
-                    )
-                    stats_by_bucket[bucket_name] = BucketStats(
-                        old=self._count_existing_rows(
-                            faculty_dir / f"{bucket_name}.xlsx"
-                        ),
-                        new=0,
-                    )
+                    print(f"    - {bucket_name}: 0 items; skipping")
+                    stats_by_bucket[bucket_name] = BucketStats(old=0, new=0)
                     continue
 
                 target_path = faculty_dir / f"{bucket_name}.xlsx"
-                old_count = self._count_existing_rows(target_path)
+                
+                # Since we start with a fresh directory, old_count is always 0
+                old_count = 0
 
-                # Backup existing before overwriting
-                if target_path.exists():
-                    self._backup_existing_file(target_path, faculty_dir / "backups")
-
-                wb = builder.build_workbook_for_dataframe(bucket_df)
+                print(
+                    f"Now exporting {faculty} -> {bucket_name}: {bucket_df.height} items to {target_path}"
+                )
+                wb = builder.build_workbook_for_dataframe(
+                    bucket_df, style_iter=style_iter
+                )
+                style_iter += 1
                 self._atomic_save_workbook(wb, target_path)
 
                 exported_files.append(target_path)
@@ -128,9 +135,11 @@ class ExportService:
                 summary_rows.append(
                     (faculty, bucket_name, stats_by_bucket[bucket_name])
                 )
-
+            print(f"    - Completed export for faculty {faculty}, writing update info.")
             self._write_update_info(faculty_dir, faculty, stats_by_bucket)
-
+        print(
+            f"Export completed, writing summary CSV to {output_dir} with {len(summary_rows)} rows."
+        )
         self._append_update_overview_csv(output_dir, summary_rows)
 
         return {
@@ -139,6 +148,27 @@ class ExportService:
             "faculties": faculties,
         }
 
+    def _backup_entire_export_dir(self, output_dir: Path):
+        """Move the entire export directory to a timestamped backup location."""
+        if not output_dir.exists() or not any(output_dir.iterdir()):
+            logger.info("Export directory is empty or does not exist. No backup needed.")
+            return
+
+        backup_root = output_dir.parent / "backups"
+        backup_root.mkdir(parents=True, exist_ok=True)
+        
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        backup_dest = backup_root / f"{output_dir.name}_{ts}"
+
+        try:
+            os.rename(output_dir, backup_dest)
+            logger.info(f"Successfully backed up '{output_dir}' to '{backup_dest}'")
+        except PermissionError as e:
+            raise ExportAbortedError(
+                "Could not back up the existing export directory. "
+                "Please ensure no files inside it are open in another program."
+            ) from e
+
     # ---------------------------------------------------------------------
     # Data retrieval
     # ---------------------------------------------------------------------
@@ -146,37 +176,69 @@ class ExportService:
     def _get_faculty_codes(self) -> list[str]:
         qs = Faculty.objects.all().values_list("abbreviation", flat=True)
         codes = sorted({c for c in qs if c})
-        # Include UNM as a fallback bucket if present
+        print(f"Found faculties: {', '.join(codes)}")
+        # Include UNM as a fallback bucket if present?
         return codes
 
     def _fetch_faculty_dataframe(self, faculty: str) -> pl.DataFrame:
         """Fetch all items for a faculty as a Polars DataFrame in legacy column order."""
-        cols = ExcelBuilder.FACULTY_SHEET_COLUMNS
+        from . import export_config
 
+        # 1. Get the list of all columns required for the export
+        all_export_cols = export_config.COMPLETE_DATA_COLUMN_ORDER
+
+        # 2. Get the list of actual fields on the CopyrightItem model
+        model_fields = {f.name for f in CopyrightItem._meta.get_fields()}
+
+        # 3. Determine which columns can be fetched directly from the DB
+        db_cols = [col for col in all_export_cols if col in model_fields and col != "faculty"]
+        
+        # 4. Fetch the data from the database
         values = list(
             CopyrightItem.objects.filter(faculty__abbreviation=faculty).values(
-                *[c for c in cols if c != "faculty"],
+                *db_cols,
                 "faculty__abbreviation",
             )
         )
         if not values:
             return pl.DataFrame()
 
-        df = pl.DataFrame(values)
+        df = pl.DataFrame(values, infer_schema_length=None)
         if "faculty__abbreviation" in df.columns:
             df = df.rename({"faculty__abbreviation": "faculty"})
 
-        # Ensure all columns exist
-        for col in cols:
+        # 5. Dynamically create computed columns like `course_link`
+        if "canvas_course_id" in df.columns and "filename" in df.columns:
+            base_url = getattr(settings, "CANVAS_BASE_URL", "https://canvas.utwente.nl")
+            df = df.with_columns(
+                pl.when(pl.col("canvas_course_id").is_not_null())
+                .then(
+                    pl.concat_str(
+                        [
+                            pl.lit(f"{base_url}/courses/"),
+                            pl.col("canvas_course_id").cast(pl.Utf8),
+                            pl.lit("/files/search?search_term="),
+                            pl.col("filename").str.replace_all(" ", "%20"),
+                        ],
+                        separator="",
+                    )
+                )
+                .otherwise(pl.lit(None, dtype=pl.Utf8))
+                .alias("course_link")
+            )
+
+        # 6. Ensure all columns from the config exist, adding nulls for any missing ones
+        for col in all_export_cols:
             if col not in df.columns:
                 df = df.with_columns(pl.lit(None).alias(col))
 
-        # Normalize workflow_status to canonical values
+        # 7. Normalize workflow_status to canonical values
         df = df.with_columns(
             pl.col("workflow_status").fill_null(WorkflowStatus.TODO).cast(pl.Utf8)
         )
 
-        return df.select(cols)
+        # 8. Return dataframe with columns in the correct, final order
+        return df.select(all_export_cols)
 
     # ---------------------------------------------------------------------
     # Bucketing & file I/O
@@ -218,6 +280,10 @@ class ExportService:
         try:
             wb.save(tmp_path)
             os.replace(tmp_path, target_path)
+        except PermissionError as e:
+            raise ExportAbortedError(
+                f"Could not save {target_path.name}. Please ensure the file is not open in another program."
+            ) from e
         finally:
             try:
                 if tmp_path.exists():
@@ -225,34 +291,6 @@ class ExportService:
             except Exception:
                 # Best-effort cleanup
                 pass
-
-    def _count_existing_rows(self, path: Path) -> int:
-        """Count existing exported rows based on the Complete data sheet (excluding header)."""
-        if not path.exists():
-            return 0
-        try:
-            import openpyxl
-
-            wb = openpyxl.load_workbook(
-                filename=str(path), read_only=True, data_only=True
-            )
-            if ExcelBuilder.COMPLETE_SHEET_NAME not in wb.sheetnames:
-                return 0
-            ws = wb[ExcelBuilder.COMPLETE_SHEET_NAME]
-            # max_row includes header
-            return max(0, (ws.max_row or 0) - 1)
-        except Exception:
-            return 0
-
-    def _backup_existing_file(self, target_path: Path, backups_dir: Path) -> None:
-        backups_dir.mkdir(parents=True, exist_ok=True)
-        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-        backup_path = backups_dir / f"{target_path.stem}_{ts}{target_path.suffix}"
-        try:
-            target_path.replace(backup_path)
-            logger.info("Backed up %s -> %s", target_path.name, backup_path.name)
-        except Exception as e:
-            logger.warning("Failed to backup %s: %s", target_path, e)
 
     def _append_update_overview_csv(
         self, output_dir: Path, rows: list[tuple[str, str, BucketStats]]

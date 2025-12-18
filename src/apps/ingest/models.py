@@ -220,6 +220,15 @@ class QlikEntry(models.Model):
         max_digits=10, decimal_places=2, null=True, blank=True
     )
 
+    # ML and human-input fields that may be present in Qlik data
+    ml_classification = models.CharField(max_length=100, null=True, blank=True)
+    last_canvas_check = models.DateTimeField(null=True, blank=True)
+    manual_classification = models.CharField(max_length=2048, null=True, blank=True)
+    remarks = models.TextField(null=True, blank=True)
+    scope = models.CharField(max_length=50, null=True, blank=True)
+    auditor = models.CharField(max_length=2048, null=True, blank=True)
+    last_change = models.DateTimeField(null=True, blank=True)
+
     # Processing state
     processed = models.BooleanField(
         default=False, db_index=True, help_text="Whether this entry has been processed"

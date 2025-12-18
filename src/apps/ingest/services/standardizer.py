@@ -44,6 +44,14 @@ QLIK_COLUMN_MAPPING = {
     "Canvas course ID": "canvas_course_id",
     "Infringement": "infringement",
     "Possible fine": "possible_fine",
+    # Added from user request
+    "ML Prediction": "ml_classification",
+    "Last canvas check": "last_canvas_check",
+    "Manual classification": "manual_classification",
+    "Remarks": "remarks",
+    "Scope": "scope",
+    "Auditor": "auditor",
+    "Last change": "last_change",
 }
 
 FACULTY_COLUMN_MAPPING = {
@@ -274,5 +282,24 @@ def safe_bool(value: Any) -> bool | None:
             return False
     try:
         return bool(int(value))
+    except (ValueError, TypeError):
+        return None
+
+
+def safe_datetime(value: Any) -> Any | None:
+    """
+    Safely convert string value to datetime, trying multiple formats.
+    Returns None on failure.
+    """
+    if value is None:
+        return None
+    if isinstance(value, (datetime, date)):
+        return value
+
+    from dateutil import parser
+
+    try:
+        # Use dateutil.parser for robust parsing of various formats
+        return parser.parse(value)
     except (ValueError, TypeError):
         return None

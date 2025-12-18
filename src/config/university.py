@@ -129,6 +129,8 @@ for faculty in FACULTIES:
         # Usually legacy logic mapped Name -> Faculty.
         # But sometimes input has abbreviation? Safe to add.
         DEPARTMENT_MAPPING[prog_abbr] = abbr
+        # Map combined format "ABBR: Name" as appears in Qlik
+        DEPARTMENT_MAPPING[f"{prog_abbr}: {prog_name}"] = abbr
 
 # Lowercased mapping for case-insensitive lookups
 DEPARTMENT_MAPPING_LOWER = {k.lower(): v for k, v in DEPARTMENT_MAPPING.items()}

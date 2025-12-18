@@ -1,0 +1,98 @@
+{% extends "ingest/base.html" %}
+
+{% block title %}All Batches - Copyright Ingestion{% endblock %}
+
+{% block content %}
+<h1 style="margin-bottom: 2rem;">All Batches</h1>
+
+<div class="card">
+    <h2>Filters</h2>
+    <form method="get" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+        <div class="form-group" style="margin: 0;">
+            <label for="status">Status</label>
+            <select name="status" id="status" onchange="this.form.submit()">
+                <option value="">All</option>
+                {% for status_value, status_label in status_choices %}
+                <option value="{{ status_value }}" {% if request.GET.status == status_value %}selected{% endif %}>
+                    {{ status_label }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group" style="margin: 0;">
+            <label for="source_type">Source Type</label>
+            <select name="source_type" id="source_type" onchange="this.form.submit()">
+                <option value="">All</option>
+                {% for type_value, type_label in source_type_choices %}
+                <option value="{{ type_value }}" {% if request.GET.source_type == type_value %}selected{% endif %}>
+                    {{ type_label }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group" style="margin: 0;">
+            <label for="faculty">Faculty</label>
+            <input type="text" name="faculty" id="faculty" value="{{ request.GET.faculty }}" placeholder="e.g., EEMCS">
+        </div>
+        <div class="form-group" style="margin: 0; display: flex; align-items: flex-end;">
+            <button type="submit" class="btn" style="width: 100%;">Filter</button>
+        </div>
+    </form>
+</div>
+
+<div class="card">
+    <h2>Batches ({{ batches|length }})</h2>
+    {% if batches %}
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Type</th>
+                <th>Faculty</th>
+                <th>Status</th>
+                <th>Uploaded By</th>
+                <th>Uploaded At</th>
+                <th>Progress</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for batch in batches %}
+            <tr>
+                <td><strong>#{{ batch.id }}</strong></td>
+                <td>{{ batch.get_source_type_display }}</td>
+                <td>{{ batch.faculty_code|default:"—" }}</td>
+                <td>
+                    <span class="badge badge-{{ batch.status|lower }}">
+                        {{ batch.get_status_display }}
+                    </span>
+                </td>
+                <td>{{ batch.uploaded_by.username }}</td>
+                <td>{{ batch.uploaded_at|date:"Y-m-d H:i" }}</td>
+                <td>
+                    {% if batch.status == 'COMPLETED' or batch.status == 'PARTIAL' %}
+                        <small>
+                            ✅ {{ batch.items_created }}C / 🔄 {{ batch.items_updated }}U / ⏭️ {{ batch.items_skipped }}S
+                        </small>
+                    {% elif batch.status == 'FAILED' %}
+                        <small style="color: #e74c3c;">❌ {{ batch.items_failed }} failed</small>
+                    {% elif batch.status == 'STAGED' %}
+                        <small>📦 {{ batch.rows_staged }} staged</small>
+                    {% else %}
+                        <small style="color: #95a5a6;">{{ batch.total_rows }} rows</small>
+                    {% endif %}
+                </td>
+                <td>
+                    <a href="{% url 'ingest:batch_detail' batch.id %}" class="btn" style="padding: 0.5rem 1rem; font-size: 0.875rem;">View</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p style="color: #95a5a6; text-align: center; padding: 2rem;">
+        No batches found matching your filters.
+    </p>
+    {% endif %}
+</div>
+{% endblock %}
