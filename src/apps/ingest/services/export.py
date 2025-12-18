@@ -78,7 +78,7 @@ class ExportService:
                 settings.PROJECT_ROOT / "exports" / "faculty_sheets",
             )
         )
-        
+
         # New backup strategy: move the entire directory
         self._backup_entire_export_dir(output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
@@ -115,7 +115,7 @@ class ExportService:
                     continue
 
                 target_path = faculty_dir / f"{bucket_name}.xlsx"
-                
+
                 # Since we start with a fresh directory, old_count is always 0
                 old_count = 0
 
@@ -156,7 +156,7 @@ class ExportService:
 
         backup_root = output_dir.parent / "backups"
         backup_root.mkdir(parents=True, exist_ok=True)
-        
+
         ts = datetime.now().strftime("%Y%m%d_%H%M%S")
         backup_dest = backup_root / f"{output_dir.name}_{ts}"
 
@@ -192,20 +192,53 @@ class ExportService:
 
         # 3. Determine which columns can be fetched directly from the DB
         db_cols = [col for col in all_export_cols if col in model_fields and col != "faculty"]
-        
-        # 4. Fetch the data from the database
-        values = list(
-            CopyrightItem.objects.filter(faculty__abbreviation=faculty).values(
-                *db_cols,
-                "faculty__abbreviation",
-            )
+
+        # 4. Fetch the items from the database with related data
+        items = CopyrightItem.objects.filter(faculty__abbreviation=faculty).prefetch_related(
+            "courses__teachers__faculty",
+            "courses__teachers__orgs",
         )
+
+        values = []
+        for item in items:
+            item_data = {col: getattr(item, col, None) for col in db_cols}
+            item_data["faculty"] = item.faculty.abbreviation if item.faculty else None
+
+            # Enrichment data aggregation
+            courses = item.courses.all()
+            if courses:
+                item_data["cursuscodes"] = " | ".join(sorted({str(c.cursuscode) for c in courses}))
+                item_data["course_names"] = " | ".join(sorted({c.name for c in courses if c.name}))
+                item_data["programmes"] = " | ".join(sorted({c.programme_text for c in courses if c.programme_text}))
+
+                # Contacts (teachers with role 'contacts' - though our CourseEmployee might not have 'role' filled yet correctly)
+                # Legacy code filtered by role='contacts'. Let's check our CourseEmployee.
+                # In this implementation, we take all teachers linked to the course for now.
+
+                contacts = []
+                for course in courses:
+                    # We need to access CourseEmployee to filter by role if possible,
+                    # but our prefetch is on 'teachers'.
+                    # Let's use the through model if needed, or just all teachers.
+                    for person in course.teachers.all():
+                        contacts.append(person)
+
+                if contacts:
+                    item_data["course_contacts_names"] = " | ".join(sorted({p.main_name for p in contacts if p.main_name}))
+                    item_data["course_contacts_emails"] = " | ".join(sorted({p.email for p in contacts if p.email}))
+                    item_data["course_contacts_faculties"] = " | ".join(sorted({p.faculty.abbreviation for p in contacts if p.faculty}))
+
+                    orgs = set()
+                    for p in contacts:
+                        orgs.update({o.full_abbreviation for o in p.orgs.all() if o.full_abbreviation})
+                    item_data["course_contacts_organizations"] = " | ".join(sorted(orgs))
+
+            values.append(item_data)
+
         if not values:
             return pl.DataFrame()
 
         df = pl.DataFrame(values, infer_schema_length=None)
-        if "faculty__abbreviation" in df.columns:
-            df = df.rename({"faculty__abbreviation": "faculty"})
 
         # 5. Dynamically create computed columns like `course_link`
         if "canvas_course_id" in df.columns and "filename" in df.columns:
