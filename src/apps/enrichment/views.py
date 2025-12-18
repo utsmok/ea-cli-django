@@ -31,7 +31,7 @@ def trigger_item_enrichment(request, material_id):
 
     # Return the status partial for HTMX to swap
     return HttpResponse(
-        '<span class="badge badge-info animate-pulse">Running...</span>'
+        f'<span class="badge badge-info animate-pulse" hx-get="/enrichment/item/{material_id}/status/" hx-trigger="load delay:2s" hx-swap="outerHTML">Running...</span>'
     )
 
 
@@ -52,6 +52,11 @@ def item_enrichment_status(request, material_id):
     extra_html = ""
     if item.enrichment_status == "COMPLETED" and item.document:
         extra_html = f'<a href="{item.document.file.url}" class="ml-2 underline text-xs" target="_blank">View PDF</a>'
+
+    if item.enrichment_status == "RUNNING":
+         return HttpResponse(
+            f'<span class="badge {status_class}" hx-get="/enrichment/item/{material_id}/status/" hx-trigger="load delay:2s" hx-swap="outerHTML">{item.enrichment_status}</span>'
+        )
 
     return HttpResponse(
         f'<span class="badge {status_class}">{item.enrichment_status}</span>{extra_html}'

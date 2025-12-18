@@ -16,80 +16,122 @@ async def enrich_item(item_id: int):
         item.enrichment_status = EnrichmentStatus.RUNNING
         await item.asave(update_fields=["enrichment_status"])
 
+        enrichment_successful = True
+        error_messages = []
+
         async with OsirisScraperService() as scraper:
             # 1. Enrichment from Osiris (Course)
             if item.course_code:
                 try:
-                    # simplistic: course_code might be multiple, but we take first valid for now
-                    course_code_int = int(item.course_code.split('|')[0].strip())
-                    course_info = await scraper.fetch_course_details(course_code_int)
-                    if course_info:
-                        # Update Course model
-                        from apps.core.models import Course, Person, CourseEmployee, Faculty
+                    # Robust parsing for course ID
+                    # Formats: "202200096", "2024-202200096-1B", "202200096|202300001"
+                    raw_codes = item.course_code.split('|')
+                    course_code_int = None
 
-                        # Faculty lookup if available
-                        faculty = None
-                        if course_info.get("faculty_abbr"):
-                            faculty = await Faculty.objects.filter(abbreviation=course_info["faculty_abbr"]).afirst()
+                    for raw in raw_codes:
+                        clean = raw.strip()
+                        if "-" in clean:
+                            parts = clean.split("-")
+                            # Try to find the 9-digit part
+                            for part in parts:
+                                if len(part) == 9 and part.isdigit():
+                                    course_code_int = int(part)
+                                    break
+                        elif clean.isdigit():
+                            course_code_int = int(clean)
 
-                        course, _ = await Course.objects.aupdate_or_create(
-                            cursuscode=course_code_int,
-                            defaults={
-                                "name": course_info.get("name") or "Unknown",
-                                "short_name": course_info.get("short_name"),
-                                "programme_text": course_info.get("programme"),
-                                "faculty": faculty,
-                                "internal_id": course_info.get("internal_id"),
-                                "year": safe_int(course_info.get("year")) or 2024,
-                            }
-                        )
+                        if course_code_int:
+                            break
 
-                        # Link item to course
-                        await item.courses.aadd(course)
+                    if course_code_int:
+                        course_info = await scraper.fetch_course_details(course_code_int)
+                        if course_info:
+                            # Update Course model
+                            from apps.core.models import Course, Person, CourseEmployee, Faculty
 
-                        # Fetch and persist persons
-                        all_names = set(course_info.get("teachers", [])) | set(course_info.get("contacts", []))
-                        for name in all_names:
-                            p_data = await scraper.fetch_person_data(name)
-                            if p_data:
-                                person, _ = await Person.objects.aupdate_or_create(
-                                    input_name=name,
-                                    defaults={
-                                        "main_name": p_data.get("main_name"),
-                                        "email": p_data.get("email"),
-                                        "people_page_url": p_data.get("people_page_url"),
-                                        "is_verified": True,
-                                    }
-                                )
+                            # Faculty lookup if available
+                            faculty = None
+                            if course_info.get("faculty_abbr"):
+                                faculty = await Faculty.objects.filter(abbreviation=course_info["faculty_abbr"]).afirst()
 
-                                # Link person to course
-                                role = "contacts" if name in course_info.get("contacts", []) else "teachers"
-                                await CourseEmployee.objects.aupdate_or_create(
-                                    course=course,
-                                    person=person,
-                                    defaults={"role": role}
-                                )
+                            course, _ = await Course.objects.aupdate_or_create(
+                                cursuscode=course_code_int,
+                                defaults={
+                                    "name": course_info.get("name") or "Unknown",
+                                    "short_name": course_info.get("short_name"),
+                                    "programme_text": course_info.get("programme"),
+                                    "faculty": faculty,
+                                    "internal_id": course_info.get("internal_id"),
+                                    "year": safe_int(course_info.get("year")) or 2024,
+                                }
+                            )
+
+                            # Link item to course
+                            await item.courses.aadd(course)
+
+                            # Fetch and persist persons
+                            all_names = set(course_info.get("teachers", [])) | set(course_info.get("contacts", []))
+                            for name in all_names:
+                                p_data = await scraper.fetch_person_data(name)
+                                if p_data:
+                                    person, _ = await Person.objects.aupdate_or_create(
+                                        input_name=name,
+                                        defaults={
+                                            "main_name": p_data.get("main_name"),
+                                            "email": p_data.get("email"),
+                                            "people_page_url": p_data.get("people_page_url"),
+                                            "is_verified": True,
+                                        }
+                                    )
+
+                                    # Link person to course
+                                    role = "contacts" if name in course_info.get("contacts", []) else "teachers"
+                                    # Use aupdate_or_create to avoid duplicate key errors if already exists
+                                    await CourseEmployee.objects.aupdate_or_create(
+                                        course=course,
+                                        person=person,
+                                        defaults={"role": role}
+                                    )
+                    else:
+                        logger.warning(f"Could not parse valid course ID from {item.course_code}")
 
                 except Exception as e:
                     logger.warning(f"Error enriching course for item {item_id}: {e}")
+                    enrichment_successful = False
+                    error_messages.append(str(e))
 
             # 2. Download from Canvas
             if item.url and "/files/" in item.url:
-                # This service handles batching, but we can call it for one item by filtering
-                await download_undownloaded_pdfs(limit=0) # For now just run the batch downloader
+                try:
+                    await download_undownloaded_pdfs(limit=0)
+                except Exception as e:
+                    logger.warning(f"Error downloading PDF for item {item_id}: {e}")
+                    # Download failure shouldn't necessarily fail the whole job if enrichment worked?
+                    # But if both fail, it's bad.
 
             # 3. Parse PDFs
-            await parse_pdfs(filter_ids=[item_id])
+            try:
+                await parse_pdfs(filter_ids=[item_id])
+            except Exception as e:
+                logger.warning(f"Error parsing PDF for item {item_id}: {e}")
 
-        item.enrichment_status = EnrichmentStatus.COMPLETED
+        if enrichment_successful:
+            item.enrichment_status = EnrichmentStatus.COMPLETED
+        else:
+            item.enrichment_status = EnrichmentStatus.FAILED
+
         item.last_enrichment_attempt = timezone.now()
         await item.asave(update_fields=["enrichment_status", "last_enrichment_attempt"])
 
     except Exception as e:
         logger.error(f"Failed to enrich item {item_id}: {e}")
-        if 'item' in locals():
-            item.enrichment_status = EnrichmentStatus.FAILED
-            await item.asave(update_fields=["enrichment_status"])
+        # Need to re-fetch item in case it was modified/deleted, or just use filter update
+        try:
+           item = await CopyrightItem.objects.aget(material_id=item_id)
+           item.enrichment_status = EnrichmentStatus.FAILED
+           await item.asave(update_fields=["enrichment_status"])
+        except Exception:
+           pass
 
 
 def trigger_batch_enrichment(batch_id: int):

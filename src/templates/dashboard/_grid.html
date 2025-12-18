@@ -11,7 +11,8 @@
           <a href="{{ item.document.file.url }}" class="ml-2 underline text-xs" target="_blank">View PDF</a>
           {% endif %}
           {% elif item.enrichment_status == "RUNNING" %}
-          <span class="badge badge-info animate-pulse">Running...</span>
+          <span class="badge badge-info animate-pulse" hx-get="{% url 'enrichment:item_status' item.material_id %}"
+            hx-trigger="load delay:2s" hx-swap="outerHTML">Running...</span>
           {% elif item.enrichment_status == "FAILED" %}
           <span class="badge badge-error">Failed</span>
           {% else %}
