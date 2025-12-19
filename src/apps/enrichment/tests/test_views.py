@@ -19,7 +19,7 @@ class TestEnrichmentViews:
             },
         )
         return CopyrightItem.objects.create(
-            material_id=999,
+            material_id=2000,
             filename="test.pdf",
             faculty=faculty,
             enrichment_status=EnrichmentStatus.PENDING,

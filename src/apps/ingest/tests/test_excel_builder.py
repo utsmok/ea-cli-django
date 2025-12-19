@@ -20,7 +20,7 @@ def test_excel_builder_creates_two_sheet_workbook(tmp_path):
     )
 
     CopyrightItem.objects.create(
-        material_id=123,
+        material_id=1000,
         title="Test Item",
         faculty=faculty,
     )
@@ -60,20 +60,20 @@ def test_excel_builder_creates_two_sheet_workbook(tmp_path):
     assert wb.active.title == ExcelBuilder.DATA_ENTRY_SHEET_NAME
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_excel_builder_with_multiple_items():
     """Test that ExcelBuilder handles multiple items correctly."""
     faculty = Faculty.objects.create(
         hierarchy_level=1,
-        name="Behavioural Sciences",
-        abbreviation="BMS",
-        full_abbreviation="BMS",
+        name="Behavioural Sciences Unique",
+        abbreviation="BMS_UNIQUE",
+        full_abbreviation="BMS_UNIQUE",
     )
 
     # Create multiple items
     for idx in range(3):
         CopyrightItem.objects.create(
-            material_id=idx + 1,
+            material_id=idx + 5000,  # Use even higher IDs
             title=f"Item {idx + 1}",
             faculty=faculty,
             count_students_registered=10,
@@ -81,8 +81,8 @@ def test_excel_builder_with_multiple_items():
 
     from apps.ingest.services.export import ExportService
 
-    service = ExportService(faculty_abbr="BMS")
-    df = service._fetch_faculty_dataframe("BMS")
+    service = ExportService(faculty_abbr="BMS_UNIQUE")
+    df = service._fetch_faculty_dataframe("BMS_UNIQUE")
 
     builder = ExcelBuilder()
     wb = builder.build_workbook_for_dataframe(df)
@@ -96,7 +96,7 @@ def test_excel_builder_with_multiple_items():
     assert ws_entry.max_row == 4
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_excel_builder_column_validation():
     """Test that data entry columns have dropdowns for editable fields."""
     faculty = Faculty.objects.create(
@@ -107,7 +107,7 @@ def test_excel_builder_column_validation():
     )
 
     CopyrightItem.objects.create(
-        material_id=999,
+        material_id=1999,
         title="Test Item",
         faculty=faculty,
     )

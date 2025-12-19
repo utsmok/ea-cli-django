@@ -1,8 +1,17 @@
-import pytest
 from unittest.mock import AsyncMock, patch
-from django.utils import timezone
-from apps.core.models import CopyrightItem, Course, Person, CourseEmployee, EnrichmentStatus, Faculty
+
+import pytest
+
+from apps.core.models import (
+    CopyrightItem,
+    Course,
+    CourseEmployee,
+    EnrichmentStatus,
+    Faculty,
+    Person,
+)
 from apps.enrichment.tasks import enrich_item
+
 
 @pytest.mark.django_db
 @pytest.mark.asyncio
@@ -13,15 +22,11 @@ async def test_enrich_item_persistence():
         defaults={
             "name": "EEMCS",
             "hierarchy_level": 1,
-            "full_abbreviation": "UT-EEMCS"
-        }
+            "full_abbreviation": "UT-EEMCS",
+        },
     )
     item, _ = await CopyrightItem.objects.aget_or_create(
-        material_id=12345,
-        defaults={
-            "course_code": "191154340",
-            "faculty": faculty
-        }
+        material_id=12345, defaults={"course_code": "191154340", "faculty": faculty}
     )
 
     # Mock data
@@ -33,13 +38,13 @@ async def test_enrich_item_persistence():
         "internal_id": "116098",
         "year": "2024",
         "teachers": ["Augustijn, D.C.M."],
-        "contacts": ["Augustijn, D.C.M."]
+        "contacts": ["Augustijn, D.C.M."],
     }
 
     mock_person_data = {
         "main_name": "Augustijn, D.C.M. (Denie)",
         "email": "d.c.m.augustijn@utwente.nl",
-        "people_page_url": "https://people.utwente.nl/d.c.m.augustijn"
+        "people_page_url": "https://people.utwente.nl/d.c.m.augustijn",
     }
 
     # Patch the scraper service
@@ -50,9 +55,10 @@ async def test_enrich_item_persistence():
         scraper_instance.fetch_person_data = AsyncMock(return_value=mock_person_data)
 
         # Patch PDF services to avoid actual network/system calls
-        with patch("apps.enrichment.tasks.download_undownloaded_pdfs", AsyncMock()), \
-             patch("apps.enrichment.tasks.parse_pdfs", AsyncMock()):
-
+        with (
+            patch("apps.enrichment.tasks.download_undownloaded_pdfs", AsyncMock()),
+            patch("apps.enrichment.tasks.parse_pdfs", AsyncMock()),
+        ):
             # Execute
             await enrich_item(12345)
 
@@ -60,19 +66,27 @@ async def test_enrich_item_persistence():
     await item.arefresh_from_db()
     print(f"Status: {item.enrichment_status}")
     assert item.enrichment_status == EnrichmentStatus.COMPLETED
-    print(f"Course exists: {await Course.objects.filter(cursuscode=191154340).aexists()}")
+    print(
+        f"Course exists: {await Course.objects.filter(cursuscode=191154340).aexists()}"
+    )
     assert await Course.objects.filter(cursuscode=191154340).aexists()
     course = await Course.objects.aget(cursuscode=191154340)
     print(f"Course name: {course.name}, Internal ID: {course.internal_id}")
     assert course.name == "Gasdynamics"
-    assert course.internal_id == 116098 # models used BigInt, string "116098" converts to int
+    assert (
+        course.internal_id == 116098
+    )  # models used BigInt, string "116098" converts to int
 
     # Verify Item-Course link
-    print(f"Item-Course link exists: {await item.courses.filter(cursuscode=191154340).aexists()}")
+    print(
+        f"Item-Course link exists: {await item.courses.filter(cursuscode=191154340).aexists()}"
+    )
     assert await item.courses.filter(cursuscode=191154340).aexists()
 
     # Verify Person persistence
-    print(f"Person Augustijn exists: {await Person.objects.filter(input_name='Augustijn, D.C.M.').aexists()}")
+    print(
+        f"Person Augustijn exists: {await Person.objects.filter(input_name='Augustijn, D.C.M.').aexists()}"
+    )
     assert await Person.objects.filter(input_name="Augustijn, D.C.M.").aexists()
     person = await Person.objects.aget(input_name="Augustijn, D.C.M.")
     print(f"Person email: {person.email}, Verified: {person.is_verified}")
@@ -80,8 +94,100 @@ async def test_enrich_item_persistence():
     assert person.is_verified is True
 
     # Verify CourseEmployee link
-    print(f"CourseEmployee link exists: {await CourseEmployee.objects.filter(course=course, person=person).aexists()}")
+    print(
+        f"CourseEmployee link exists: {await CourseEmployee.objects.filter(course=course, person=person).aexists()}"
+    )
     assert await CourseEmployee.objects.filter(course=course, person=person).aexists()
     employee = await CourseEmployee.objects.aget(course=course, person=person)
     print(f"Role: {employee.role}")
     assert employee.role == "contacts"
+
+
+@pytest.mark.django_db
+@pytest.mark.asyncio
+async def test_enrich_item_org_persistence():
+    # Setup: Create a test item
+    item, _ = await CopyrightItem.objects.aget_or_create(
+        material_id=67890,
+        defaults={
+            "course_code": "202200096",
+        },
+    )
+
+    # Mock data
+    mock_course_info = {
+        "name": "Test Course",
+        "faculty_abbr": "EEMCS",
+        "teachers": ["Test Person"],
+        "contacts": ["Test Person"],
+    }
+
+    mock_person_data = {
+        "main_name": "Test Person",
+        "email": "test@utwente.nl",
+        "orgs": [
+            {"name": "University of Twente", "abbr": "UT"},
+            {"name": "EEMCS", "abbr": "EEMCS"},
+            {"name": "Pervasive Systems", "abbr": "EEMCS-PS"},
+        ],
+    }
+
+    # Patch the scraper service
+    with patch("apps.enrichment.tasks.OsirisScraperService") as MockScraper:
+        scraper_instance = MockScraper.return_value
+        scraper_instance.__aenter__.return_value = scraper_instance
+        scraper_instance.fetch_course_details = AsyncMock(return_value=mock_course_info)
+        scraper_instance.fetch_person_data = AsyncMock(return_value=mock_person_data)
+
+        # Patch PDF services
+        with (
+            patch("apps.enrichment.tasks.download_undownloaded_pdfs", AsyncMock()),
+            patch("apps.enrichment.tasks.parse_pdfs", AsyncMock()),
+        ):
+            # Execute
+            await enrich_item(67890)
+
+    # Verify Person persistence
+    person = await Person.objects.aget(input_name="Test Person")
+    assert person.email == "test@utwente.nl"
+
+    # Verify Organization persistence
+    from apps.core.models import Faculty, Organization
+
+    # UT (level 0)
+    assert await Organization.objects.filter(
+        abbreviation="UT", hierarchy_level=0
+    ).aexists()
+    ut = await Organization.objects.aget(abbreviation="UT")
+
+    # EEMCS (level 1 - Faculty)
+    assert await Faculty.objects.filter(
+        abbreviation="EEMCS", hierarchy_level=1
+    ).aexists()
+    eemcs = await Faculty.objects.select_related("parent").aget(abbreviation="EEMCS")
+    assert eemcs.parent_id == ut.id
+
+    # Pervasive Systems (level 2)
+    assert await Organization.objects.filter(
+        abbreviation="EEMCS-PS", hierarchy_level=2
+    ).aexists()
+    ps = await Organization.objects.select_related("parent").aget(
+        abbreviation="EEMCS-PS"
+    )
+    assert ps.parent_id == eemcs.id
+
+    # Verify Person-Org links
+    person_org_ids = [o.id async for o in person.orgs.all()]
+    assert len(person_org_ids) == 3
+    assert ut.id in person_org_ids
+    assert eemcs.id in person_org_ids
+    assert ps.id in person_org_ids
+
+    # Verify full abbreviations
+    org_abbrs = [o.full_abbreviation async for o in person.orgs.all()]
+    assert "UT" in org_abbrs
+    assert "UT-EEMCS" in org_abbrs
+    assert "UT-EEMCS-EEMCS-PS" in org_abbrs
+
+    # Verify Person-Faculty link
+    assert person.faculty_id == eemcs.id

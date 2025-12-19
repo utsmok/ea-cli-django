@@ -7,7 +7,6 @@ Tests the full workflow:
 3. Export faculty sheets → Verify structure matches legacy format
 """
 
-import shutil
 from pathlib import Path
 
 import pytest
@@ -48,7 +47,7 @@ def faculty_sheets_dir(test_data_dir):
     return sheets_dir
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 class TestQlikIngestion:
     """Test Qlik export ingestion."""
 
@@ -84,18 +83,16 @@ class TestQlikIngestion:
         assert batch.rows_staged > 0, "No rows were staged"
 
         # Verify items were created
-        item_count = CopyrightItem.objects.count()
+        item_count = CopyrightItem.objects.filter(change_logs__batch=batch).count()
         assert item_count > 0, "No CopyrightItems created"
-        assert (
-            item_count == batch.items_created
-        ), f"Item count mismatch: {item_count} != {batch.items_created}"
+        assert item_count == batch.items_created, (
+            f"Item count mismatch: {item_count} != {batch.items_created}"
+        )
 
         # Verify sample item has expected fields
         sample_item = CopyrightItem.objects.first()
         assert sample_item.material_id is not None
         assert sample_item.title is not None or sample_item.filename is not None
-
-        return batch
 
 
 @pytest.mark.django_db
@@ -146,9 +143,9 @@ class TestFacultyIngestion:
 
         # Verify no new items created (Faculty sheets only update)
         final_count = CopyrightItem.objects.count()
-        assert (
-            final_count == initial_count
-        ), "Faculty sheets should not create new items"
+        assert final_count == initial_count, (
+            "Faculty sheets should not create new items"
+        )
 
 
 @pytest.mark.django_db
@@ -287,7 +284,7 @@ def test_complete_pipeline(test_user, qlik_file, tmp_path):
     assert export_dir.exists()
     assert len(result.get("files", [])) > 0 or len(result.get("faculties", [])) == 0
 
-    print(f"\nPipeline test complete:")
+    print("\nPipeline test complete:")
     print(f"  - Qlik items created: {qlik_batch.items_created}")
     print(f"  - Export directory: {export_dir}")
     print(f"  - Files exported: {len(result.get('files', []))}")

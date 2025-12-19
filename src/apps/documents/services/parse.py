@@ -14,7 +14,6 @@ Includes:
 import logging
 from pathlib import Path
 
-from django.conf import settings
 from xxhash import xxh3_64_hexdigest
 
 from apps.documents.models import Document, PDFText
@@ -72,10 +71,10 @@ async def extract_text_from_pdf(file_path: Path) -> dict | None:
             # Language detection
             auto_detect_language=False,
             # Keyword extraction
-            extract_keywords=True,
+            extract_keywords=False,
             keyword_count=15,
             # Entity extraction
-            extract_entities=True,
+            extract_entities=False,
         )
 
         # Extract text

@@ -18,8 +18,9 @@
 
 ### 1.3. Merge & Conflict Resolution
 - The system must enforce strict field ownership rules:
-    - **Qlik:** Can create new items and update system-of-record fields (e.g., 	itle, uthor, student counts).
-    - **Faculty:** Can only update human-annotated fields (e.g., 2_manual_classification, workflow_status, emarks) on existing items.
+    - **Qlik:** Can create new items and update system-of-record fields (e.g., 	title, author, student counts).
+    - **Faculty:** Can only update human-annotated fields (e.g., v2_manual_classification, workflow_status,
+emarks) on existing items.
 - A BatchProcessor service will orchestrate this logic, using the defined merge rules to prevent data cross-contamination.
 
 ### 1.4. High-Fidelity Excel Export
@@ -28,7 +29,7 @@
     - Two-sheet structure: "Complete data" (read-only) and "Data entry" (editable).
     - Hidden _ea_lists sheet for populating data validation dropdowns.
 - **Styling and Formatting:**
-    - Conditional formatting must be applied to ile_exists, workflow_status, and 2_lengte columns, matching legacy color schemes.
+    - Conditional formatting must be applied to file_exists, workflow_status, and v2_lengte columns, matching legacy color schemes.
     - Specific columns must be protected (read-only) on the "Data entry" sheet.
 - **Data & Workflow Parity:**
     - Exports must be separated into workflow buckets (inbox, in_progress, done, overview).
@@ -37,7 +38,8 @@
 ## 2. Non-Functional Requirements
 - **Performance:** The Polars-based DataFrameStandardizer and prefetch_related in export queries should ensure that a full-scale export (~1,500 items) completes in under 10 seconds.
 - **Test Coverage:** All services (Standardizer, Processor, ExcelBuilder) must be covered by unit and integration tests.
-- **Code Style:** All new code must adhere to the guidelines in conductor/product-guidelines.md, including the use of uv, uff, modern type hints, and Google-style docstrings.
+- **Code Style:** All new code must adhere to the guidelines in conductor/product-guidelines.md, including the use of uv,
+uff, modern type hints, and Google-style docstrings.
 
 ## 3. Verification & Success Criteria
 - **Ingestion:** Successfully ingest a test Qlik file, creating new CopyrightItem records and associated ChangeLog entries.
