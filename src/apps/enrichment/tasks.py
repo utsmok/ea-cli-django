@@ -1,12 +1,11 @@
-from typing import List, Optional
-from apps.core.utils.safecast import safe_int
-from loguru import logger
 from django.utils import timezone
+from loguru import logger
 
 from apps.core.models import CopyrightItem, EnrichmentStatus
-from apps.enrichment.services.osiris_scraper import OsirisScraperService
+from apps.core.utils.safecast import safe_int
 from apps.documents.services.download import download_undownloaded_pdfs
 from apps.documents.services.parse import parse_pdfs
+from apps.enrichment.services.osiris_scraper import OsirisScraperService
 
 
 async def enrich_item(item_id: int):
@@ -25,7 +24,7 @@ async def enrich_item(item_id: int):
                 try:
                     # Robust parsing for course ID
                     # Formats: "202200096", "2024-202200096-1B", "202200096|202300001"
-                    raw_codes = item.course_code.split('|')
+                    raw_codes = item.course_code.split("|")
                     course_code_int = None
 
                     for raw in raw_codes:
@@ -44,15 +43,24 @@ async def enrich_item(item_id: int):
                             break
 
                     if course_code_int:
-                        course_info = await scraper.fetch_course_details(course_code_int)
+                        course_info = await scraper.fetch_course_details(
+                            course_code_int
+                        )
                         if course_info:
                             # Update Course model
-                            from apps.core.models import Course, Person, CourseEmployee, Faculty
+                            from apps.core.models import (
+                                Course,
+                                CourseEmployee,
+                                Faculty,
+                                Person,
+                            )
 
                             # Faculty lookup if available
                             faculty = None
                             if course_info.get("faculty_abbr"):
-                                faculty = await Faculty.objects.filter(abbreviation=course_info["faculty_abbr"]).afirst()
+                                faculty = await Faculty.objects.filter(
+                                    abbreviation=course_info["faculty_abbr"]
+                                ).afirst()
 
                             course, _ = await Course.objects.aupdate_or_create(
                                 cursuscode=course_code_int,
@@ -63,14 +71,16 @@ async def enrich_item(item_id: int):
                                     "faculty": faculty,
                                     "internal_id": course_info.get("internal_id"),
                                     "year": safe_int(course_info.get("year")) or 2024,
-                                }
+                                },
                             )
 
                             # Link item to course
                             await item.courses.aadd(course)
 
                             # Fetch and persist persons
-                            all_names = set(course_info.get("teachers", [])) | set(course_info.get("contacts", []))
+                            all_names = set(course_info.get("teachers", [])) | set(
+                                course_info.get("contacts", [])
+                            )
                             for name in all_names:
                                 p_data = await scraper.fetch_person_data(name)
                                 if p_data:
@@ -79,21 +89,29 @@ async def enrich_item(item_id: int):
                                         defaults={
                                             "main_name": p_data.get("main_name"),
                                             "email": p_data.get("email"),
-                                            "people_page_url": p_data.get("people_page_url"),
+                                            "people_page_url": p_data.get(
+                                                "people_page_url"
+                                            ),
                                             "is_verified": True,
-                                        }
+                                        },
                                     )
 
                                     # Link person to course
-                                    role = "contacts" if name in course_info.get("contacts", []) else "teachers"
+                                    role = (
+                                        "contacts"
+                                        if name in course_info.get("contacts", [])
+                                        else "teachers"
+                                    )
                                     # Use aupdate_or_create to avoid duplicate key errors if already exists
                                     await CourseEmployee.objects.aupdate_or_create(
                                         course=course,
                                         person=person,
-                                        defaults={"role": role}
+                                        defaults={"role": role},
                                     )
                     else:
-                        logger.warning(f"Could not parse valid course ID from {item.course_code}")
+                        logger.warning(
+                            f"Could not parse valid course ID from {item.course_code}"
+                        )
 
                 except Exception as e:
                     logger.warning(f"Error enriching course for item {item_id}: {e}")
@@ -127,11 +145,11 @@ async def enrich_item(item_id: int):
         logger.error(f"Failed to enrich item {item_id}: {e}")
         # Need to re-fetch item in case it was modified/deleted, or just use filter update
         try:
-           item = await CopyrightItem.objects.aget(material_id=item_id)
-           item.enrichment_status = EnrichmentStatus.FAILED
-           await item.asave(update_fields=["enrichment_status"])
+            item = await CopyrightItem.objects.aget(material_id=item_id)
+            item.enrichment_status = EnrichmentStatus.FAILED
+            await item.asave(update_fields=["enrichment_status"])
         except Exception:
-           pass
+            pass
 
 
 def trigger_batch_enrichment(batch_id: int):
@@ -145,8 +163,8 @@ def trigger_batch_enrichment(batch_id: int):
     import asyncio
 
     async def run_enrichment():
-        for item in items:
-            await enrich_item(item.material_id)
+        async for material_id in items.values_list("material_id", flat=True):
+            await enrich_item(material_id)
 
     # In a real app, we'd use a task queue. Here we just run it.
     # We use a thread-safe way to run the loop if needed, but for simplicity:

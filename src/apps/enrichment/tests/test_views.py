@@ -1,24 +1,28 @@
+from unittest.mock import patch
+
 import pytest
 from django.urls import reverse
-from unittest.mock import patch, AsyncMock
-from apps.core.models import CopyrightItem, Faculty, EnrichmentStatus
+
+from apps.core.models import CopyrightItem, EnrichmentStatus, Faculty
+
 
 @pytest.mark.django_db
 class TestEnrichmentViews:
-
     @pytest.fixture
     def item(self):
-        faculty = Faculty.objects.create(
+        faculty, _ = Faculty.objects.get_or_create(
             abbreviation="EEMCS",
-            name="EEMCS",
-            hierarchy_level=1,
-            full_abbreviation="EEMCS-TEST"
+            defaults={
+                "name": "EEMCS",
+                "hierarchy_level": 1,
+                "full_abbreviation": "EEMCS-TEST",
+            },
         )
         return CopyrightItem.objects.create(
             material_id=999,
             filename="test.pdf",
             faculty=faculty,
-            enrichment_status=EnrichmentStatus.PENDING
+            enrichment_status=EnrichmentStatus.PENDING,
         )
 
     def test_trigger_item_enrichment(self, client, item):

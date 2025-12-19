@@ -10,11 +10,13 @@ from apps.ingest.services.excel_builder import ExcelBuilder
 @pytest.mark.django_db
 def test_excel_builder_creates_two_sheet_workbook(tmp_path):
     """Test that ExcelBuilder creates a workbook with 'Complete data' and 'Data entry' sheets."""
-    faculty = Faculty.objects.create(
-        hierarchy_level=1,
-        name="Electrical Engineering",
+    faculty, _ = Faculty.objects.get_or_create(
         abbreviation="EEMCS",
-        full_abbreviation="EEMCS",
+        defaults={
+            "hierarchy_level": 1,
+            "name": "Electrical Engineering",
+            "full_abbreviation": "EEMCS",
+        },
     )
 
     CopyrightItem.objects.create(
