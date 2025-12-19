@@ -6,7 +6,7 @@
 
 ### Phase 1: Verify and Solidify Core Architecture
 
-- [x] Task: Review and confirm that the existing models in apps.core, apps.ingest, and apps.users align with the project's architectural goals.
+- [x] Task: Review and confirm that the existing models in apps.core, apps.ingest, and apps.users align with the project's architectural goals. [c09f8e7]
 - **Task:** Write unit tests for all existing models to confirm field types, relationships, and constraints.
 - **Task:** Conductor - User Manual Verification 'Verify and Solidify Core Architecture' (Protocol in workflow.md)
 
