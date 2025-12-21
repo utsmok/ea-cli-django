@@ -20,7 +20,7 @@
   </div>
 
   <div id="faculty-selection" class="hidden ml-6">
-    <select name="faculty" class="select select-bordered select-info w-full">
+    <select name="faculty" id="faculty-select" class="select select-bordered select-info w-full">
       <option value="">-- Select Faculty --</option>
       <option value="EEMCS">EEMCS - Electrical Engineering, Mathematics & Computer Science</option>
       <option value="BMS">BMS - Behavioural, Management & Social Sciences</option>
@@ -183,7 +183,8 @@
           <td>{{ export.timestamp|date:"Y-m-d H:i" }}</td>
           <td>{{ export.file_count }} files</td>
           <td>
-            <a href="#" class="btn btn-sm btn-ghost">Download</a>
+            <!-- TODO: Implement download endpoint -->
+            <span class="btn btn-sm btn-ghost btn-disabled" aria-disabled="true">Download (Coming Soon)</span>
           </td>
         </tr>
         {% endfor %}
@@ -196,16 +197,22 @@
 
 {% block extra_js %}
 <script>
-// Toggle faculty selection
-document.getElementById('export-all').addEventListener('change', function() {
+const facultySelect = document.getElementById('faculty-select');
+const exportAllRadio = document.getElementById('export-all');
+const exportSpecificRadio = document.getElementById('export-specific');
+
+// Toggle faculty selection and required attribute
+exportAllRadio.addEventListener('change', function() {
   if (this.checked) {
     document.getElementById('faculty-selection').classList.add('hidden');
+    facultySelect.required = false;
   }
 });
 
-document.getElementById('export-specific').addEventListener('change', function() {
+exportSpecificRadio.addEventListener('change', function() {
   if (this.checked) {
     document.getElementById('faculty-selection').classList.remove('hidden');
+    facultySelect.required = true;
   }
 });
 </script>

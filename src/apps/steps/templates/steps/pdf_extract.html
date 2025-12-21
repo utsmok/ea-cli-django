@@ -207,16 +207,27 @@ document.body.addEventListener('htmx:configRequest', function(evt) {
 document.body.addEventListener('htmx:afterRequest', function(evt) {
   if (evt.detail.pathInfo.requestPath === '{% url "steps:run_pdf_extract" %}') {
     if (evt.detail.successful) {
-      const response = JSON.parse(evt.detail.xhr.response);
+      let response;
+      try {
+        response = JSON.parse(evt.detail.xhr.response);
+      } catch (e) {
+        console.error('Failed to parse response:', e);
+        return;
+      }
       if (response.success) {
-        document.getElementById('progress-container').innerHTML = `
-          <div class="alert alert-success">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-            </svg>
-            <span>${response.message}</span>
-          </div>
-        `;
+        const container = document.getElementById('progress-container');
+        container.innerHTML = '';
+        
+        const alertDiv = document.createElement('div');
+        alertDiv.className = 'alert alert-success';
+        alertDiv.innerHTML = `
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+          </svg>`;
+        const span = document.createElement('span');
+        span.textContent = response.message;
+        alertDiv.appendChild(span);
+        container.appendChild(alertDiv);
       }
     }
   }

@@ -188,7 +188,17 @@
         <td><span class="badge badge-outline">{{ batch.faculty_code }}</span></td>
         <td>{{ batch.uploaded_at|date:"Y-m-d H:i" }}</td>
         <td>
-          <span class="badge badge-{{ batch.status|lower }}">
+          {% if batch.status == 'COMPLETED' %}
+          <span class="badge badge-success">
+          {% elif batch.status == 'FAILED' %}
+          <span class="badge badge-error">
+          {% elif batch.status == 'PROCESSING' or batch.status == 'STAGING' %}
+          <span class="badge badge-info">
+          {% elif batch.status == 'PARTIAL' %}
+          <span class="badge badge-warning">
+          {% else %}
+          <span class="badge badge-ghost">
+          {% endif %}
             {{ batch.get_status_display }}
           </span>
         </td>
