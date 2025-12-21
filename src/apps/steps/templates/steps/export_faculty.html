@@ -1,0 +1,212 @@
+{% extends "steps/base_step.html" %}
+
+{% block input_selection %}
+<form id="export-form" method="get" action="{% url 'ingest:export_faculty_sheets' %}">
+  <div class="form-control mb-6">
+    <label class="label">
+      <span class="label-text font-semibold">Export Scope</span>
+    </label>
+    <label class="label cursor-pointer">
+      <span class="label-text">Export all faculties</span>
+      <input type="radio" name="scope" value="all" class="radio radio-info" checked id="export-all">
+    </label>
+  </div>
+
+  <div class="form-control mb-4">
+    <label class="label cursor-pointer">
+      <input type="radio" name="scope" value="specific" class="radio radio-info" id="export-specific">
+      <span class="label-text">Export specific faculty</span>
+    </label>
+  </div>
+
+  <div id="faculty-selection" class="hidden ml-6">
+    <select name="faculty" class="select select-bordered select-info w-full">
+      <option value="">-- Select Faculty --</option>
+      <option value="EEMCS">EEMCS - Electrical Engineering, Mathematics & Computer Science</option>
+      <option value="BMS">BMS - Behavioural, Management & Social Sciences</option>
+      <option value="ET">ET - Engineering Technology</option>
+      <option value="TNW">TNW - Science & Technology</option>
+      <option value="ITC">ITC - Geo-Information Science & Earth Observation</option>
+      <option value="MB">MB - Management & Governance</option>
+    </select>
+  </div>
+</form>
+{% endblock %}
+
+{% block settings %}
+<div class="space-y-4">
+  <div class="alert alert-info">
+    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+    </svg>
+    <div>
+      <h3 class="font-bold">About Faculty Sheet Export</h3>
+      <p class="text-sm mt-1">
+        Exports create Excel workbooks organized by workflow status (inbox, in_progress, done, overview).
+        Each workbook has two sheets: "Complete data" (read-only) and "Data entry" (editable).
+      </p>
+    </div>
+  </div>
+
+  <div class="collapse collapse-arrow bg-base-200">
+    <input type="checkbox"> 
+    <div class="collapse-title font-medium">
+      Export Structure
+    </div>
+    <div class="collapse-content"> 
+      <p class="text-sm text-base-content/70 mb-2">Each faculty export includes:</p>
+      <ul class="list-disc list-inside space-y-1 text-sm">
+        <li><strong>inbox.xlsx</strong> - Items with workflow status "ToDo"</li>
+        <li><strong>in_progress.xlsx</strong> - Items with workflow status "InProgress"</li>
+        <li><strong>done.xlsx</strong> - Items with workflow status "Done"</li>
+        <li><strong>overview.xlsx</strong> - All items for the faculty</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="collapse collapse-arrow bg-base-200">
+    <input type="checkbox"> 
+    <div class="collapse-title font-medium">
+      Sheet Protection
+    </div>
+    <div class="collapse-content"> 
+      <p class="text-sm text-base-content/70">
+        The "Data entry" sheet has protected columns for system fields.
+        Only classification and workflow fields are editable by faculty staff.
+        This prevents accidental modification of critical data.
+      </p>
+    </div>
+  </div>
+
+  <div class="collapse collapse-arrow bg-base-200">
+    <input type="checkbox"> 
+    <div class="collapse-title font-medium">
+      Conditional Formatting
+    </div>
+    <div class="collapse-content"> 
+      <p class="text-sm text-base-content/70 mb-2">
+        Applied automatically to highlight important information:
+      </p>
+      <ul class="list-disc list-inside space-y-1 text-sm">
+        <li>File existence status (green/red)</li>
+        <li>Workflow status (color-coded)</li>
+        <li>Length classifications</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="collapse collapse-arrow bg-base-200">
+    <input type="checkbox"> 
+    <div class="collapse-title font-medium">
+      Backup & Versioning
+    </div>
+    <div class="collapse-content"> 
+      <p class="text-sm text-base-content/70">
+        Previous exports are automatically backed up with timestamps.
+        Change tracking files (update_info.txt, update_overview.csv) are generated
+        to show what changed since the last export.
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block action_button %}
+<button type="submit" 
+        form="export-form"
+        class="btn btn-info btn-lg w-full">
+  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+  </svg>
+  Generate Faculty Sheets
+</button>
+{% endblock %}
+
+{% block quick_stats %}
+<div class="stats stats-vertical shadow">
+  <div class="stat">
+    <div class="stat-title">Total Items</div>
+    <div class="stat-value text-2xl">{{ total_items }}</div>
+  </div>
+  
+  <div class="stat">
+    <div class="stat-title">By Workflow Status</div>
+    <div class="stat-value text-xl">
+      <div class="flex flex-col gap-1 text-sm">
+        <span class="badge badge-warning">ToDo: {{ todo_count }}</span>
+        <span class="badge badge-info">InProgress: {{ in_progress_count }}</span>
+        <span class="badge badge-success">Done: {{ done_count }}</span>
+      </div>
+    </div>
+  </div>
+  
+  <div class="stat">
+    <div class="stat-title">Faculties</div>
+    <div class="stat-value text-2xl">{{ faculty_count }}</div>
+    <div class="stat-desc">Active faculties</div>
+  </div>
+</div>
+{% endblock %}
+
+{% block results %}
+<div class="alert alert-info">
+  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+  </svg>
+  <div>
+    <p class="text-sm">
+      Export files will be saved to: <code class="bg-base-200 px-2 py-1 rounded">{{ export_path }}</code>
+    </p>
+    <p class="text-sm mt-2">
+      After export completes, files can be accessed through the file system or downloaded via the ingestion dashboard.
+    </p>
+  </div>
+</div>
+
+{% if recent_exports %}
+<div class="mt-6">
+  <h3 class="text-lg font-semibold mb-4">Recent Exports</h3>
+  <div class="overflow-x-auto">
+    <table class="table table-zebra">
+      <thead>
+        <tr>
+          <th>Faculty</th>
+          <th>Exported</th>
+          <th>Files</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for export in recent_exports %}
+        <tr>
+          <td><span class="badge badge-outline">{{ export.faculty }}</span></td>
+          <td>{{ export.timestamp|date:"Y-m-d H:i" }}</td>
+          <td>{{ export.file_count }} files</td>
+          <td>
+            <a href="#" class="btn btn-sm btn-ghost">Download</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Toggle faculty selection
+document.getElementById('export-all').addEventListener('change', function() {
+  if (this.checked) {
+    document.getElementById('faculty-selection').classList.add('hidden');
+  }
+});
+
+document.getElementById('export-specific').addEventListener('change', function() {
+  if (this.checked) {
+    document.getElementById('faculty-selection').classList.remove('hidden');
+  }
+});
+</script>
+{% endblock %}
