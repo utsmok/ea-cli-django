@@ -51,10 +51,12 @@
               {% endif %}
             </td>
             <td>
-              {% if item.document.text %}
+              {% if item.document and item.document.text %}
                 <span class="badge badge-success badge-sm">Parsed</span>
-              {% else %}
+              {% elif item.document %}
                 <span class="badge badge-warning badge-sm">Unparsed</span>
+              {% else %}
+                <span class="badge badge-ghost badge-sm">No PDF</span>
               {% endif %}
             </td>
           </tr>

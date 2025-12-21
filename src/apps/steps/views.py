@@ -33,9 +33,11 @@ def steps_index(request):
 @require_GET
 def ingest_qlik_step(request):
     """Interface for ingesting Qlik exports."""
-    from apps.ingest.models import IngestionBatch
-    from django.utils import timezone
     from datetime import timedelta
+    
+    from django.utils import timezone
+    
+    from apps.ingest.models import IngestionBatch
     
     # Get statistics
     total_batches = IngestionBatch.objects.count()
@@ -48,14 +50,17 @@ def ingest_qlik_step(request):
     ).count()
     
     # Success rate
-    completed_batches = IngestionBatch.objects.filter(
-        source_type=IngestionBatch.SourceType.QLIK,
-        status__in=[IngestionBatch.Status.COMPLETED, IngestionBatch.Status.PARTIAL]
-    ).count()
     total_qlik = IngestionBatch.objects.filter(
         source_type=IngestionBatch.SourceType.QLIK
     ).count()
-    success_rate = int((completed_batches / total_qlik * 100)) if total_qlik > 0 else 0
+    if total_qlik > 0:
+        completed_batches = IngestionBatch.objects.filter(
+            source_type=IngestionBatch.SourceType.QLIK,
+            status__in=[IngestionBatch.Status.COMPLETED, IngestionBatch.Status.PARTIAL]
+        ).count()
+        success_rate = int((completed_batches / total_qlik * 100))
+    else:
+        success_rate = 0
     
     # Recent batches
     recent_batches = IngestionBatch.objects.filter(
@@ -78,9 +83,12 @@ def ingest_qlik_step(request):
 @require_GET
 def ingest_faculty_step(request):
     """Interface for ingesting faculty sheets."""
-    from apps.ingest.models import IngestionBatch
-    from django.utils import timezone
     from datetime import timedelta
+    
+    from django.db.models import Sum
+    from django.utils import timezone
+    
+    from apps.ingest.models import IngestionBatch
     
     # Get statistics
     total_batches = IngestionBatch.objects.count()
@@ -93,7 +101,6 @@ def ingest_faculty_step(request):
     ).count()
     
     # Total items updated from faculty sheets
-    from django.db.models import Sum
     total_updated = IngestionBatch.objects.filter(
         source_type=IngestionBatch.SourceType.FACULTY
     ).aggregate(Sum("items_updated"))["items_updated__sum"] or 0
@@ -173,7 +180,10 @@ def run_enrich_osiris(request):
     elif not item_ids:
         return JsonResponse({"error": "No items selected"}, status=400)
     else:
-        item_ids = [int(i) for i in item_ids]
+        try:
+            item_ids = [int(i) for i in item_ids]
+        except (ValueError, TypeError):
+            return JsonResponse({"error": "Invalid item IDs"}, status=400)
     
     # Create enrichment batch
     batch = EnrichmentBatch.objects.create(
@@ -249,10 +259,16 @@ def enrich_people_step(request):
     - Select items with teacher names
     - Configure people page scraping settings
     - Run enrichment and monitor progress
+    
+    Note: This is currently part of Osiris enrichment and will be
+    separated into its own step in a future update.
     """
-    # This is currently part of Osiris enrichment
-    # For now, redirect to Osiris enrichment
     # TODO: Separate people page scraping into its own step
+    # For now, use Osiris enrichment which includes people page scraping
+    messages.info(
+        request,
+        "People page enrichment is currently integrated with Osiris enrichment."
+    )
     return redirect("steps:enrich_osiris")
 
 
@@ -340,7 +356,10 @@ def run_pdf_canvas_status(request):
     elif not item_ids:
         return JsonResponse({"error": "No items selected"}, status=400)
     else:
-        item_ids = [int(i) for i in item_ids]
+        try:
+            item_ids = [int(i) for i in item_ids]
+        except (ValueError, TypeError):
+            return JsonResponse({"error": "Invalid item IDs"}, status=400)
     
     # Trigger download task
     # Note: This is async, so we return immediately
@@ -431,7 +450,10 @@ def run_pdf_extract(request):
     elif not item_ids:
         return JsonResponse({"error": "No items selected"}, status=400)
     else:
-        item_ids = [int(i) for i in item_ids]
+        try:
+            item_ids = [int(i) for i in item_ids]
+        except (ValueError, TypeError):
+            return JsonResponse({"error": "Invalid item IDs"}, status=400)
     
     # Trigger parsing task
     try:
