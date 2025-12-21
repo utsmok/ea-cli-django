@@ -1,0 +1,236 @@
+{% extends "steps/base_step.html" %}
+
+{% block input_selection %}
+<form id="qlik-upload-form" method="post" action="{% url 'ingest:upload' %}" enctype="multipart/form-data">
+  {% csrf_token %}
+  <input type="hidden" name="source_type" value="QLIK">
+
+  <div class="form-control">
+    <label class="label">
+      <span class="label-text font-semibold">Upload Qlik Export File</span>
+    </label>
+    <div class="border-2 border-dashed border-base-300 rounded-lg p-8 text-center hover:border-primary transition-colors cursor-pointer" id="dropzone">
+      <svg class="w-16 h-16 mx-auto mb-4 text-base-content/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+      </svg>
+      <p class="text-lg font-semibold mb-2">Drop Qlik export file here</p>
+      <p class="text-sm text-base-content/60 mb-4">or click to browse</p>
+      <input type="file"
+             name="file"
+             id="file-input"
+             accept=".xlsx,.xls"
+             required
+             class="hidden">
+      <button type="button"
+              class="btn btn-primary btn-sm"
+              onclick="document.getElementById('file-input').click()">
+        Choose File
+      </button>
+    </div>
+    <div id="file-name" class="text-sm text-success font-semibold mt-2 hidden"></div>
+  </div>
+
+  <div class="form-control mt-6">
+    <label class="label cursor-pointer">
+      <span class="label-text font-semibold">Auto-process after upload</span>
+      <input type="checkbox" name="auto_process" class="toggle toggle-primary" checked>
+    </label>
+    <label class="label">
+      <span class="label-text-alt text-base-content/60">
+        When enabled, the batch will be automatically staged and processed.
+        If disabled, you'll need to manually trigger processing from the batch detail page.
+      </span>
+    </label>
+  </div>
+</form>
+{% endblock %}
+
+{% block settings %}
+<div class="space-y-4">
+  <div class="alert alert-info">
+    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+    </svg>
+    <div>
+      <h3 class="font-bold">About Qlik Ingestion</h3>
+      <p class="text-sm mt-1">
+        Qlik exports contain system fields like material ID, title, author, course codes, and student counts.
+        This step will create new CopyrightItem records or update existing system fields.
+      </p>
+    </div>
+  </div>
+
+  <div class="collapse collapse-arrow bg-base-200">
+    <input type="checkbox">
+    <div class="collapse-title font-medium">
+      Required Columns
+    </div>
+    <div class="collapse-content">
+      <ul class="list-disc list-inside space-y-1 text-sm">
+        <li>Material ID (required, unique identifier)</li>
+        <li>Title</li>
+        <li>Author</li>
+        <li>Publisher</li>
+        <li>Course Code</li>
+        <li>Department</li>
+        <li>Period</li>
+        <li>URL (Canvas file link)</li>
+        <li>Status</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="collapse collapse-arrow bg-base-200">
+    <input type="checkbox">
+    <div class="collapse-title font-medium">
+      Field Ownership Rules
+    </div>
+    <div class="collapse-content">
+      <p class="text-sm text-base-content/70">
+        Qlik exports can create new items and update system-managed fields.
+        Human-annotated fields (workflow status, classifications, remarks)
+        are never modified by Qlik ingestion.
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block action_button %}
+<button type="submit"
+        form="qlik-upload-form"
+        class="btn btn-primary btn-lg w-full"
+        id="upload-btn">
+  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
+  </svg>
+  Upload & Process Qlik Export
+</button>
+{% endblock %}
+
+{% block quick_stats %}
+<div class="stats stats-vertical shadow">
+  <div class="stat">
+    <div class="stat-title">Total Batches</div>
+    <div class="stat-value text-2xl">{{ total_batches }}</div>
+    <div class="stat-desc">All time</div>
+  </div>
+
+  <div class="stat">
+    <div class="stat-title">Recent Qlik Batches</div>
+    <div class="stat-value text-2xl text-primary">{{ qlik_batches }}</div>
+    <div class="stat-desc">Last 30 days</div>
+  </div>
+
+  <div class="stat">
+    <div class="stat-title">Success Rate</div>
+    <div class="stat-value text-2xl text-success">{{ success_rate }}%</div>
+  </div>
+</div>
+{% endblock %}
+
+{% block results %}
+{% if recent_batches %}
+<div class="overflow-x-auto">
+  <table class="table table-zebra">
+    <thead>
+      <tr>
+        <th>Batch ID</th>
+        <th>Uploaded</th>
+        <th>Status</th>
+        <th>Items</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for batch in recent_batches %}
+      <tr>
+        <td class="font-mono">#{{ batch.id }}</td>
+        <td>{{ batch.uploaded_at|date:"Y-m-d H:i" }}</td>
+        <td>
+          {% if batch.status == 'COMPLETED' %}
+          <span class="badge badge-success">
+          {% elif batch.status == 'FAILED' %}
+          <span class="badge badge-error">
+          {% elif batch.status == 'PROCESSING' or batch.status == 'STAGING' %}
+          <span class="badge badge-info">
+          {% elif batch.status == 'PARTIAL' %}
+          <span class="badge badge-warning">
+          {% else %}
+          <span class="badge badge-ghost">
+          {% endif %}
+            {{ batch.get_status_display }}
+          </span>
+        </td>
+        <td>
+          <div class="text-sm">
+            <span class="text-success">{{ batch.items_created }} created</span>,
+            <span class="text-info">{{ batch.items_updated }} updated</span>
+          </div>
+        </td>
+        <td>
+          <a href="{% url 'ingest:batch_detail' batch.id %}" class="btn btn-sm btn-ghost">
+            View Details
+          </a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="text-center text-base-content/60 py-8">
+  <p>No recent batches. Upload your first Qlik export above.</p>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// File upload handling
+const fileInput = document.getElementById('file-input');
+const dropzone = document.getElementById('dropzone');
+const fileName = document.getElementById('file-name');
+
+// Click to upload
+dropzone.addEventListener('click', function(e) {
+  if (e.target.id !== 'file-input') {
+    fileInput.click();
+  }
+});
+
+// Drag and drop
+dropzone.addEventListener('dragover', function(e) {
+  e.preventDefault();
+  dropzone.classList.add('border-primary', 'bg-primary/5');
+});
+
+dropzone.addEventListener('dragleave', function(e) {
+  e.preventDefault();
+  dropzone.classList.remove('border-primary', 'bg-primary/5');
+});
+
+dropzone.addEventListener('drop', function(e) {
+  e.preventDefault();
+  dropzone.classList.remove('border-primary', 'bg-primary/5');
+
+  const files = e.dataTransfer.files;
+  if (files.length > 0) {
+    fileInput.files = files;
+    showFileName(files[0].name);
+  }
+});
+
+// Show selected file name
+fileInput.addEventListener('change', function() {
+  if (fileInput.files.length > 0) {
+    showFileName(fileInput.files[0].name);
+  }
+});
+
+function showFileName(name) {
+  fileName.textContent = '✓ Selected: ' + name;
+  fileName.classList.remove('hidden');
+}
+</script>
+{% endblock %}

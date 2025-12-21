@@ -1,12 +1,34 @@
-FROM python:3.13-slim
+# ---- Builder Stage ----
+FROM python:3.13-slim as builder
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential libpq-dev curl git netcat-openbsd \
-    && rm -rf /var/lib/apt/lists/*
-
+# Install uv
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
 
-ENV UV_PROJECT_ENVIRONMENT="/opt/venv"
+# Install system dependencies required for building some Python packages
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Create a virtual environment
+RUN uv venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Copy the project's dependency files and install them
+COPY pyproject.toml uv.lock ./
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --locked
+
+# ---- Runtime Stage ----
+FROM python:3.13-slim as runtime
+
+# Install system dependencies required for the runtime
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    netcat-openbsd libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set environment variables
 ENV PATH="/opt/venv/bin:$PATH" \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
@@ -14,11 +36,14 @@ ENV PATH="/opt/venv/bin:$PATH" \
 
 WORKDIR /app
 
-COPY pyproject.toml ./
-RUN uv sync --all-groups
+# Copy the virtual environment from the builder stage
+COPY --from=builder /opt/venv /opt/venv
 
+# Copy the application code
 COPY . .
-RUN mkdir -p media documents/downloads documents/processed logs static_files \
-    && chmod +x /app/docker/entrypoint.sh
 
+# Make the entrypoint script executable
+RUN chmod +x /app/docker/entrypoint.sh
+
+# Run the entrypoint script
 ENTRYPOINT ["/app/docker/entrypoint.sh"]

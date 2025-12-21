@@ -1,0 +1,290 @@
+{% extends "steps/base_step.html" %}
+
+{% block input_selection %}
+<form id="enrichment-form" method="post" action="{% url 'steps:run_enrich_osiris' %}">
+  {% csrf_token %}
+
+  <div class="form-control mb-4">
+    <label class="label cursor-pointer">
+      <span class="label-text font-semibold">Selection Mode</span>
+      <input type="radio" name="selection_mode" value="all" class="radio radio-primary" checked id="select-all-radio">
+    </label>
+    <label class="label cursor-pointer">
+      <span class="label-text">Enrich all items with course codes ({{ items_without_courses }} items)</span>
+    </label>
+  </div>
+
+  <div class="form-control mb-4">
+    <label class="label cursor-pointer">
+      <input type="radio" name="selection_mode" value="specific" class="radio radio-primary" id="select-specific-radio">
+      <span class="label-text font-semibold">Select specific items</span>
+    </label>
+  </div>
+
+  <div id="item-selection" class="hidden">
+    <div class="overflow-x-auto max-h-96 border rounded-lg">
+      <table class="table table-sm table-zebra">
+        <thead class="sticky top-0 bg-base-200">
+          <tr>
+            <th>
+              <input type="checkbox" class="checkbox checkbox-sm" id="select-all-items">
+            </th>
+            <th>Material ID</th>
+            <th>Title</th>
+            <th>Course Code</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in items %}
+          <tr>
+            <td>
+              <input type="checkbox" name="item_ids" value="{{ item.material_id }}" class="checkbox checkbox-sm item-checkbox">
+            </td>
+            <td class="font-mono">{{ item.material_id }}</td>
+            <td class="max-w-xs truncate">{{ item.title|default:"—" }}</td>
+            <td>{{ item.course_code|default:"—" }}</td>
+            <td>
+              {% if item.has_courses %}
+                <span class="badge badge-success badge-sm">Enriched</span>
+              {% else %}
+                <span class="badge badge-warning badge-sm">Pending</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <p class="text-sm text-base-content/60 mt-2">
+      Showing up to 100 items. Use "Enrich all" to process all {{ items_without_courses }} items without courses.
+    </p>
+  </div>
+</form>
+{% endblock %}
+
+{% block settings %}
+<div class="space-y-4">
+  <div class="form-control">
+    <label class="label">
+      <span class="label-text font-semibold">Osiris Base URL</span>
+    </label>
+    <input type="text"
+           value="https://osiris.utwente.nl"
+           class="input input-bordered"
+           disabled>
+    <label class="label">
+      <span class="label-text-alt text-base-content/60">Configured in environment settings</span>
+    </label>
+  </div>
+
+  <div class="form-control">
+    <label class="label">
+      <span class="label-text font-semibold">Timeout (seconds)</span>
+    </label>
+    <input type="number"
+           value="30"
+           class="input input-bordered"
+           disabled>
+  </div>
+
+  <div class="form-control">
+    <label class="cursor-pointer label">
+      <span class="label-text font-semibold">Fetch teacher details</span>
+      <input type="checkbox"
+             class="checkbox checkbox-primary"
+             checked
+             disabled>
+    </label>
+  </div>
+
+  <div class="alert alert-info">
+    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+    </svg>
+    <span class="text-sm">Settings are managed in the Django admin panel</span>
+  </div>
+</div>
+{% endblock %}
+
+{% block action_button %}
+<button type="button"
+        id="run-enrichment-btn"
+        class="btn btn-primary btn-lg w-full"
+        hx-post="{% url 'steps:run_enrich_osiris' %}"
+        hx-include="#enrichment-form"
+        hx-target="#progress-container"
+        hx-swap="innerHTML">
+  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+  </svg>
+  Run Osiris Enrichment
+</button>
+{% endblock %}
+
+{% block quick_stats %}
+<div class="stats stats-vertical shadow">
+  <div class="stat">
+    <div class="stat-title">Total Items</div>
+    <div class="stat-value text-2xl">{{ total_items }}</div>
+  </div>
+
+  <div class="stat">
+    <div class="stat-title">With Courses</div>
+    <div class="stat-value text-2xl text-success">{{ items_with_courses }}</div>
+  </div>
+
+  <div class="stat">
+    <div class="stat-title">Need Enrichment</div>
+    <div class="stat-value text-2xl text-warning">{{ items_without_courses }}</div>
+  </div>
+</div>
+{% endblock %}
+
+{% block progress %}
+<div class="text-center text-base-content/60 py-4">
+  <p>Click "Run Osiris Enrichment" to start</p>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Toggle between "all" and "specific" selection modes
+document.getElementById('select-all-radio').addEventListener('change', function() {
+  if (this.checked) {
+    document.getElementById('item-selection').classList.add('hidden');
+  }
+});
+
+document.getElementById('select-specific-radio').addEventListener('change', function() {
+  if (this.checked) {
+    document.getElementById('item-selection').classList.remove('hidden');
+  }
+});
+
+// Handle "select all items" checkbox
+document.getElementById('select-all-items').addEventListener('change', function() {
+  const checkboxes = document.querySelectorAll('.item-checkbox');
+  checkboxes.forEach(cb => cb.checked = this.checked);
+});
+
+// Intercept form submission to add enrich_all parameter
+document.body.addEventListener('htmx:configRequest', function(evt) {
+  if (evt.detail.path === '{% url "steps:run_enrich_osiris" %}') {
+    const enrichAll = document.getElementById('select-all-radio').checked;
+    evt.detail.parameters['enrich_all'] = enrichAll ? 'true' : 'false';
+  }
+});
+
+// Handle response from enrichment trigger
+document.body.addEventListener('htmx:afterRequest', function(evt) {
+  if (evt.detail.pathInfo.requestPath === '{% url "steps:run_enrich_osiris" %}') {
+    if (evt.detail.successful) {
+      let response;
+      try {
+        response = JSON.parse(evt.detail.xhr.response);
+      } catch (e) {
+        console.error('Failed to parse response:', e);
+        return;
+      }
+      if (response.success) {
+        const batchId = parseInt(response.batch_id, 10);
+        const totalItems = parseInt(response.total_items, 10) || 0;
+
+        // Update progress container using DOM methods to avoid XSS
+        const progressContainer = document.getElementById('progress-container');
+        progressContainer.innerHTML = '';
+
+        const outerDiv = document.createElement('div');
+        outerDiv.className = 'space-y-4';
+
+        const alertDiv = document.createElement('div');
+        alertDiv.className = 'alert alert-info';
+        alertDiv.innerHTML = `
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+          </svg>`;
+        const alertSpan = document.createElement('span');
+        alertSpan.textContent = `Enriching ${totalItems} items...`;
+        alertDiv.appendChild(alertSpan);
+
+        const progressDiv = document.createElement('div');
+        progressDiv.className = 'flex flex-col gap-2';
+        progressDiv.innerHTML = `
+          <div class="flex justify-between text-sm">
+            <span>Progress</span>
+            <span id="progress-text">0%</span>
+          </div>
+          <progress class="progress progress-primary w-full" value="0" max="100" id="progress-bar"></progress>
+        `;
+
+        const statsDiv = document.createElement('div');
+        statsDiv.className = 'stats stats-vertical shadow w-full';
+        statsDiv.innerHTML = `
+          <div class="stat">
+            <div class="stat-title">Processed</div>
+            <div class="stat-value text-lg" id="stat-processed">0</div>
+          </div>
+          <div class="stat">
+            <div class="stat-title">Failed</div>
+            <div class="stat-value text-lg text-error" id="stat-failed">0</div>
+          </div>
+          <div class="stat">
+            <div class="stat-title">Remaining</div>
+            <div class="stat-value text-lg" id="stat-remaining">${totalItems}</div>
+          </div>
+        `;
+
+        outerDiv.appendChild(alertDiv);
+        outerDiv.appendChild(progressDiv);
+        outerDiv.appendChild(statsDiv);
+        progressContainer.appendChild(outerDiv);
+
+        // Start polling for status
+        pollEnrichmentStatus(batchId);
+      }
+    }
+  }
+});
+
+// Poll for enrichment status
+function pollEnrichmentStatus(batchId) {
+  const interval = setInterval(function() {
+    fetch('{% url "steps:enrich_osiris_status" %}?batch_id=' + batchId)
+      .then(response => response.json())
+      .then(data => {
+        // Update progress
+        document.getElementById('progress-bar').value = data.progress_pct;
+        document.getElementById('progress-text').textContent = data.progress_pct + '%';
+        document.getElementById('stat-processed').textContent = data.processed;
+        document.getElementById('stat-failed').textContent = data.failed;
+        document.getElementById('stat-remaining').textContent = data.remaining;
+
+        // Stop polling if complete
+        if (data.is_complete) {
+          clearInterval(interval);
+
+          // Update progress container
+          document.getElementById('progress-container').innerHTML = `
+            <div class="alert alert-success">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg>
+              <span>Enrichment completed! Processed ${data.processed} items, ${data.failed} failed.</span>
+            </div>
+          `;
+
+          // Reload page to show updated stats
+          setTimeout(function() {
+            location.reload();
+          }, 2000);
+        }
+      })
+      .catch(error => {
+        console.error('Error polling status:', error);
+        clearInterval(interval);
+      });
+  }, 3000); // Poll every 3 seconds
+}
+</script>
+{% endblock %}

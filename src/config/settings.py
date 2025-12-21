@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     "apps.documents",
     "apps.enrichment",
     "apps.classification",
+    "apps.steps",
     "django_tasks",
     "django_rq",
 ]

@@ -22,6 +22,7 @@
     <div class="flex-none">
       <ul class="menu menu-horizontal px-1">
         <li><a href="{% url 'dashboard:index' %}">Dashboard</a></li>
+        <li><a href="{% url 'steps:index' %}">Steps</a></li>
         {% if user.is_staff %}
         <li><a href="/admin/">Admin</a></li>
         {% endif %}
