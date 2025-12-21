@@ -19,15 +19,18 @@ The Easy Access platform processes copyright data through seven distinct steps:
 Each step interface follows a consistent three-column layout:
 
 ### Left Column (2/3 width)
+
 - **Input Selection**: Choose items from database or upload files
 - **Settings**: Configure step-specific settings (API keys, thresholds, etc.)
 - **Action Button**: Run the step with selected inputs and settings
 
 ### Right Column (1/3 width)
+
 - **Progress**: Real-time progress updates during execution
 - **Quick Stats**: Summary statistics relevant to the step
 
 ### Bottom Section (Full width)
+
 - **Results**: Detailed results with change logs and error messages
 
 ## Step 1: Ingest Qlik Export

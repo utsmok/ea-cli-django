@@ -30,7 +30,10 @@ Created `steps/base_step.html` with:
 
 ### 3. Individual Step Interfaces
 
-#### Step 1: Ingest Qlik Export (`/steps/ingest-qlik/`)
+####
+
+ Step 1: Ingest Qlik Export (`/steps/ingest-qlik/`)
+
 - Drag-and-drop file upload
 - Auto-process toggle
 - Statistics dashboard
@@ -38,6 +41,7 @@ Created `steps/base_step.html` with:
 - Integration with existing ingestion system
 
 #### Step 2: Ingest Faculty Sheet (`/steps/ingest-faculty/`)
+
 - Faculty selection dropdown
 - Drag-and-drop file upload
 - Field protection information
@@ -45,6 +49,7 @@ Created `steps/base_step.html` with:
 - Recent batch history
 
 #### Step 3: Enrich from Osiris (`/steps/enrich-osiris/`)
+
 - Item selection table with checkboxes
 - "Enrich all" vs "Select specific" modes
 - Real-time progress tracking
@@ -53,17 +58,20 @@ Created `steps/base_step.html` with:
 - Statistics: total items, with/without courses
 
 #### Step 4: Enrich from People Pages (`/steps/enrich-people/`)
+
 - Currently redirects to Osiris enrichment
 - Placeholder for future separation
 - Documented in roadmap
 
 #### Step 5: Get PDF Status from Canvas (`/steps/pdf-canvas-status/`)
+
 - Item selection for Canvas URLs
 - Canvas API settings display
 - PDF download status
 - Statistics: items with/without PDFs
 
 #### Step 6: Extract PDF Details (`/steps/pdf-extract/`)
+
 - Item selection for unparsed PDFs
 - OCR settings (PaddleOCR)
 - Quality threshold configuration
@@ -71,6 +79,7 @@ Created `steps/base_step.html` with:
 - Statistics: parsed vs unparsed
 
 #### Step 7: Export Faculty Sheets (`/steps/export-faculty/`)
+
 - Faculty selection
 - Export scope options
 - Workflow status breakdown
@@ -122,7 +131,7 @@ Created detailed documentation:
 
 ### File Structure
 
-```
+```text
 src/apps/steps/
 ├── __init__.py
 ├── apps.py
@@ -191,7 +200,7 @@ src/apps/steps/
 
 ### URL Structure
 
-```
+```text
 /steps/                        # Steps index
 /steps/ingest-qlik/           # Step 1
 /steps/ingest-faculty/        # Step 2

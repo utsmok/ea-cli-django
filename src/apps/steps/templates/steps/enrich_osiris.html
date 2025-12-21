@@ -45,7 +45,7 @@
             <td class="max-w-xs truncate">{{ item.title|default:"—" }}</td>
             <td>{{ item.course_code|default:"—" }}</td>
             <td>
-              {% if item.courses.exists %}
+              {% if item.has_courses %}
                 <span class="badge badge-success badge-sm">Enriched</span>
               {% else %}
                 <span class="badge badge-warning badge-sm">Pending</span>
@@ -180,43 +180,65 @@ document.body.addEventListener('htmx:configRequest', function(evt) {
 document.body.addEventListener('htmx:afterRequest', function(evt) {
   if (evt.detail.pathInfo.requestPath === '{% url "steps:run_enrich_osiris" %}') {
     if (evt.detail.successful) {
-      const response = JSON.parse(evt.detail.xhr.response);
+      let response;
+      try {
+        response = JSON.parse(evt.detail.xhr.response);
+      } catch (e) {
+        console.error('Failed to parse response:', e);
+        return;
+      }
       if (response.success) {
-        const batchId = response.batch_id;
-        const totalItems = response.total_items;
+        const batchId = parseInt(response.batch_id, 10);
+        const totalItems = parseInt(response.total_items, 10) || 0;
         
-        // Update progress container
-        document.getElementById('progress-container').innerHTML = `
-          <div class="space-y-4">
-            <div class="alert alert-info">
-              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
-              </svg>
-              <span>Enriching ${totalItems} items...</span>
-            </div>
-            <div class="flex flex-col gap-2">
-              <div class="flex justify-between text-sm">
-                <span>Progress</span>
-                <span id="progress-text">0%</span>
-              </div>
-              <progress class="progress progress-primary w-full" value="0" max="100" id="progress-bar"></progress>
-            </div>
-            <div class="stats stats-vertical shadow w-full">
-              <div class="stat">
-                <div class="stat-title">Processed</div>
-                <div class="stat-value text-lg" id="stat-processed">0</div>
-              </div>
-              <div class="stat">
-                <div class="stat-title">Failed</div>
-                <div class="stat-value text-lg text-error" id="stat-failed">0</div>
-              </div>
-              <div class="stat">
-                <div class="stat-title">Remaining</div>
-                <div class="stat-value text-lg" id="stat-remaining">${totalItems}</div>
-              </div>
-            </div>
+        // Update progress container using DOM methods to avoid XSS
+        const progressContainer = document.getElementById('progress-container');
+        progressContainer.innerHTML = '';
+        
+        const outerDiv = document.createElement('div');
+        outerDiv.className = 'space-y-4';
+        
+        const alertDiv = document.createElement('div');
+        alertDiv.className = 'alert alert-info';
+        alertDiv.innerHTML = `
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+          </svg>`;
+        const alertSpan = document.createElement('span');
+        alertSpan.textContent = `Enriching ${totalItems} items...`;
+        alertDiv.appendChild(alertSpan);
+        
+        const progressDiv = document.createElement('div');
+        progressDiv.className = 'flex flex-col gap-2';
+        progressDiv.innerHTML = `
+          <div class="flex justify-between text-sm">
+            <span>Progress</span>
+            <span id="progress-text">0%</span>
+          </div>
+          <progress class="progress progress-primary w-full" value="0" max="100" id="progress-bar"></progress>
+        `;
+        
+        const statsDiv = document.createElement('div');
+        statsDiv.className = 'stats stats-vertical shadow w-full';
+        statsDiv.innerHTML = `
+          <div class="stat">
+            <div class="stat-title">Processed</div>
+            <div class="stat-value text-lg" id="stat-processed">0</div>
+          </div>
+          <div class="stat">
+            <div class="stat-title">Failed</div>
+            <div class="stat-value text-lg text-error" id="stat-failed">0</div>
+          </div>
+          <div class="stat">
+            <div class="stat-title">Remaining</div>
+            <div class="stat-value text-lg" id="stat-remaining">${totalItems}</div>
           </div>
         `;
+        
+        outerDiv.appendChild(alertDiv);
+        outerDiv.appendChild(progressDiv);
+        outerDiv.appendChild(statsDiv);
+        progressContainer.appendChild(outerDiv);
         
         // Start polling for status
         pollEnrichmentStatus(batchId);

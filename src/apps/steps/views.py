@@ -12,6 +12,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.views.decorators.http import require_GET, require_POST, require_http_methods
 
 from apps.core.models import CopyrightItem
@@ -151,9 +152,17 @@ def enrich_osiris_step(request):
     - Configure Osiris connection settings
     - Run enrichment and monitor progress
     """
-    # Get items that need enrichment
+    from django.db.models import Exists, OuterRef
+    
+    # Get items that need enrichment with has_courses annotation to avoid N+1
     items = CopyrightItem.objects.filter(
         course_code__isnull=False
+    ).annotate(
+        has_courses=Exists(
+            CopyrightItem.courses.through.objects.filter(
+                copyrightitem_id=OuterRef('pk')
+            )
+        )
     ).order_by("-created_at")[:100]
     
     # Count items by status
@@ -207,14 +216,19 @@ def run_enrich_osiris(request):
         metadata={"step": "osiris_enrichment"},
     )
     
-    # Create results and enqueue tasks
-    for material_id in item_ids:
-        res = EnrichmentResult.objects.create(
+    # Bulk create results for better performance
+    results = EnrichmentResult.objects.bulk_create([
+        EnrichmentResult(
             item_id=material_id,
             batch=batch,
             status=EnrichmentResult.Status.PENDING,
         )
-        enrich_item.enqueue(material_id, batch_id=batch.id, result_id=res.id)
+        for material_id in item_ids
+    ])
+    
+    # Enqueue tasks
+    for res in results:
+        enrich_item.enqueue(res.item_id, batch_id=batch.id, result_id=res.id)
     
     return JsonResponse({
         "success": True,
@@ -292,7 +306,7 @@ def run_enrich_people(request):
     # Currently handled by Osiris enrichment
     return JsonResponse({
         "error": "People page enrichment is currently part of Osiris enrichment",
-        "redirect": "/steps/enrich-osiris/",
+        "redirect": reverse("steps:enrich_osiris"),
     }, status=400)
 
 
@@ -354,8 +368,6 @@ def pdf_canvas_status_step(request):
 @require_POST
 def run_pdf_canvas_status(request):
     """Check Canvas PDF status for selected items."""
-    from apps.documents.services.download import download_undownloaded_pdfs
-    
     # Get selected items
     item_ids = request.POST.getlist("item_ids")
     check_all = request.POST.get("check_all") == "true"
@@ -374,18 +386,13 @@ def run_pdf_canvas_status(request):
             return JsonResponse({"error": error}, status=400)
         item_ids = parsed_ids
     
-    # Trigger download task
-    # Note: This is async, so we return immediately
-    try:
-        # For now, just return success
-        # In production, this would trigger an async task
-        return JsonResponse({
-            "success": True,
-            "total_items": len(item_ids),
-            "message": f"PDF status check queued for {len(item_ids)} items",
-        })
-    except Exception as e:
-        return JsonResponse({"error": str(e)}, status=500)
+    # TODO: Trigger async download task
+    # For now, just return success
+    return JsonResponse({
+        "success": True,
+        "total_items": len(item_ids),
+        "message": f"PDF status check queued for {len(item_ids)} items",
+    })
 
 
 @login_required
@@ -448,8 +455,6 @@ def pdf_extract_step(request):
 @require_POST
 def run_pdf_extract(request):
     """Trigger PDF extraction for selected items."""
-    from apps.documents.services.parse import parse_pdfs
-    
     # Get selected items
     item_ids = request.POST.getlist("item_ids")
     extract_all = request.POST.get("extract_all") == "true"
@@ -468,17 +473,13 @@ def run_pdf_extract(request):
             return JsonResponse({"error": error}, status=400)
         item_ids = parsed_ids
     
-    # Trigger parsing task
-    try:
-        # For now, just return success
-        # In production, this would trigger an async task
-        return JsonResponse({
-            "success": True,
-            "total_items": len(item_ids),
-            "message": f"PDF extraction queued for {len(item_ids)} items",
-        })
-    except Exception as e:
-        return JsonResponse({"error": str(e)}, status=500)
+    # TODO: Trigger async parsing task
+    # For now, just return success
+    return JsonResponse({
+        "success": True,
+        "total_items": len(item_ids),
+        "message": f"PDF extraction queued for {len(item_ids)} items",
+    })
 
 
 @login_required
