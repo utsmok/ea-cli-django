@@ -83,7 +83,7 @@ class Command(BaseCommand):
                 faculty_code=faculty_code,
             )
 
-            with open(path, "rb") as fh:
+            with Path.open(path, "rb") as fh:
                 batch.source_file = File(fh, name=f"{faculty_code}_{bucket}.xlsx")
                 batch.save()
 

@@ -79,7 +79,6 @@ async def extract_text_from_pdf(file_path: Path) -> dict | None:
 
         # Extract text
         result = await extract_file(file_path, config=config)
-        print(result)
         if not result:
             logger.warning(f"No extraction result for {file_path}")
             return None
@@ -155,7 +154,6 @@ async def extract_text_from_pdf(file_path: Path) -> dict | None:
             "description": metadata.get("description"),
             "summary": summary,
         }
-        print(results)
         return results
 
     except ImportError as e:

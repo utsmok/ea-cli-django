@@ -1,6 +1,11 @@
-<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+{% if not only_items %}
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="data-grid-inner">
+  {% endif %}
+
   {% for item in items %}
-  <div class="card bg-base-100 shadow-xl border border-base-300">
+  <div class="card bg-base-100 shadow-xl border border-base-300" {% if forloop.last and page_obj.has_next %}
+    hx-get="{% url 'dashboard:grid_partial' %}?page={{ page_obj.next_page_number }}" hx-trigger="revealed"
+    hx-swap="afterend" hx-target="this" {% endif %}>
     <div class="card-body p-4">
       <div class="flex justify-between items-start">
         <h3 class="font-bold truncate" title="{{ item.filename }}">{{ item.filename|default:"Untitled" }}</h3>
@@ -26,10 +31,12 @@
         <p><span class="font-semibold">Course:</span> {{ item.course_code|default:"-" }}</p>
         <p><span class="font-semibold">Faculty:</span> {{ item.faculty.abbreviation|default:"-" }}</p>
         <p><span class="font-semibold">Class:</span> {{ item.v2_manual_classification|default:"Unknown" }}</p>
-        {% if item.last_enrichment_attempt %}
-        <p><span class="font-semibold" title="Last checked">Enriched:</span> {{ item.last_enrichment_attempt|date:"Y-m-d
-          H:i" }}</p>
-        {% endif %}
+        <p id="enriched-date-{{ item.material_id }}">
+          {% if item.last_enrichment_attempt %}
+          <span class="font-semibold" title="Last checked">Enriched:</span> {{ item.last_enrichment_attempt|date:"Y-m-d
+          H:i" }}
+          {% endif %}
+        </p>
       </div>
 
       <div class="card-actions justify-end mt-4">
@@ -41,8 +48,13 @@
     </div>
   </div>
   {% empty %}
+  {% if not only_items %}
   <div class="col-span-full py-10 text-center opacity-50">
     <p>No items found. Upload an Excel file to get started.</p>
   </div>
+  {% endif %}
   {% endfor %}
+
+  {% if not only_items %}
 </div>
+{% endif %}

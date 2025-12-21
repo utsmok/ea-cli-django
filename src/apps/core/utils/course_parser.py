@@ -1,7 +1,8 @@
-from typing import Any
 import logging
+from typing import Any
 
 logger = logging.getLogger(__name__)
+
 
 def determine_course_code(code: str | None, name: str | None) -> set[str]:
     """Determines Osiris course code(s) from Canvas course data.

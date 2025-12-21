@@ -2012,7 +2012,7 @@ Instead of abstract strategies, we use **explicit field ownership**:
    >>> from apps.ingest.services import ExcelBuilder
    >>> builder = ExcelBuilder('EEMCS')
    >>> output = builder.build()
-   >>> with open('/tmp/new.xlsx', 'wb') as f:
+   >>> with Path.open('/tmp/new.xlsx', 'wb') as f:
    >>>     f.write(output.getvalue())
 
    # Compare files manually or with script

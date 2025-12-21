@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import hashlib
 from io import BytesIO
+from typing import TYPE_CHECKING
 
 import polars as pl
 from loguru import logger
@@ -19,7 +20,6 @@ from openpyxl.workbook.defined_name import DefinedName
 from openpyxl.worksheet.datavalidation import DataValidation
 from openpyxl.worksheet.table import Table as ExcelTable
 from openpyxl.worksheet.table import TableStyleInfo
-from openpyxl.worksheet.worksheet import Worksheet
 
 from apps.core.models import (
     ClassificationV2,
@@ -29,6 +29,9 @@ from apps.core.models import (
 )
 
 from . import export_config
+
+if TYPE_CHECKING:
+    from openpyxl.worksheet.worksheet import Worksheet
 
 ENUM_MAP = {
     "v2_manual_classification": ClassificationV2,
@@ -127,8 +130,7 @@ class ExcelBuilder:
             long_values_count = 0
             for val in df.get_column(col_config.name).drop_nulls():
                 val_len = len(str(val))
-                if val_len > max_width:
-                    max_width = val_len
+                max_width = max(max_width, val_len)
                 if val_len > 40:
                     long_values_count += 1
 

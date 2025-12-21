@@ -25,6 +25,7 @@ class IngestionBatch(models.Model):
         PARTIAL = "PARTIAL", _("Partially Completed")
 
     # Identity & Source
+    id: int
     source_type = models.CharField(
         max_length=20,
         choices=SourceType.choices,
@@ -83,6 +84,11 @@ class IngestionBatch(models.Model):
         db_index=True,
         help_text="Faculty abbreviation (e.g., 'EEMCS') for Faculty sheets",
     )
+
+    # reverse relations:
+    faculty_entries: "models.manager.RelatedManager[FacultyEntry]"
+    qlik_entries: "models.manager.RelatedManager[QlikEntry]"
+    failures: "models.manager.RelatedManager[ProcessingFailure]"
 
     class Meta:
         db_table = "ingest_batches"

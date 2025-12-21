@@ -539,7 +539,7 @@ class CopyrightLabeler(anywidget.AnyWidget):
             pdf_path = f"/app/documents/downloads/{item.filename}"
             # Check exist and load
             if item.filename and os.path.exists(pdf_path):
-                with open(pdf_path, "rb") as f:
+                with Path.open(pdf_path, "rb") as f:
                     b64 = base64.b64encode(f.read()).decode('utf-8')
                     self.active_pdf_data = f"data:application/pdf;base64,{b64}"
             else:

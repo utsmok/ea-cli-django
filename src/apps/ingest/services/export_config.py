@@ -6,7 +6,6 @@ Based on legacy settings.yaml data_settings.
 """
 
 from dataclasses import dataclass
-from typing import Optional
 
 
 @dataclass
@@ -31,7 +30,7 @@ class ColumnConfig:
     is_new: bool = False  # Whether the column is new
     dropdown_options: str | None = None  # Dropdown validation options
     default_val: str | None = None  # Default value for new rows
-    conditional_style: Optional[ConditionalStyle] = None  # Conditional formatting style
+    conditional_style: ConditionalStyle | None = None  # Conditional formatting style
 
 
 # Data entry columns (editable subset shown to faculty)

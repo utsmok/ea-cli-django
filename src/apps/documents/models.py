@@ -1,6 +1,7 @@
 from django.db import models
 from django.utils.translation import gettext_lazy as _
-from apps.core.models import CopyrightItem, LegacyCopyrightItem, TimestampedModel
+
+from apps.core.models import TimestampedModel
 
 
 class EntityTypes(models.TextChoices):
@@ -87,9 +88,7 @@ class Document(TimestampedModel):
     """
 
     canvas_metadata = models.OneToOneField(
-        PDFCanvasMetadata,
-        on_delete=models.CASCADE,
-        related_name="pdf"
+        PDFCanvasMetadata, on_delete=models.CASCADE, related_name="pdf"
     )
 
     file = models.FileField(upload_to="downloads/%Y/%m/", null=True, blank=True)
@@ -124,17 +123,15 @@ class Document(TimestampedModel):
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name="document"
+        related_name="document",
     )
 
     extracted_entities = models.ManyToManyField(
-        Entity,
-        through="DocumentEntity",
-        related_name="documents"
+        Entity, through="DocumentEntity", related_name="documents"
     )
 
     def __str__(self):
-        return self.filename or self.current_file_name
+        return self.filename or self.file.name
 
 
 class DocumentEntity(models.Model):

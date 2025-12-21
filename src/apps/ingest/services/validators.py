@@ -4,12 +4,10 @@ Validation functions for staged data.
 Validates that required fields exist and meet basic constraints.
 """
 
-from typing import List, Tuple
-
 import polars as pl
 
 
-def validate_qlik_data(df: pl.DataFrame) -> Tuple[bool, List[str]]:
+def validate_qlik_data(df: pl.DataFrame) -> tuple[bool, list[str]]:
     """
     Validate Qlik data has required fields.
 
@@ -55,7 +53,7 @@ def validate_qlik_data(df: pl.DataFrame) -> Tuple[bool, List[str]]:
     return is_valid, errors
 
 
-def validate_faculty_data(df: pl.DataFrame) -> Tuple[bool, List[str]]:
+def validate_faculty_data(df: pl.DataFrame) -> tuple[bool, list[str]]:
     """
     Validate Faculty data has required fields.
 

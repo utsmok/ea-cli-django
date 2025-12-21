@@ -7,6 +7,10 @@
     <div class="flex justify-between mb-4">
         <h1 class="text-2xl font-bold">Copyright Dashboard</h1>
         <div class="flex gap-2">
+            <button class="btn btn-outline btn-info" hx-post="{% url 'enrichment:trigger_batch' %}"
+                hx-confirm="Are you sure you want to enrich all items? This might take a while." hx-swap="none">
+                Enrich All
+            </button>
             <a class="btn" href="{% url 'api:download_faculty_sheets' %}">
                 Download faculty sheets
             </a>
@@ -17,22 +21,17 @@
     </div>
 
     <!-- The Grid (HTMX Target) -->
-    <div id="data-grid"
-         hx-get="{% url 'dashboard:grid_partial' %}"
-         hx-trigger="load">
-         <!-- Spinner while loading -->
-         <span class="loading loading-spinner loading-lg"></span>
+    <div id="data-grid" hx-get="{% url 'dashboard:grid_partial' %}" hx-trigger="load">
+        <!-- Spinner while loading -->
+        <span class="loading loading-spinner loading-lg"></span>
     </div>
 
     <!-- Upload Modal (DaisyUI + Alpine) -->
     <dialog class="modal" :class="{ 'modal-open': showUploadModal }">
         <div class="modal-box">
             <h3 class="font-bold text-lg">Upload Data</h3>
-            <form hx-post="{% url 'api:trigger_ingest' %}"
-                  hx-swap="none"
-                  hx-encoding="multipart/form-data"
-                  enctype="multipart/form-data"
-                  @htmx:after-request="showUploadModal = false">
+            <form hx-post="{% url 'api:trigger_ingest' %}" hx-swap="none" hx-encoding="multipart/form-data"
+                enctype="multipart/form-data" @htmx:after-request="showUploadModal = false">
                 {% csrf_token %}
 
                 <label class="form-control w-full max-w-xs">

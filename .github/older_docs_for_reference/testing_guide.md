@@ -91,7 +91,7 @@ from django.core.files import File
 user = User.objects.first()
 
 # Create batch
-with open("path/to/test_file.xlsx", "rb") as f:
+with Path.open("path/to/test_file.xlsx", "rb") as f:
     batch = IngestionBatch.objects.create(
         source_type=IngestionBatch.SourceType.QLIK,  # or FACULTY
         source_file=File(f, name="test_file.xlsx"),

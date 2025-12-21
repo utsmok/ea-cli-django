@@ -64,42 +64,26 @@ async def test_enrich_item_persistence():
 
     # Verify Course persistence
     await item.arefresh_from_db()
-    print(f"Status: {item.enrichment_status}")
     assert item.enrichment_status == EnrichmentStatus.COMPLETED
-    print(
-        f"Course exists: {await Course.objects.filter(cursuscode=191154340).aexists()}"
-    )
     assert await Course.objects.filter(cursuscode=191154340).aexists()
     course = await Course.objects.aget(cursuscode=191154340)
-    print(f"Course name: {course.name}, Internal ID: {course.internal_id}")
     assert course.name == "Gasdynamics"
     assert (
         course.internal_id == 116098
     )  # models used BigInt, string "116098" converts to int
 
     # Verify Item-Course link
-    print(
-        f"Item-Course link exists: {await item.courses.filter(cursuscode=191154340).aexists()}"
-    )
     assert await item.courses.filter(cursuscode=191154340).aexists()
 
     # Verify Person persistence
-    print(
-        f"Person Augustijn exists: {await Person.objects.filter(input_name='Augustijn, D.C.M.').aexists()}"
-    )
     assert await Person.objects.filter(input_name="Augustijn, D.C.M.").aexists()
     person = await Person.objects.aget(input_name="Augustijn, D.C.M.")
-    print(f"Person email: {person.email}, Verified: {person.is_verified}")
     assert person.email == "d.c.m.augustijn@utwente.nl"
     assert person.is_verified is True
 
     # Verify CourseEmployee link
-    print(
-        f"CourseEmployee link exists: {await CourseEmployee.objects.filter(course=course, person=person).aexists()}"
-    )
     assert await CourseEmployee.objects.filter(course=course, person=person).aexists()
     employee = await CourseEmployee.objects.aget(course=course, person=person)
-    print(f"Role: {employee.role}")
     assert employee.role == "contacts"
 
 

@@ -118,6 +118,7 @@ class EnrichmentStatus(models.TextChoices):
 
 
 class TimestampedModel(models.Model):
+    id: int
     created_at = models.DateTimeField(auto_now_add=True)
     modified_at = models.DateTimeField(auto_now=True)
 
@@ -211,6 +212,9 @@ class CourseEmployee(TimestampedModel):
     person = models.ForeignKey(Person, on_delete=models.CASCADE)
     role = models.CharField(max_length=255, null=True, blank=True)
 
+    def __str__(self):
+        return f"{self.person} - {self.course} ({self.role})"
+
 
 # -----------------------------------------------------------------------------
 # Copyright Data
@@ -279,7 +283,9 @@ class CopyrightItem(TimestampedModel):
         db_index=True,
     )
     manual_classification = models.CharField(
-        max_length=2048, choices=Classification.choices, default=Classification.ONBEKEND,
+        max_length=2048,
+        choices=Classification.choices,
+        default=Classification.ONBEKEND,
         null=True,
         blank=True,
     )
@@ -330,6 +336,9 @@ class CopyrightItem(TimestampedModel):
         blank=True,
         related_name="items",
     )
+
+    def __str__(self):
+        return f"CopyrightItem {self.material_id} - {self.filename}"
 
     class Meta:
         ordering = ["-modified_at"]

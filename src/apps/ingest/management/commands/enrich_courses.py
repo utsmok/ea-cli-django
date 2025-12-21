@@ -1,8 +1,11 @@
-from django.core.management.base import BaseCommand
+import traceback
+
 from asgiref.sync import async_to_sync
+from django.core.management.base import BaseCommand
+
 from apps.core.services.osiris import enrich_async
 from apps.core.services.relations import link_courses
-import traceback
+
 
 class Command(BaseCommand):
     help = "Enrich database with course data from OSIRIS"

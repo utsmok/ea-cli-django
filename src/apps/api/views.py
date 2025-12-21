@@ -4,7 +4,6 @@ import tempfile
 from datetime import datetime
 from io import BytesIO
 from pathlib import Path
-from typing import Optional
 from zipfile import ZIP_DEFLATED, ZipFile
 
 from django.contrib.auth import get_user_model
@@ -29,7 +28,7 @@ def _get_uploaded_by(request: HttpRequest):
     return user
 
 
-def _infer_source_type(filename: str, explicit: Optional[str]) -> str:
+def _infer_source_type(filename: str, explicit: str | None) -> str:
     explicit_value = explicit or ""
     if explicit_value in {
         IngestionBatch.SourceType.QLIK,

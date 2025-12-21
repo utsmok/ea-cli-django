@@ -41,8 +41,10 @@ class Command(BaseCommand):
                     else:
                         abbr = DEPARTMENT_MAPPING_LOWER.get(dept)
                         if abbr is None:
-                            # Try without lowercasing
-                            abbr = DEPARTMENT_MAPPING_LOWER.get(item.department.strip())
+                            if item.department:
+                                abbr = DEPARTMENT_MAPPING_LOWER.get(
+                                    item.department.strip()
+                                )
                             if abbr is None:
                                 logger.debug(f"Unmapped department: {item.department}")
                                 abbr = "UNM"
@@ -60,7 +62,7 @@ class Command(BaseCommand):
                     logger.error(f"Error assigning faculty to item {item.pk}: {e}")
                     errors += 1
 
-        self.stdout.write(self.style.SUCCESS(f"\nSuccessfully assigned faculties:"))
+        self.stdout.write(self.style.SUCCESS("\nSuccessfully assigned faculties:"))
         self.stdout.write(f"  - Updated: {updated}")
         self.stdout.write(f"  - Unmapped departments: {unmapped}")
         if errors:

@@ -6,107 +6,185 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
     dependencies = [
-        ('core', '0002_initial'),
+        ("core", "0002_initial"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='changelog',
-            name='changed_by',
-            field=models.ForeignKey(blank=True, help_text='User who made the change (null for system changes)', null=True, on_delete=django.db.models.deletion.PROTECT, related_name='changes_made', to=settings.AUTH_USER_MODEL),
+            model_name="changelog",
+            name="changed_by",
+            field=models.ForeignKey(
+                blank=True,
+                help_text="User who made the change (null for system changes)",
+                null=True,
+                on_delete=django.db.models.deletion.PROTECT,
+                related_name="changes_made",
+                to=settings.AUTH_USER_MODEL,
+            ),
         ),
         migrations.AddField(
-            model_name='changelog',
-            name='item',
-            field=models.ForeignKey(help_text='The item that was changed', on_delete=django.db.models.deletion.CASCADE, related_name='change_logs', to='core.copyrightitem'),
+            model_name="changelog",
+            name="item",
+            field=models.ForeignKey(
+                help_text="The item that was changed",
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="change_logs",
+                to="core.copyrightitem",
+            ),
         ),
         migrations.AddField(
-            model_name='copyrightitem',
-            name='courses',
-            field=models.ManyToManyField(blank=True, related_name='copyright_items', to='core.course'),
+            model_name="copyrightitem",
+            name="courses",
+            field=models.ManyToManyField(
+                blank=True, related_name="copyright_items", to="core.course"
+            ),
         ),
         migrations.AddField(
-            model_name='courseemployee',
-            name='course',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='core.course'),
+            model_name="courseemployee",
+            name="course",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.CASCADE, to="core.course"
+            ),
         ),
         migrations.CreateModel(
-            name='Faculty',
+            name="Faculty",
             fields=[
-                ('organization_ptr', models.OneToOneField(auto_created=True, on_delete=django.db.models.deletion.CASCADE, parent_link=True, primary_key=True, serialize=False, to='core.organization')),
+                (
+                    "organization_ptr",
+                    models.OneToOneField(
+                        auto_created=True,
+                        on_delete=django.db.models.deletion.CASCADE,
+                        parent_link=True,
+                        primary_key=True,
+                        serialize=False,
+                        to="core.organization",
+                    ),
+                ),
             ],
             options={
-                'abstract': False,
+                "abstract": False,
             },
-            bases=('core.organization',),
+            bases=("core.organization",),
         ),
         migrations.AddField(
-            model_name='organization',
-            name='parent',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='children', to='core.organization'),
+            model_name="organization",
+            name="parent",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                related_name="children",
+                to="core.organization",
+            ),
         ),
         migrations.AddField(
-            model_name='legacycopyrightitem',
-            name='matched_item',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='legacy_matches', to='core.copyrightitem'),
+            model_name="legacycopyrightitem",
+            name="matched_item",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                related_name="legacy_matches",
+                to="core.copyrightitem",
+            ),
         ),
         migrations.AddField(
-            model_name='person',
-            name='orgs',
-            field=models.ManyToManyField(blank=True, related_name='personnel', to='core.organization'),
+            model_name="person",
+            name="orgs",
+            field=models.ManyToManyField(
+                blank=True, related_name="personnel", to="core.organization"
+            ),
         ),
         migrations.AddField(
-            model_name='courseemployee',
-            name='person',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='core.person'),
+            model_name="courseemployee",
+            name="person",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.CASCADE, to="core.person"
+            ),
         ),
         migrations.AddField(
-            model_name='course',
-            name='teachers',
-            field=models.ManyToManyField(related_name='courses', through='core.CourseEmployee', to='core.person'),
+            model_name="course",
+            name="teachers",
+            field=models.ManyToManyField(
+                related_name="courses", through="core.CourseEmployee", to="core.person"
+            ),
         ),
         migrations.AddIndex(
-            model_name='changelog',
-            index=models.Index(fields=['item', '-changed_at'], name='change_logs_item_id_07635f_idx'),
+            model_name="changelog",
+            index=models.Index(
+                fields=["item", "-changed_at"], name="change_logs_item_id_07635f_idx"
+            ),
         ),
         migrations.AddIndex(
-            model_name='changelog',
-            index=models.Index(fields=['changed_by', '-changed_at'], name='change_logs_changed_90c830_idx'),
+            model_name="changelog",
+            index=models.Index(
+                fields=["changed_by", "-changed_at"],
+                name="change_logs_changed_90c830_idx",
+            ),
         ),
         migrations.AddIndex(
-            model_name='changelog',
-            index=models.Index(fields=['batch'], name='change_logs_batch_i_733b64_idx'),
+            model_name="changelog",
+            index=models.Index(fields=["batch"], name="change_logs_batch_i_733b64_idx"),
         ),
         migrations.AddIndex(
-            model_name='changelog',
-            index=models.Index(fields=['change_source', '-changed_at'], name='change_logs_change__fed443_idx'),
+            model_name="changelog",
+            index=models.Index(
+                fields=["change_source", "-changed_at"],
+                name="change_logs_change__fed443_idx",
+            ),
         ),
         migrations.AddField(
-            model_name='person',
-            name='faculty',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='employees', to='core.faculty'),
+            model_name="person",
+            name="faculty",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                related_name="employees",
+                to="core.faculty",
+            ),
         ),
         migrations.AddField(
-            model_name='course',
-            name='faculty',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='courses', to='core.faculty'),
+            model_name="course",
+            name="faculty",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                related_name="courses",
+                to="core.faculty",
+            ),
         ),
         migrations.AddField(
-            model_name='copyrightitem',
-            name='faculty',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='items', to='core.faculty'),
+            model_name="copyrightitem",
+            name="faculty",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                related_name="items",
+                to="core.faculty",
+            ),
         ),
         migrations.AlterUniqueTogether(
-            name='organization',
-            unique_together={('name', 'abbreviation')},
+            name="organization",
+            unique_together={("name", "abbreviation")},
         ),
         migrations.AddIndex(
-            model_name='copyrightitem',
-            index=models.Index(fields=['workflow_status', 'faculty', 'material_id', 'v2_manual_classification', 'manual_classification'], name='core_copyri_workflo_c893ce_idx'),
+            model_name="copyrightitem",
+            index=models.Index(
+                fields=[
+                    "workflow_status",
+                    "faculty",
+                    "material_id",
+                    "v2_manual_classification",
+                    "manual_classification",
+                ],
+                name="core_copyri_workflo_c893ce_idx",
+            ),
         ),
     ]

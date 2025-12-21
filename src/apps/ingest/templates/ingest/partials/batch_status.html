@@ -1,0 +1,75 @@
+<div id="batch-status-container" hx-get="{% url 'ingest:batch_status_partial' batch.id %}" hx-trigger="{% if batch.status == 'STAGING' or batch.status == 'PROCESSING' %}every 2s{% else %}none{% endif %}" hx-swap="outerHTML">
+    <div class="card">
+        <h2>Batch Information</h2>
+        <table>
+            <tr>
+                <th style="width: 200px;">Status</th>
+                <td>
+                    <span class="badge badge-{{ batch.status|lower }}">
+                        {{ batch.get_status_display }}
+                    </span>
+                    {% if batch.status == 'STAGING' or batch.status == 'PROCESSING' %}
+                        <span class="loader" style="display: inline-block; margin-left: 1rem;"></span>
+                    {% endif %}
+                </td>
+            </tr>
+            <tr>
+                <th>File</th>
+                <td>{{ batch.source_file.name }}</td>
+            </tr>
+            <tr>
+                <th>Uploaded At</th>
+                <td>{{ batch.uploaded_at }}</td>
+            </tr>
+            {% if batch.started_at %}
+            <tr>
+                <th>Started At</th>
+                <td>{{ batch.started_at }}</td>
+            </tr>
+            {% endif %}
+            {% if batch.completed_at %}
+            <tr>
+                <th>Completed At</th>
+                <td>{{ batch.completed_at }}</td>
+            </tr>
+            {% endif %}
+        </table>
+    </div>
+
+    <div class="card">
+        <h2>Processing Statistics</h2>
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-value">{{ batch.total_rows }}</div>
+                <div class="stat-label">Total Rows</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{{ batch.rows_staged }}</div>
+                <div class="stat-label">Rows Staged</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{{ batch.items_created }}</div>
+                <div class="stat-label">Items Created</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{{ batch.items_updated }}</div>
+                <div class="stat-label">Items Updated</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{{ batch.items_skipped }}</div>
+                <div class="stat-label">Items Skipped</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{{ batch.items_failed }}</div>
+                <div class="stat-label">Items Failed</div>
+            </div>
+        </div>
+    </div>
+
+    {% if batch.error_message %}
+    <div class="card" style="border-left: 4px solid #e74c3c;">
+        <h2>Error Message</h2>
+        <pre style="background: #f8f9fa; padding: 1rem; border-radius: 4px; overflow-x: auto;">{{ batch.error_message }}</pre>
+    </div>
+    {% endif %}
+</div>

@@ -8,7 +8,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         self.stdout.write("Watching /raw_data for .xlsx files...")
         for changes in watch("/app/raw_data"):
-            for change, path in changes:
+            for _change, path in changes:
                 if path.endswith(".xlsx"):
                     # Enqueue the Django 6 Task
                     ingest_excel_task.enqueue(file_path=path)

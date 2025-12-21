@@ -80,7 +80,7 @@ class Command(BaseCommand):
             uploaded_by=user,
         )
 
-        with open(target_file, "rb") as fh:
+        with Path.open(target_file, "rb") as fh:
             batch.source_file = File(fh, name=Path(target_file).name)
             batch.save()
 

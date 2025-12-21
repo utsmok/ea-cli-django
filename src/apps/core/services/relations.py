@@ -1,12 +1,14 @@
 import logging
-from typing import List, Dict, Set, Any
+from typing import Any
+
 from django.db import transaction
-from django.db.models import Q
-from apps.core.models import CopyrightItem, Course, Person, CourseEmployee
+
+from apps.core.models import CopyrightItem, Course, CourseEmployee, Person
 from apps.core.utils.course_parser import determine_course_code
 from apps.core.utils.safecast import safe_int
 
 logger = logging.getLogger(__name__)
+
 
 def link_courses() -> None:
     """
@@ -24,8 +26,8 @@ def link_courses() -> None:
     logger.info(f"Found {len(items)} items to consider for course links")
 
     # Extract all potential course codes
-    item_course_map: Dict[int, List[str]] = {}
-    all_course_codes: Set[Any] = set()
+    item_course_map: dict[int, list[str]] = {}
+    all_course_codes: set[Any] = set()
 
     for item in items:
         course_codes = determine_course_code(
@@ -41,7 +43,7 @@ def link_courses() -> None:
         return
 
     # Filter valid integer codes
-    valid_course_codes: Set[int] = set()
+    valid_course_codes: set[int] = set()
     for code in all_course_codes:
         if code:
             int_code = safe_int(code)
@@ -56,7 +58,9 @@ def link_courses() -> None:
     courses = list(Course.objects.filter(cursuscode__in=valid_course_codes))
     course_map = {c.cursuscode: c for c in courses}
 
-    logger.info(f"Fetched {len(courses)} courses for {len(valid_course_codes)} course codes")
+    logger.info(
+        f"Fetched {len(courses)} courses for {len(valid_course_codes)} course codes"
+    )
 
     links_added = 0
 
@@ -80,7 +84,7 @@ def link_courses() -> None:
             # Check existing links (prefetching usually better, but for now simple loop)
             # Optimization: could bulk prefetch item.courses for all items
             # But let's stick to correctness first.
-            existing_ids = set(item.courses.values_list('cursuscode', flat=True))
+            existing_ids = set(item.courses.values_list("cursuscode", flat=True))
 
             to_add = [c for c in desired_courses if c.cursuscode not in existing_ids]
 
@@ -95,7 +99,7 @@ def link_courses() -> None:
 
 
 def link_persons_to_courses(
-    course_to_person_mapping: Dict[int, List[Dict[str, str]]]
+    course_to_person_mapping: dict[int, list[dict[str, str]]],
 ) -> None:
     """
     Links persons to courses based on the provided mapping.
@@ -158,15 +162,13 @@ def link_persons_to_courses(
                 # Check existance
                 # Using get_or_create to verify/create link
                 obj, created = CourseEmployee.objects.get_or_create(
-                    course=course,
-                    person=person,
-                    defaults={'role': role}
+                    course=course, person=person, defaults={"role": role}
                 )
                 if created:
                     created_count += 1
                 elif obj.role != role and role:
-                   obj.role = role
-                   obj.save()
+                    obj.role = role
+                    obj.save()
 
     if created_count:
         logger.info(f"Created {created_count} course-person relations")

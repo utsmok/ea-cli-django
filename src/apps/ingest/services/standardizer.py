@@ -293,7 +293,7 @@ def safe_datetime(value: Any) -> Any | None:
     """
     if value is None:
         return None
-    if isinstance(value, (datetime, date)):
+    if isinstance(value, datetime | date):
         return value
 
     from dateutil import parser

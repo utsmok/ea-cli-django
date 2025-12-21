@@ -30,7 +30,7 @@ class TestEnrichmentViews:
         url = reverse("enrichment:trigger_item", args=[item.material_id])
 
         # Patch the async task trigger
-        with patch("apps.enrichment.views.enrich_item") as mock_task:
+        with patch("apps.enrichment.views.enrich_item"):
             response = client.post(url)
 
             assert response.status_code == 200

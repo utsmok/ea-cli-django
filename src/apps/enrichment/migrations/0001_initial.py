@@ -4,28 +4,49 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
-    dependencies = [
-    ]
+    dependencies = []
 
     operations = [
         migrations.CreateModel(
-            name='EnrichmentJob',
+            name="EnrichmentJob",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('modified_at', models.DateTimeField(auto_now=True)),
-                ('job_type', models.CharField(choices=[('OSIRIS', 'Osiris Scraping'), ('PEOPLE_PAGE', 'People Page Scraping'), ('CANVAS', 'Canvas Download')], max_length=50)),
-                ('items_processed', models.IntegerField(default=0)),
-                ('items_failed', models.IntegerField(default=0)),
-                ('errors', models.JSONField(blank=True, help_text='List of error messages', null=True)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("modified_at", models.DateTimeField(auto_now=True)),
+                (
+                    "job_type",
+                    models.CharField(
+                        choices=[
+                            ("OSIRIS", "Osiris Scraping"),
+                            ("PEOPLE_PAGE", "People Page Scraping"),
+                            ("CANVAS", "Canvas Download"),
+                        ],
+                        max_length=50,
+                    ),
+                ),
+                ("items_processed", models.IntegerField(default=0)),
+                ("items_failed", models.IntegerField(default=0)),
+                (
+                    "errors",
+                    models.JSONField(
+                        blank=True, help_text="List of error messages", null=True
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'Enrichment Job',
-                'verbose_name_plural': 'Enrichment Jobs',
-                'ordering': ['-created_at'],
+                "verbose_name": "Enrichment Job",
+                "verbose_name_plural": "Enrichment Jobs",
+                "ordering": ["-created_at"],
             },
         ),
     ]

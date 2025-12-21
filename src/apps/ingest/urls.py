@@ -21,6 +21,11 @@ urlpatterns = [
         views.batch_status_api,
         name="batch_status_api",
     ),
+    path(
+        "batches/<int:batch_id>/status-partial/",
+        views.batch_status_partial,
+        name="batch_status_partial",
+    ),
     # Export
     path("export/", views.export_faculty_sheets, name="export_faculty_sheets"),
     path(

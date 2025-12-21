@@ -1,7 +1,8 @@
 import os
 import sqlite3
-import django
 from pathlib import Path
+
+import django
 
 # Setup Django
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
@@ -9,10 +10,10 @@ django.setup()
 
 from apps.core.models import CopyrightItem, Faculty
 
+
 def migrate():
     db_path = Path("ea-cli/db.sqlite3")
     if not db_path.exists():
-        print(f"Legacy database not found at {db_path}")
         return
 
     conn = sqlite3.connect(db_path)
@@ -21,7 +22,6 @@ def migrate():
 
     cursor.execute("SELECT * FROM copyright_data")
     rows = cursor.fetchall()
-    print(f"Found {len(rows)} items in legacy database.")
 
     count = 0
     for row in rows:
@@ -33,6 +33,7 @@ def migrate():
             if dept:
                 # Use mapping as in legacy
                 from config.university import DEPARTMENT_MAPPING
+
                 faculty_abbr = DEPARTMENT_MAPPING.get(dept)
 
             # Fallback to legacy faculty_id column if mapping failed but abbreviation exists
@@ -60,9 +61,11 @@ def migrate():
                     "filetype": row.get("filetype", "unknown"),
                     "classification": row.get("classification", "lange overname"),
                     "ml_classification": row.get("ml_prediction"),
-                    "manual_classification": row.get("manual_classification") or "onbekend",
+                    "manual_classification": row.get("manual_classification")
+                    or "onbekend",
                     "manual_identifier": row.get("manual_identifier"),
-                    "v2_manual_classification": row.get("v2_manual_classification") or "Onbekend",
+                    "v2_manual_classification": row.get("v2_manual_classification")
+                    or "Onbekend",
                     "v2_overnamestatus": row.get("v2_overnamestatus") or "Onbekend",
                     "v2_lengte": row.get("v2_lengte") or "Onbekend",
                     "scope": row.get("scope"),
@@ -80,26 +83,29 @@ def migrate():
                     "publisher": row.get("publisher"),
                     "reliability": row.get("reliability") or 0,
                     "pages_x_students": row.get("pages_x_students") or 0,
-                    "count_students_registered": row.get("count_students_registered") or 0,
+                    "count_students_registered": row.get("count_students_registered")
+                    or 0,
                     "filehash": row.get("filehash"),
                     "last_scan_date_university": row.get("last_scan_date_university"),
                     "last_scan_date_course": row.get("last_scan_date_course"),
-                    "retrieved_from_copyright_on": row.get("retrieved_from_copyright_on"),
+                    "retrieved_from_copyright_on": row.get(
+                        "retrieved_from_copyright_on"
+                    ),
                     "workflow_status": row.get("workflow_status", "ToDo"),
                     "file_exists": bool(row.get("file_exists")),
                     "last_canvas_check": row.get("last_canvas_check"),
                     "canvas_course_id": row.get("canvas_course_id"),
                     "faculty": faculty,
-                }
+                },
             )
             count += 1
             if count % 100 == 0:
-                print(f"Processed {count} items...")
-        except Exception as e:
-            print(f"Error processing material_id {row.get('material_id')}: {e}")
+                pass
+        except Exception:
+            pass
 
-    print(f"Successfully migrated {count} items.")
     conn.close()
+
 
 if __name__ == "__main__":
     migrate()

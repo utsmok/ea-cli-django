@@ -1,4 +1,5 @@
 import os
+
 import django
 from django.contrib.auth import get_user_model
 
@@ -6,15 +7,15 @@ from django.contrib.auth import get_user_model
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
 django.setup()
 
-from apps.core.models import CopyrightItem, Faculty, EnrichmentStatus
+from apps.core.models import CopyrightItem, EnrichmentStatus, Faculty
+
 
 def setup():
     User = get_user_model()
     if not User.objects.filter(username="admin").exists():
         User.objects.create_superuser("admin", "admin@example.com", "password123")
-        print("Superuser 'admin' created.")
     else:
-        print("Superuser 'admin' already exists.")
+        pass
 
     # Create dummy faculty
     faculty, _ = Faculty.objects.get_or_create(
@@ -22,8 +23,8 @@ def setup():
         defaults={
             "name": "Test Faculty",
             "hierarchy_level": 1,
-            "full_abbreviation": "TEST"
-        }
+            "full_abbreviation": "TEST",
+        },
     )
 
     # Create a pending item
@@ -33,16 +34,16 @@ def setup():
             "filename": "browser_test.pdf",
             "faculty": faculty,
             "enrichment_status": EnrichmentStatus.PENDING,
-            "title": "Browser Test Item"
-        }
+            "title": "Browser Test Item",
+        },
     )
     if created:
-        print("Created pending test item 88888.")
+        pass
     else:
         # Reset if exists
         item.enrichment_status = EnrichmentStatus.PENDING
         item.save()
-        print("Reset test item 88888 to PENDING.")
+
 
 if __name__ == "__main__":
     setup()

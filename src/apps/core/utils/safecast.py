@@ -1,9 +1,8 @@
-from datetime import datetime, date
-from decimal import Decimal, InvalidOperation
-from typing import Any, TypeVar, Union
 from enum import Enum
+from typing import Any, TypeVar
 
 T = TypeVar("T")
+
 
 def safe_int(value: Any, default: int | None = None) -> int | None:
     """Safely convert value to int. Returns default if conversion fails."""
@@ -15,6 +14,7 @@ def safe_int(value: Any, default: int | None = None) -> int | None:
     except (ValueError, TypeError):
         return default
 
+
 def safe_float(value: Any, default: float | None = None) -> float | None:
     """Safely convert value to float. Returns default if conversion fails."""
     if value is None:
@@ -23,6 +23,7 @@ def safe_float(value: Any, default: float | None = None) -> float | None:
         return float(value)
     except (ValueError, TypeError):
         return default
+
 
 def safe_enum(enum_cls: type[Enum], value: Any, default: Any = None) -> Any:
     """

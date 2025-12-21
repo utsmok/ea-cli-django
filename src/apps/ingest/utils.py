@@ -1,12 +1,13 @@
 import contextlib
 import logging
+import math
 import os
 import warnings
-import math
 from pathlib import Path
 from typing import Any
 
 import polars as pl
+
 from config.university import DEPARTMENT_MAPPING
 
 logger = logging.getLogger(__name__)
@@ -25,9 +26,11 @@ def _read_excel_quiet(file_path: str | Path, **kwargs) -> pl.DataFrame:
     try:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            with open(os.devnull, "w") as devnull, \
-                 contextlib.redirect_stdout(devnull), \
-                 contextlib.redirect_stderr(devnull):
+            with (
+                Path.open(Path(os.devnull), "w") as devnull,
+                contextlib.redirect_stdout(devnull),
+                contextlib.redirect_stderr(devnull),
+            ):
                 return pl.read_excel(file_path, **kwargs)
     finally:
         for name, level in prev_levels.items():
@@ -83,6 +86,7 @@ def read_raw_copyright_file(file_path: Path) -> tuple[str, pl.DataFrame]:
     # On Windows st_ctime is creation, on Unix it's change. strict correctness: use st_mtime?
     # Legacy used creation.
     from datetime import datetime
+
     file_date_dt = datetime.fromtimestamp(file_date)
     latest_file_date = file_date_dt.strftime("%Y-%m-%d")
 
@@ -129,7 +133,9 @@ def sanitize_payload(d: Any) -> Any:
     return d
 
 
-def read_faculty_sheets(faculties_dir: Path, data_entry_name: str = "Data entry") -> pl.DataFrame:
+def read_faculty_sheets(
+    faculties_dir: Path, data_entry_name: str = "Data entry"
+) -> pl.DataFrame:
     """
     Reads all faculty sheets and returns a single DataFrame.
     """
@@ -149,10 +155,12 @@ def read_faculty_sheets(faculties_dir: Path, data_entry_name: str = "Data entry"
     for faculty_dir in [d for d in faculties_dir.iterdir() if d.is_dir()]:
         # Recursively find all xlsx files
         for file in faculty_dir.rglob("*"):
-            if file.is_file() and file.suffix.lower() == ".xlsx" and \
-               "overview" not in file.name.lower() and \
-               "llm" not in file.name.lower():
-
+            if (
+                file.is_file()
+                and file.suffix.lower() == ".xlsx"
+                and "overview" not in file.name.lower()
+                and "llm" not in file.name.lower()
+            ):
                 try:
                     df = _read_excel_quiet(file, sheet_name=data_entry_name)
 

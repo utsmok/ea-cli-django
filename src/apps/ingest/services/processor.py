@@ -197,7 +197,7 @@ class BatchProcessor:
                     # Special handling for date fields
                     if field_name == "last_change":
                         new_value = safe_datetime(new_value)
-                    
+
                     setattr(item, field_name, new_value)
                     changes[field_name] = {"old": None, "new": new_value}
         else:

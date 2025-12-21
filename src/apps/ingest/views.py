@@ -8,9 +8,10 @@ Provides a simple web interface for:
 - Downloading exports
 """
 
+from typing import TYPE_CHECKING
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.core.files.uploadedfile import UploadedFile
 from django.http import FileResponse, Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_http_methods
@@ -18,6 +19,9 @@ from django.views.decorators.http import require_http_methods
 from apps.ingest.models import IngestionBatch
 from apps.ingest.services.export import ExportAbortedError, ExportService
 from apps.ingest.tasks import process_batch, stage_batch
+
+if TYPE_CHECKING:
+    from django.core.files.uploadedfile import UploadedFile
 
 
 @login_required
@@ -92,33 +96,11 @@ def upload(request):
         # Auto-process option
         auto_process = request.POST.get("auto_process") == "on"
         if auto_process:
-            try:
-                # Stage the batch
-                stage_result = stage_batch(batch.id)
-                if stage_result["success"]:
-                    # Process the batch
-                    process_result = process_batch(batch.id)
-                    if process_result["success"]:
-                        messages.success(
-                            request,
-                            f"Batch #{batch.id} uploaded and processed successfully! "
-                            f"Created: {batch.items_created}, Updated: {batch.items_updated}",
-                        )
-                    else:
-                        messages.warning(
-                            request,
-                            f"Batch #{batch.id} uploaded but processing had issues. Check batch details.",
-                        )
-                else:
-                    messages.warning(
-                        request,
-                        f"Batch #{batch.id} uploaded but staging failed. Check batch details.",
-                    )
-            except Exception as e:
-                messages.error(
-                    request,
-                    f"Error processing batch #{batch.id}: {str(e)}",
-                )
+            stage_batch.enqueue(batch.id)
+            messages.success(
+                request,
+                f"Batch #{batch.id} uploaded. Background processing started.",
+            )
         else:
             messages.success(
                 request,
@@ -206,7 +188,6 @@ def batch_status_api(request, batch_id: int):
         {
             "id": batch.id,
             "status": batch.status,
-            "status_display": batch.get_status_display(),
             "progress": {
                 "total_rows": batch.total_rows,
                 "rows_staged": batch.rows_staged,
@@ -222,6 +203,14 @@ def batch_status_api(request, batch_id: int):
             ),
         }
     )
+
+
+@login_required
+@require_http_methods(["GET"])
+def batch_status_partial(request, batch_id: int):
+    """View to render the batch status partial for HTMX."""
+    batch = get_object_or_404(IngestionBatch, id=batch_id)
+    return render(request, "ingest/partials/batch_status.html", {"batch": batch})
 
 
 @login_required
@@ -241,25 +230,26 @@ def batch_process(request, batch_id: int):
     try:
         # Stage if needed
         if batch.status == IngestionBatch.Status.PENDING:
-            stage_result = stage_batch(batch_id)
-            if not stage_result["success"]:
-                messages.error(request, f"Staging failed: {batch.error_message}")
-                return redirect("ingest:batch_detail", batch_id=batch_id)
-
-        # Process
-        process_result = process_batch(batch_id)
-        if process_result["success"]:
+            stage_batch.enqueue(batch_id)
             messages.success(
-                request,
-                f"Batch #{batch_id} processed successfully! "
-                f"Created: {batch.items_created}, Updated: {batch.items_updated}",
+                request, f"Batch #{batch_id} staging started in background."
             )
+
+        # Process if staged
+        elif batch.status == IngestionBatch.Status.STAGED:
+            process_batch.enqueue(batch_id)
+            messages.success(
+                request, f"Batch #{batch_id} processing started in background."
+            )
+
         else:
             messages.warning(
-                request, "Processing completed with issues. Check batch details."
+                request,
+                f"Batch #{batch_id} cannot be processed in current status: {batch.status}",
             )
+
     except Exception as e:
-        messages.error(request, f"Error processing batch: {str(e)}")
+        messages.error(request, f"Error triggering batch processing: {e!s}")
 
     return redirect("ingest:batch_detail", batch_id=batch_id)
 
@@ -282,7 +272,7 @@ def export_faculty_sheets(request):
     except ExportAbortedError as e:
         messages.error(request, str(e))
     except Exception as e:
-        messages.error(request, f"An unexpected error occurred during export: {str(e)}")
+        messages.error(request, f"An unexpected error occurred during export: {e!s}")
 
     # Return to dashboard
     return redirect("ingest:dashboard")
@@ -312,7 +302,7 @@ def download_export(request, faculty: str, filename: str):
         raise Http404("File not found")
 
     return FileResponse(
-        open(file_path, "rb"),
+        Path.open(file_path, "rb"),
         as_attachment=True,
         filename=filename,
     )

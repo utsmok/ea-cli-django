@@ -1,19 +1,20 @@
-import polars as pl
-import os
 from pathlib import Path
 
+import polars as pl
+
+
 def compare_excels(django_path, legacy_path, report_path, sheet_name="Complete data"):
-    with open(report_path, "w", encoding="utf-8") as f:
+    with Path.open(report_path, "w", encoding="utf-8") as f:
+
         def log(msg):
-            print(msg)
             f.write(msg + "\n")
 
         log(f"Comparing\n  Django: {django_path}\n  Legacy: {legacy_path}")
 
-        if not os.path.exists(django_path):
+        if not Path.exists(django_path):
             log(f"ERROR: Django file not found: {django_path}")
             return
-        if not os.path.exists(legacy_path):
+        if not Path.exists(legacy_path):
             log(f"ERROR: Legacy file not found: {legacy_path}")
             return
 
@@ -57,17 +58,9 @@ def compare_excels(django_path, legacy_path, report_path, sheet_name="Complete d
             # Add any other columns to ignore here
         ]
 
-        ENRICHMENT_COLS = [
-            "course_contacts_names",
-            "course_contacts_emails",
-            "course_contacts_organizations",
-            "course_names",
-            "cursuscodes",
-            "programmes",
-            "filehash"
+        common_cols = [
+            c for c in legacy_cols if c in django_cols and c not in IGNORE_COLS
         ]
-
-        common_cols = [c for c in legacy_cols if c in django_cols and c not in IGNORE_COLS]
 
         # Data differences
         diffs = {}
@@ -76,7 +69,7 @@ def compare_excels(django_path, legacy_path, report_path, sheet_name="Complete d
             v_legacy = df_legacy[col].fill_null("NULL").cast(pl.String).to_list()
 
             col_diffs = []
-            for i, (d, l) in enumerate(zip(v_django, v_legacy)):
+            for i, (d, l) in enumerate(zip(v_django, v_legacy, strict=False)):
                 if d != l:
                     col_diffs.append((i, d, l))
 
@@ -88,12 +81,15 @@ def compare_excels(django_path, legacy_path, report_path, sheet_name="Complete d
         else:
             log(f"✗ Found value differences in {len(diffs)} columns:")
             for col, d_list in diffs.items():
-                log(f"  Column '{col}': {len(d_list)} differences. Sample: row {d_list[0][0]}, Django='{d_list[0][1]}', Legacy='{d_list[0][2]}'")
+                log(
+                    f"  Column '{col}': {len(d_list)} differences. Sample: row {d_list[0][0]}, Django='{d_list[0][1]}', Legacy='{d_list[0][2]}'"
+                )
+
 
 if __name__ == "__main__":
     faculties_dir = Path("exports/faculty_sheets")
     if not faculties_dir.exists():
-        print("Exports directory not found.")
+        pass
     else:
         # Loop through all faculty directories
         for faculty_path in faculties_dir.iterdir():
@@ -102,18 +98,16 @@ if __name__ == "__main__":
                 if faculty_name == "backups":
                     continue
 
-                print(f"\nProcessing faculty: {faculty_name}")
-
                 # Compare inbox
                 compare_excels(
                     str(faculty_path / "inbox.xlsx"),
                     f"ea-cli/faculty_sheets/{faculty_name}/inbox.xlsx",
-                    f"comparison_report_{faculty_name}_inbox.txt"
+                    f"comparison_report_{faculty_name}_inbox.txt",
                 )
 
                 # Compare overview
                 compare_excels(
                     str(faculty_path / "overview.xlsx"),
                     f"ea-cli/faculty_sheets/{faculty_name}/overview.xlsx",
-                    f"comparison_report_{faculty_name}_overview.txt"
+                    f"comparison_report_{faculty_name}_overview.txt",
                 )

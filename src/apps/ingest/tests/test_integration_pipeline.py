@@ -54,7 +54,7 @@ class TestQlikIngestion:
     def test_ingest_qlik_export(self, test_user, qlik_file):
         """Test complete Qlik ingestion workflow."""
         # Create ingestion batch
-        with open(qlik_file, "rb") as f:
+        with Path.open(qlik_file, "rb") as f:
             batch = IngestionBatch.objects.create(
                 source_type=IngestionBatch.SourceType.QLIK,
                 uploaded_by=test_user,
@@ -104,7 +104,7 @@ class TestFacultyIngestion:
     ):
         """Test Faculty sheet ingestion after Qlik import."""
         # First, ingest Qlik data to create items
-        with open(qlik_file, "rb") as f:
+        with Path.open(qlik_file, "rb") as f:
             qlik_batch = IngestionBatch.objects.create(
                 source_type=IngestionBatch.SourceType.QLIK,
                 uploaded_by=test_user,
@@ -122,7 +122,7 @@ class TestFacultyIngestion:
         if not eemcs_inbox.exists():
             pytest.skip("EEMCS inbox.xlsx not found in test data")
 
-        with open(eemcs_inbox, "rb") as f:
+        with Path.open(eemcs_inbox, "rb") as f:
             faculty_batch = IngestionBatch.objects.create(
                 source_type=IngestionBatch.SourceType.FACULTY,
                 uploaded_by=test_user,
@@ -155,7 +155,7 @@ class TestExportFunctionality:
     def test_export_structure(self, test_user, qlik_file, tmp_path):
         """Test export creates correct directory structure."""
         # Setup: Ingest some data first
-        with open(qlik_file, "rb") as f:
+        with Path.open(qlik_file, "rb") as f:
             batch = IngestionBatch.objects.create(
                 source_type=IngestionBatch.SourceType.QLIK,
                 uploaded_by=test_user,
@@ -208,7 +208,7 @@ class TestRoundTripIngestion:
     def test_export_reimport_cycle(self, test_user, qlik_file, tmp_path):
         """Test exporting and re-importing data maintains integrity."""
         # Initial import
-        with open(qlik_file, "rb") as f:
+        with Path.open(qlik_file, "rb") as f:
             batch1 = IngestionBatch.objects.create(
                 source_type=IngestionBatch.SourceType.QLIK,
                 uploaded_by=test_user,
@@ -219,13 +219,12 @@ class TestRoundTripIngestion:
         process_batch(batch1.id)
 
         initial_count = CopyrightItem.objects.count()
-        sample_item_initial = CopyrightItem.objects.first()
-        initial_workflow = sample_item_initial.workflow_status
+        CopyrightItem.objects.first()
 
         # Export
         export_dir = tmp_path / "exports"
         exporter = ExportService()
-        result = exporter.export_workflow_tree(output_dir=export_dir)
+        exporter.export_workflow_tree(output_dir=export_dir)
 
         # Find an exported file to re-import
         exported_files = list(export_dir.rglob("*.xlsx"))
@@ -243,7 +242,7 @@ class TestRoundTripIngestion:
             pytest.skip("No suitable file found for re-import")
 
         # Re-import as faculty sheet
-        with open(reimport_file, "rb") as f:
+        with Path.open(reimport_file, "rb") as f:
             batch2 = IngestionBatch.objects.create(
                 source_type=IngestionBatch.SourceType.FACULTY,
                 uploaded_by=test_user,
@@ -262,7 +261,7 @@ class TestRoundTripIngestion:
 def test_complete_pipeline(test_user, qlik_file, tmp_path):
     """End-to-end test of the complete pipeline."""
     # 1. Ingest Qlik data
-    with open(qlik_file, "rb") as f:
+    with Path.open(qlik_file, "rb") as f:
         qlik_batch = IngestionBatch.objects.create(
             source_type=IngestionBatch.SourceType.QLIK,
             uploaded_by=test_user,
@@ -283,8 +282,3 @@ def test_complete_pipeline(test_user, qlik_file, tmp_path):
     # 4. Verify export succeeded
     assert export_dir.exists()
     assert len(result.get("files", [])) > 0 or len(result.get("faculties", [])) == 0
-
-    print("\nPipeline test complete:")
-    print(f"  - Qlik items created: {qlik_batch.items_created}")
-    print(f"  - Export directory: {export_dir}")
-    print(f"  - Files exported: {len(result.get('files', []))}")

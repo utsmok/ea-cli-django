@@ -23,9 +23,7 @@ class Command(BaseCommand):
         if options["clear"]:
             count = Faculty.objects.count()
             Faculty.objects.all().delete()
-            self.stdout.write(
-                self.style.WARNING(f"Cleared {count} existing faculties")
-            )
+            self.stdout.write(self.style.WARNING(f"Cleared {count} existing faculties"))
 
         created_count = 0
         updated_count = 0
@@ -52,9 +50,7 @@ class Command(BaseCommand):
                 logger.info(f"Updated faculty: {abbreviation} - {name}")
 
         self.stdout.write(
-            self.style.SUCCESS(
-                f"\nSuccessfully loaded {len(FACULTIES)} faculties:"
-            )
+            self.style.SUCCESS(f"\nSuccessfully loaded {len(FACULTIES)} faculties:")
         )
         self.stdout.write(f"  - Created: {created_count}")
         self.stdout.write(f"  - Updated: {updated_count}")

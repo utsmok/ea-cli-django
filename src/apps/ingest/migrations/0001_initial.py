@@ -4,130 +4,343 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
-    dependencies = [
-    ]
+    dependencies = []
 
     operations = [
         migrations.CreateModel(
-            name='FacultyEntry',
+            name="FacultyEntry",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('material_id', models.BigIntegerField(db_index=True, help_text='Material ID (must exist in CopyrightItem)')),
-                ('workflow_status', models.CharField(blank=True, max_length=50, null=True)),
-                ('classification', models.CharField(blank=True, max_length=100, null=True)),
-                ('v2_manual_classification', models.CharField(blank=True, max_length=100, null=True)),
-                ('v2_overnamestatus', models.CharField(blank=True, max_length=100, null=True)),
-                ('v2_lengte', models.CharField(blank=True, max_length=50, null=True)),
-                ('remarks', models.TextField(blank=True, null=True)),
-                ('scope', models.CharField(blank=True, max_length=50, null=True)),
-                ('manual_identifier', models.CharField(blank=True, max_length=2048, null=True)),
-                ('manual_classification', models.CharField(blank=True, max_length=2048, null=True)),
-                ('processed', models.BooleanField(db_index=True, default=False, help_text='Whether this entry has been processed')),
-                ('processed_at', models.DateTimeField(blank=True, null=True)),
-                ('row_number', models.IntegerField(help_text='Row number in original Excel file (for error reporting)')),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "material_id",
+                    models.BigIntegerField(
+                        db_index=True,
+                        help_text="Material ID (must exist in CopyrightItem)",
+                    ),
+                ),
+                (
+                    "workflow_status",
+                    models.CharField(blank=True, max_length=50, null=True),
+                ),
+                (
+                    "classification",
+                    models.CharField(blank=True, max_length=100, null=True),
+                ),
+                (
+                    "v2_manual_classification",
+                    models.CharField(blank=True, max_length=100, null=True),
+                ),
+                (
+                    "v2_overnamestatus",
+                    models.CharField(blank=True, max_length=100, null=True),
+                ),
+                ("v2_lengte", models.CharField(blank=True, max_length=50, null=True)),
+                ("remarks", models.TextField(blank=True, null=True)),
+                ("scope", models.CharField(blank=True, max_length=50, null=True)),
+                (
+                    "manual_identifier",
+                    models.CharField(blank=True, max_length=2048, null=True),
+                ),
+                (
+                    "manual_classification",
+                    models.CharField(blank=True, max_length=2048, null=True),
+                ),
+                (
+                    "processed",
+                    models.BooleanField(
+                        db_index=True,
+                        default=False,
+                        help_text="Whether this entry has been processed",
+                    ),
+                ),
+                ("processed_at", models.DateTimeField(blank=True, null=True)),
+                (
+                    "row_number",
+                    models.IntegerField(
+                        help_text="Row number in original Excel file (for error reporting)"
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
             ],
             options={
-                'verbose_name': 'Faculty Entry',
-                'verbose_name_plural': 'Faculty Entries',
-                'db_table': 'ingest_faculty_entries',
-                'ordering': ['batch', 'row_number'],
+                "verbose_name": "Faculty Entry",
+                "verbose_name_plural": "Faculty Entries",
+                "db_table": "ingest_faculty_entries",
+                "ordering": ["batch", "row_number"],
             },
         ),
         migrations.CreateModel(
-            name='IngestionBatch',
+            name="IngestionBatch",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('source_type', models.CharField(choices=[('QLIK', 'Qlik Export'), ('FACULTY', 'Faculty Sheet')], help_text='Type of data source (Qlik or Faculty)', max_length=20)),
-                ('source_file', models.FileField(help_text='Original uploaded file', upload_to='ingestion_batches/%Y/%m/%d/')),
-                ('uploaded_at', models.DateTimeField(auto_now_add=True, help_text='When file was uploaded')),
-                ('status', models.CharField(choices=[('PENDING', 'Pending Processing'), ('STAGING', 'Staging Data'), ('STAGED', 'Data Staged'), ('PROCESSING', 'Processing Items'), ('COMPLETED', 'Completed Successfully'), ('FAILED', 'Failed with Errors'), ('PARTIAL', 'Partially Completed')], db_index=True, default='PENDING', max_length=20)),
-                ('started_at', models.DateTimeField(blank=True, help_text='When processing started', null=True)),
-                ('completed_at', models.DateTimeField(blank=True, help_text='When processing finished', null=True)),
-                ('total_rows', models.IntegerField(default=0, help_text='Total rows in source file')),
-                ('rows_staged', models.IntegerField(default=0, help_text='Rows successfully staged')),
-                ('items_created', models.IntegerField(default=0, help_text='New CopyrightItems created')),
-                ('items_updated', models.IntegerField(default=0, help_text='Existing CopyrightItems updated')),
-                ('items_skipped', models.IntegerField(default=0, help_text='Items skipped (no changes)')),
-                ('items_failed', models.IntegerField(default=0, help_text='Items that failed processing')),
-                ('error_message', models.TextField(blank=True, help_text='Top-level error if batch failed', null=True)),
-                ('faculty_code', models.CharField(blank=True, db_index=True, help_text="Faculty abbreviation (e.g., 'EEMCS') for Faculty sheets", max_length=50, null=True)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "source_type",
+                    models.CharField(
+                        choices=[("QLIK", "Qlik Export"), ("FACULTY", "Faculty Sheet")],
+                        help_text="Type of data source (Qlik or Faculty)",
+                        max_length=20,
+                    ),
+                ),
+                (
+                    "source_file",
+                    models.FileField(
+                        help_text="Original uploaded file",
+                        upload_to="ingestion_batches/%Y/%m/%d/",
+                    ),
+                ),
+                (
+                    "uploaded_at",
+                    models.DateTimeField(
+                        auto_now_add=True, help_text="When file was uploaded"
+                    ),
+                ),
+                (
+                    "status",
+                    models.CharField(
+                        choices=[
+                            ("PENDING", "Pending Processing"),
+                            ("STAGING", "Staging Data"),
+                            ("STAGED", "Data Staged"),
+                            ("PROCESSING", "Processing Items"),
+                            ("COMPLETED", "Completed Successfully"),
+                            ("FAILED", "Failed with Errors"),
+                            ("PARTIAL", "Partially Completed"),
+                        ],
+                        db_index=True,
+                        default="PENDING",
+                        max_length=20,
+                    ),
+                ),
+                (
+                    "started_at",
+                    models.DateTimeField(
+                        blank=True, help_text="When processing started", null=True
+                    ),
+                ),
+                (
+                    "completed_at",
+                    models.DateTimeField(
+                        blank=True, help_text="When processing finished", null=True
+                    ),
+                ),
+                (
+                    "total_rows",
+                    models.IntegerField(
+                        default=0, help_text="Total rows in source file"
+                    ),
+                ),
+                (
+                    "rows_staged",
+                    models.IntegerField(
+                        default=0, help_text="Rows successfully staged"
+                    ),
+                ),
+                (
+                    "items_created",
+                    models.IntegerField(
+                        default=0, help_text="New CopyrightItems created"
+                    ),
+                ),
+                (
+                    "items_updated",
+                    models.IntegerField(
+                        default=0, help_text="Existing CopyrightItems updated"
+                    ),
+                ),
+                (
+                    "items_skipped",
+                    models.IntegerField(
+                        default=0, help_text="Items skipped (no changes)"
+                    ),
+                ),
+                (
+                    "items_failed",
+                    models.IntegerField(
+                        default=0, help_text="Items that failed processing"
+                    ),
+                ),
+                (
+                    "error_message",
+                    models.TextField(
+                        blank=True,
+                        help_text="Top-level error if batch failed",
+                        null=True,
+                    ),
+                ),
+                (
+                    "faculty_code",
+                    models.CharField(
+                        blank=True,
+                        db_index=True,
+                        help_text="Faculty abbreviation (e.g., 'EEMCS') for Faculty sheets",
+                        max_length=50,
+                        null=True,
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'Ingestion Batch',
-                'verbose_name_plural': 'Ingestion Batches',
-                'db_table': 'ingest_batches',
-                'ordering': ['-uploaded_at'],
+                "verbose_name": "Ingestion Batch",
+                "verbose_name_plural": "Ingestion Batches",
+                "db_table": "ingest_batches",
+                "ordering": ["-uploaded_at"],
             },
         ),
         migrations.CreateModel(
-            name='ProcessingFailure',
+            name="ProcessingFailure",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('material_id', models.BigIntegerField(blank=True, help_text='Material ID if known', null=True)),
-                ('row_number', models.IntegerField(help_text='Row number in source file')),
-                ('error_type', models.CharField(help_text="Type of error (e.g., 'ValidationError', 'IntegrityError')", max_length=100)),
-                ('error_message', models.TextField(help_text='Detailed error message')),
-                ('row_data', models.JSONField(help_text='Raw row data that caused the failure')),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "material_id",
+                    models.BigIntegerField(
+                        blank=True, help_text="Material ID if known", null=True
+                    ),
+                ),
+                (
+                    "row_number",
+                    models.IntegerField(help_text="Row number in source file"),
+                ),
+                (
+                    "error_type",
+                    models.CharField(
+                        help_text="Type of error (e.g., 'ValidationError', 'IntegrityError')",
+                        max_length=100,
+                    ),
+                ),
+                ("error_message", models.TextField(help_text="Detailed error message")),
+                (
+                    "row_data",
+                    models.JSONField(help_text="Raw row data that caused the failure"),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
             ],
             options={
-                'verbose_name': 'Processing Failure',
-                'verbose_name_plural': 'Processing Failures',
-                'db_table': 'ingest_failures',
-                'ordering': ['-created_at'],
+                "verbose_name": "Processing Failure",
+                "verbose_name_plural": "Processing Failures",
+                "db_table": "ingest_failures",
+                "ordering": ["-created_at"],
             },
         ),
         migrations.CreateModel(
-            name='QlikEntry',
+            name="QlikEntry",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('material_id', models.BigIntegerField(db_index=True, help_text='Material ID from Qlik')),
-                ('filename', models.CharField(blank=True, max_length=2048, null=True)),
-                ('filehash', models.CharField(blank=True, max_length=255, null=True)),
-                ('filetype', models.CharField(blank=True, max_length=50, null=True)),
-                ('url', models.URLField(blank=True, max_length=2048, null=True)),
-                ('status', models.CharField(blank=True, max_length=50, null=True)),
-                ('title', models.CharField(blank=True, max_length=2048, null=True)),
-                ('author', models.CharField(blank=True, max_length=2048, null=True)),
-                ('publisher', models.CharField(blank=True, max_length=2048, null=True)),
-                ('period', models.CharField(blank=True, max_length=50, null=True)),
-                ('department', models.CharField(blank=True, max_length=2048, null=True)),
-                ('course_code', models.CharField(blank=True, max_length=2048, null=True)),
-                ('course_name', models.CharField(blank=True, max_length=2048, null=True)),
-                ('isbn', models.CharField(blank=True, max_length=255, null=True)),
-                ('doi', models.CharField(blank=True, max_length=255, null=True)),
-                ('owner', models.CharField(blank=True, max_length=2048, null=True)),
-                ('in_collection', models.BooleanField(blank=True, null=True)),
-                ('picturecount', models.IntegerField(default=0)),
-                ('reliability', models.IntegerField(default=0)),
-                ('pages_x_students', models.IntegerField(default=0)),
-                ('count_students_registered', models.IntegerField(default=0)),
-                ('pagecount', models.IntegerField(default=0)),
-                ('wordcount', models.IntegerField(default=0)),
-                ('canvas_course_id', models.BigIntegerField(blank=True, null=True)),
-                ('infringement', models.CharField(blank=True, max_length=50, null=True)),
-                ('possible_fine', models.DecimalField(blank=True, decimal_places=2, max_digits=10, null=True)),
-                ('ml_classification', models.CharField(blank=True, max_length=100, null=True)),
-                ('last_canvas_check', models.DateTimeField(blank=True, null=True)),
-                ('manual_classification', models.CharField(blank=True, max_length=2048, null=True)),
-                ('remarks', models.TextField(blank=True, null=True)),
-                ('scope', models.CharField(blank=True, max_length=50, null=True)),
-                ('auditor', models.CharField(blank=True, max_length=2048, null=True)),
-                ('last_change', models.DateTimeField(blank=True, null=True)),
-                ('processed', models.BooleanField(db_index=True, default=False, help_text='Whether this entry has been processed')),
-                ('processed_at', models.DateTimeField(blank=True, null=True)),
-                ('row_number', models.IntegerField(help_text='Row number in original Excel file (for error reporting)')),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "material_id",
+                    models.BigIntegerField(
+                        db_index=True, help_text="Material ID from Qlik"
+                    ),
+                ),
+                ("filename", models.CharField(blank=True, max_length=2048, null=True)),
+                ("filehash", models.CharField(blank=True, max_length=255, null=True)),
+                ("filetype", models.CharField(blank=True, max_length=50, null=True)),
+                ("url", models.URLField(blank=True, max_length=2048, null=True)),
+                ("status", models.CharField(blank=True, max_length=50, null=True)),
+                ("title", models.CharField(blank=True, max_length=2048, null=True)),
+                ("author", models.CharField(blank=True, max_length=2048, null=True)),
+                ("publisher", models.CharField(blank=True, max_length=2048, null=True)),
+                ("period", models.CharField(blank=True, max_length=50, null=True)),
+                (
+                    "department",
+                    models.CharField(blank=True, max_length=2048, null=True),
+                ),
+                (
+                    "course_code",
+                    models.CharField(blank=True, max_length=2048, null=True),
+                ),
+                (
+                    "course_name",
+                    models.CharField(blank=True, max_length=2048, null=True),
+                ),
+                ("isbn", models.CharField(blank=True, max_length=255, null=True)),
+                ("doi", models.CharField(blank=True, max_length=255, null=True)),
+                ("owner", models.CharField(blank=True, max_length=2048, null=True)),
+                ("in_collection", models.BooleanField(blank=True, null=True)),
+                ("picturecount", models.IntegerField(default=0)),
+                ("reliability", models.IntegerField(default=0)),
+                ("pages_x_students", models.IntegerField(default=0)),
+                ("count_students_registered", models.IntegerField(default=0)),
+                ("pagecount", models.IntegerField(default=0)),
+                ("wordcount", models.IntegerField(default=0)),
+                ("canvas_course_id", models.BigIntegerField(blank=True, null=True)),
+                (
+                    "infringement",
+                    models.CharField(blank=True, max_length=50, null=True),
+                ),
+                (
+                    "possible_fine",
+                    models.DecimalField(
+                        blank=True, decimal_places=2, max_digits=10, null=True
+                    ),
+                ),
+                (
+                    "ml_classification",
+                    models.CharField(blank=True, max_length=100, null=True),
+                ),
+                ("last_canvas_check", models.DateTimeField(blank=True, null=True)),
+                (
+                    "manual_classification",
+                    models.CharField(blank=True, max_length=2048, null=True),
+                ),
+                ("remarks", models.TextField(blank=True, null=True)),
+                ("scope", models.CharField(blank=True, max_length=50, null=True)),
+                ("auditor", models.CharField(blank=True, max_length=2048, null=True)),
+                ("last_change", models.DateTimeField(blank=True, null=True)),
+                (
+                    "processed",
+                    models.BooleanField(
+                        db_index=True,
+                        default=False,
+                        help_text="Whether this entry has been processed",
+                    ),
+                ),
+                ("processed_at", models.DateTimeField(blank=True, null=True)),
+                (
+                    "row_number",
+                    models.IntegerField(
+                        help_text="Row number in original Excel file (for error reporting)"
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
             ],
             options={
-                'verbose_name': 'Qlik Entry',
-                'verbose_name_plural': 'Qlik Entries',
-                'db_table': 'ingest_qlik_entries',
-                'ordering': ['batch', 'row_number'],
+                "verbose_name": "Qlik Entry",
+                "verbose_name_plural": "Qlik Entries",
+                "db_table": "ingest_qlik_entries",
+                "ordering": ["batch", "row_number"],
             },
         ),
     ]

@@ -5,7 +5,6 @@ Defines how to compare old and new values to decide which to keep.
 """
 
 from datetime import date, datetime
-from decimal import Decimal
 from typing import Any, Protocol
 
 
@@ -53,9 +52,7 @@ class FillNullStrategy:
             return False  # Don't fill with None
         if old_value is None:
             return True
-        if isinstance(old_value, str) and old_value.strip() == "":
-            return True
-        return False
+        return bool(isinstance(old_value, str) and old_value.strip() == "")
 
 
 class PreferNonNullStrategy:
@@ -78,16 +75,8 @@ class PreferGreaterStrategy:
 
         try:
             # Try numeric comparison
-            old_num = (
-                float(old_value)
-                if not isinstance(old_value, (int, float, Decimal))
-                else float(old_value)
-            )
-            new_num = (
-                float(new_value)
-                if not isinstance(new_value, (int, float, Decimal))
-                else float(new_value)
-            )
+            old_num = float(old_value)
+            new_num = float(new_value)
             return new_num > old_num
         except (ValueError, TypeError):
             # If not numeric, fallback to always update

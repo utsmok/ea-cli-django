@@ -126,7 +126,7 @@ class TestUploadView:
         test_file = tmp_path / "test.xlsx"
         test_file.write_bytes(b"dummy content")
 
-        with open(test_file, "rb") as f:
+        with Path.open(test_file, "rb") as f:
             response = authenticated_client.post(
                 reverse("ingest:upload"),
                 {

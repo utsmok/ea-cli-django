@@ -5,18 +5,24 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
     dependencies = [
-        ('core', '0001_initial'),
-        ('ingest', '0001_initial'),
+        ("core", "0001_initial"),
+        ("ingest", "0001_initial"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='changelog',
-            name='batch',
-            field=models.ForeignKey(blank=True, help_text='Ingestion batch that caused this change (if applicable)', null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='changes', to='ingest.ingestionbatch'),
+            model_name="changelog",
+            name="batch",
+            field=models.ForeignKey(
+                blank=True,
+                help_text="Ingestion batch that caused this change (if applicable)",
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                related_name="changes",
+                to="ingest.ingestionbatch",
+            ),
         ),
     ]

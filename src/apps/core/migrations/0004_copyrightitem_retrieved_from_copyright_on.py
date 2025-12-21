@@ -4,15 +4,14 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('core', '0003_initial'),
+        ("core", "0003_initial"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='copyrightitem',
-            name='retrieved_from_copyright_on',
+            model_name="copyrightitem",
+            name="retrieved_from_copyright_on",
             field=models.DateTimeField(blank=True, null=True),
         ),
     ]

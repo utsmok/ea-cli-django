@@ -1,17 +1,11 @@
 import logging
+from datetime import date, datetime
 from typing import Any
-from datetime import datetime, date
 
 from apps.core.models import (
-    WorkflowStatus,
-    Classification,
-    ClassificationV2,
     Infringement,
-    Lengte,
-    OvernameStatus,
-    CopyrightItem
+    WorkflowStatus,
 )
-from apps.core.utils.safecast import safe_int, safe_float
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +26,12 @@ INFRINGMENT_PRIORITY = [
     Infringement.UNDETERMINED,
 ]
 
-FILE_EXISTS_PRIORITY = [False, 0, True, 1] # False/0 overrides True/1 (pessimistic) -> wait, legacy said [False, 0, True, 1].
+FILE_EXISTS_PRIORITY = [
+    False,
+    0,
+    True,
+    1,
+]  # False/0 overrides True/1 (pessimistic) -> wait, legacy said [False, 0, True, 1].
 # Legacy FileExistsStrategy said "always update".
 # But `added_fields` had priorities.
 # Legacy Strategy for file_exists:
@@ -46,11 +45,11 @@ ADDED_FIELDS = {
     "retrieved_from_copyright_on": None,
     "possible_fine": None,
     "infringement": INFRINGMENT_PRIORITY,
-    "file_exists": None, # Special handling
+    "file_exists": None,  # Special handling
 }
 
 CHANGEABLE_FIELDS = {
-    "manual_classification": None, # We might want to add priority if needed, legacy had None/List depending on settings
+    "manual_classification": None,  # We might want to add priority if needed, legacy had None/List depending on settings
     "v2_manual_classification": None,
     "manual_identifier": None,
     "remarks": None,
@@ -58,11 +57,13 @@ CHANGEABLE_FIELDS = {
     # Add others as needed
 }
 
+
 def get_mergeable_fields() -> dict:
     return {**ADDED_FIELDS, **CHANGEABLE_FIELDS}
 
 
 # --- Strategies ---
+
 
 class FieldComparisonStrategy:
     def should_update(
@@ -73,6 +74,7 @@ class FieldComparisonStrategy:
 
 class RankedFieldStrategy(FieldComparisonStrategy):
     """Strategy for ranked fields (lower index = higher priority)."""
+
     def should_update(
         self, new_value: Any, old_value: Any, ordering: list | None
     ) -> tuple[bool, str]:
@@ -101,10 +103,14 @@ class RankedFieldStrategy(FieldComparisonStrategy):
 
 class DateFieldStrategy(FieldComparisonStrategy):
     """Newer dates take precedence."""
+
     def should_update(
         self, new_value: Any, old_value: Any, ordering: Any
     ) -> tuple[bool, str]:
-        if not (isinstance(new_value, (date, datetime)) and isinstance(old_value, (date, datetime))):
+        if not (
+            isinstance(new_value, date | datetime)
+            and isinstance(old_value, date | datetime)
+        ):
             return False, ""
         if new_value > old_value:
             return True, "new date > old date"
@@ -113,6 +119,7 @@ class DateFieldStrategy(FieldComparisonStrategy):
 
 class NumericFieldStrategy(FieldComparisonStrategy):
     """Larger numbers take precedence? Or just diff? Legacy said safe_compare_greater."""
+
     def should_update(
         self, new_value: Any, old_value: Any, ordering: Any
     ) -> tuple[bool, str]:
@@ -128,6 +135,7 @@ class NumericFieldStrategy(FieldComparisonStrategy):
 
 class StringFieldStrategy(FieldComparisonStrategy):
     """Longer strings take precedence."""
+
     def should_update(
         self, new_value: Any, old_value: Any, ordering: Any
     ) -> tuple[bool, str]:
@@ -145,7 +153,9 @@ class AlwaysUpdateStrategy(FieldComparisonStrategy):
         return True, "always update"
 
 
-def get_strategy_for_field(field_name: str, ordering: list | None = None) -> FieldComparisonStrategy:
+def get_strategy_for_field(
+    field_name: str, ordering: list | None = None
+) -> FieldComparisonStrategy:
     if field_name == "file_exists":
         return AlwaysUpdateStrategy()
 
@@ -156,7 +166,7 @@ def get_strategy_for_field(field_name: str, ordering: list | None = None) -> Fie
     if field_name in ["retrieved_from_copyright_on", "last_change"]:
         return DateFieldStrategy()
 
-    return StringFieldStrategy() # Default conservative? Or Numeric?
+    return StringFieldStrategy()  # Default conservative? Or Numeric?
     # Legacy default was NumericFieldStrategy.
     # But usually text fields (remarks) use StringStrategy logic in legacy (checked explicitly for str).
 
@@ -171,18 +181,20 @@ def get_strategy_for_field(field_name: str, ordering: list | None = None) -> Fie
     return NumericFieldStrategy()
 
 
-def determine_strategy_by_value(field_name: str, old_value: Any, ordering: list | None) -> FieldComparisonStrategy:
+def determine_strategy_by_value(
+    field_name: str, old_value: Any, ordering: list | None
+) -> FieldComparisonStrategy:
     if field_name == "file_exists":
         return AlwaysUpdateStrategy()
 
     if ordering:
         return RankedFieldStrategy()
 
-    if isinstance(old_value, (date, datetime)):
+    if isinstance(old_value, date | datetime):
         return DateFieldStrategy()
     if isinstance(old_value, str):
         return StringFieldStrategy()
-    if isinstance(old_value, (int, float)):
+    if isinstance(old_value, int | float):
         return NumericFieldStrategy()
 
-    return NumericFieldStrategy() # Fallback
+    return NumericFieldStrategy()  # Fallback

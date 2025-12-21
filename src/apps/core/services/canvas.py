@@ -64,6 +64,7 @@ async def select_items_needing_check(
             cutoff_date = datetime.now() - timedelta(days=ttl_days)
             # Check items that are either unchecked or older than TTL
             from django.db.models import Q
+
             queryset = queryset.filter(
                 Q(file_exists__isnull=True) | Q(last_canvas_check__lt=cutoff_date)
             )
@@ -141,7 +142,9 @@ async def check_single_file_existence(
             )
 
     except Exception as e:
-        logger.error(f"Error checking file existence for material_id {material_id}: {e}")
+        logger.error(
+            f"Error checking file existence for material_id {material_id}: {e}"
+        )
         return FileExistenceResult(
             material_id=material_id,
             file_exists=False,
@@ -201,9 +204,7 @@ async def update_file_existence_batch(results: list[FileExistenceResult]) -> Non
                 canvas_course_id=result["canvas_course_id"],
             )
         except Exception as e:
-            logger.error(
-                f"Error updating material_id {result['material_id']}: {e}"
-            )
+            logger.error(f"Error updating material_id {result['material_id']}: {e}")
 
     logger.info(f"Successfully updated {len(results)} items")
 

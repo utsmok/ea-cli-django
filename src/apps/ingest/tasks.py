@@ -7,6 +7,7 @@ Tasks can be triggered by Django views or management commands.
 from typing import Any
 
 import polars as pl
+from django.tasks import task
 from loguru import logger
 
 from .models import FacultyEntry, IngestionBatch, QlikEntry
@@ -21,6 +22,7 @@ from .services import (
 )
 
 
+@task
 def stage_batch(batch_id: int) -> dict[str, Any]:
     """
     Stage a batch: Read Excel file and create staging entries.
@@ -39,7 +41,7 @@ def stage_batch(batch_id: int) -> dict[str, Any]:
         batch.status = IngestionBatch.Status.STAGING
         batch.save(update_fields=["status"])
 
-        logger.info(f"Staging batch {batch_id} ({batch.get_source_type_display()})")
+        logger.info(f"Staging batch {batch_id} ({batch.source_type})")
 
         # Read Excel file
         file_path = batch.source_file.path
@@ -48,14 +50,22 @@ def stage_batch(batch_id: int) -> dict[str, Any]:
             # We ingest from the Data entry sheet.
             try:
                 result = pl.read_excel(file_path, sheet_name="Data entry")
-                df = result if isinstance(result, pl.DataFrame) else result["Data entry"]
+                df = (
+                    result if isinstance(result, pl.DataFrame) else result["Data entry"]
+                )
             except Exception:
                 # Fallback to second sheet by index
                 result = pl.read_excel(file_path, sheet_id=1)
-                df = result if isinstance(result, pl.DataFrame) else list(result.values())[1]
+                df = (
+                    result
+                    if isinstance(result, pl.DataFrame)
+                    else list(result.values())[1]
+                )
         else:
-            result = pl.read_excel(file_path, sheet_id=0)  # Read first sheet (zero-indexed)
-        df = result if isinstance(result, pl.DataFrame) else list(result.values())[0]
+            result = pl.read_excel(
+                file_path, sheet_id=0
+            )  # Read first sheet (zero-indexed)
+        df = result if isinstance(result, pl.DataFrame) else next(iter(result.values()))
 
         batch.total_rows = len(df)
         batch.save(update_fields=["total_rows"])
@@ -108,6 +118,7 @@ def stage_batch(batch_id: int) -> dict[str, Any]:
         raise
 
 
+@task
 def process_batch(batch_id: int) -> dict[str, Any]:
     """
     Process a batch: Apply staged entries to CopyrightItems.
@@ -124,7 +135,7 @@ def process_batch(batch_id: int) -> dict[str, Any]:
         # Get batch
         batch = IngestionBatch.objects.get(id=batch_id)
 
-        logger.info(f"Processing batch {batch_id} ({batch.get_source_type_display()})")
+        logger.info(f"Processing batch {batch_id} ({batch.source_type})")
 
         # Run processor
         processor = BatchProcessor(batch)
@@ -140,6 +151,7 @@ def process_batch(batch_id: int) -> dict[str, Any]:
 
         # Trigger Phase B Enrichment
         from apps.enrichment.tasks import trigger_batch_enrichment
+
         trigger_batch_enrichment(batch_id)
 
         return {
@@ -168,7 +180,7 @@ def _stage_qlik_entries(batch: IngestionBatch, df: pl.DataFrame) -> int:
             # File metadata
             filename=row.get("filename"),
             filehash=row.get("filehash"),
-            filetype=row.get("filetype").lower() if row.get("filetype") else None,
+            filetype=row.get("filetype", "").lower() if row.get("filetype") else None,
             url=row.get("url"),
             status=row.get("status"),
             # Content

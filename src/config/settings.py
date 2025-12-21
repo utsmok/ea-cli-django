@@ -41,6 +41,8 @@ INSTALLED_APPS = [
     "apps.documents",
     "apps.enrichment",
     "apps.classification",
+    "django_tasks",
+    "django_rq",
 ]
 
 # Custom User Model
@@ -79,15 +81,23 @@ WSGI_APPLICATION = "config.wsgi.application"
 
 # DATABASE configuration, support DATABASE_URL for Docker/Postgres
 # When running from host, 'db' hostname won't resolve, so we replace it with 'localhost'
+# If running on host but URL points to 'db' or 'redis' (Docker hostnames),
+# replace with 'localhost' so host-based tools can connect.
+# We detect Docker by checking for /.dockerenv
+RUNNING_IN_DOCKER = os.path.exists("/.dockerenv")
+
 _db_url = os.getenv(
     "DATABASE_URL", "postgres://admin:dev_password@localhost:5432/copyright_db"
 )
-# If 'db:' appears in URL (Docker internal hostname), replace with 'localhost:'
-if "@db:" in _db_url:
-    _db_url = _db_url.replace("@db:", "@localhost:")
-DATABASES = {
-    "default": env.db_url_config(_db_url)
-}
+_redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+
+if not RUNNING_IN_DOCKER:
+    if "@db:" in _db_url:
+        _db_url = _db_url.replace("@db:", "@localhost:")
+    if "//redis:" in _redis_url:
+        _redis_url = _redis_url.replace("//redis:", "//localhost:")
+
+DATABASES = {"default": env.db_url_config(_db_url)}
 DATABASES["default"]["TEST"] = {
     "NAME": "test_copyright_db_isolated",
 }
@@ -105,17 +115,29 @@ STATICFILES_DIRS = [BASE_DIR / "static"]
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# TASKS configuration as provided in the plan
+# TASKS configuration
+# Django 6 Tasks with django-tasks RQ backend
+# Fallback to ImmediateBackend if Redis is not configured
+# Use ImmediateBackend for tests or if Redis is not configured
+import sys
+
+IS_TESTING = "pytest" in sys.modules
+
 TASKS = {
     "default": {
-        "BACKEND": "django_redis_tasks.backend.RedisBackend",
-        "OPTIONS": {
-            "connection_string": os.environ.get(
-                "REDIS_URL", "redis://localhost:6379/0"
-            ),
-            "queue_name": "default",
-        },
-    }
+        "BACKEND": "django_tasks.backends.rq.RQBackend"
+        if (_redis_url and not IS_TESTING)
+        else "django_tasks.backends.immediate.ImmediateBackend",
+    },
+}
+
+# RQ_QUEUES for django-rq
+RQ_QUEUES = {
+    "default": {
+        "URL": _redis_url,
+        "DEFAULT_TIMEOUT": 3600,
+        "JOB_CLASS": "django_tasks.backends.rq.Job",
+    },
 }
 
 LOGGING = {
@@ -135,7 +157,9 @@ LOGGING = {
 # Canvas LMS API Configuration
 CANVAS_API_URL = env("CANVAS_API_URL", default="https://utwente.instructure.com/api/v1")
 # Support both CANVAS_API_TOKEN and CANVAS_API_KEY (legacy name)
-CANVAS_API_TOKEN = env("CANVAS_API_TOKEN", default="") or env("CANVAS_API_KEY", default="")
+CANVAS_API_TOKEN = env("CANVAS_API_TOKEN", default="") or env(
+    "CANVAS_API_KEY", default=""
+)
 
 # Osiris Scraper Settings
 OSIRIS_BASE_URL = env("OSIRIS_BASE_URL", default="https://utwente.osiris-student.nl")

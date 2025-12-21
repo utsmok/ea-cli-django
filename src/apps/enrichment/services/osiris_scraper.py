@@ -1,16 +1,11 @@
-import asyncio
-import contextlib
 import urllib.parse
-from typing import Any, Dict, List, Optional, Set
+from typing import Any
 
 import bs4
 import httpx
 import Levenshtein
-from bs4 import Tag
 from django.conf import settings
 from loguru import logger
-
-from apps.core.models import Course, Person, Faculty
 
 
 class OsirisScraperService:
@@ -18,7 +13,7 @@ class OsirisScraperService:
     Service for fetching and parsing course and person data from Osiris and People Page.
     """
 
-    def __init__(self, client: Optional[httpx.AsyncClient] = None):
+    def __init__(self, client: httpx.AsyncClient | None = None):
         self.client = client or httpx.AsyncClient(
             headers=settings.OSIRIS_HEADERS, timeout=30.0
         )
@@ -30,7 +25,7 @@ class OsirisScraperService:
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         await self.client.aclose()
 
-    async def fetch_course_details(self, course_code: int) -> Dict[str, Any]:
+    async def fetch_course_details(self, course_code: int) -> dict[str, Any]:
         """
         Fetch course data from Osiris.
         """
@@ -45,18 +40,22 @@ class OsirisScraperService:
         body = (
             '{"from":0,"size":25,"sort":[{"cursus_lange_naam.raw":{"order":"asc"}},'
             '{"cursus":{"order":"asc"}},{"collegejaar":{"order":"desc"}}],'
-            '"query":{"bool":{"must":[{"multi_match":{"query":"' + str(course_code) + '",'
+            '"query":{"bool":{"must":[{"multi_match":{"query":"'
+            + str(course_code)
+            + '",'
             '"type":"phrase_prefix","fields":["cursus","cursus_korte_naam","cursus_lange_naam"],'
             '"max_expansions":200}}]}}}'
         )
 
         try:
             headers = self.client.headers.copy()
-            headers.update({
-                "host": "utwente.osiris-student.nl",
-                "connection": "keep-alive",
-                "content-length": str(len(body)),
-            })
+            headers.update(
+                {
+                    "host": "utwente.osiris-student.nl",
+                    "connection": "keep-alive",
+                    "content-length": str(len(body)),
+                }
+            )
             response = await self.client.post(search_url, content=body, headers=headers)
             response.raise_for_status()
             results = response.json().get("hits", {}).get("hits", [])
@@ -91,17 +90,19 @@ class OsirisScraperService:
             logger.error(f"Error fetching course {course_code}: {e}")
             return {}
 
-    async def _fetch_extended_course_details(self, course_info: Dict[str, Any]):
+    async def _fetch_extended_course_details(self, course_info: dict[str, Any]):
         """Fetch detailed course page to extract contacts and teachers."""
         internal_id = course_info["internal_id"]
         url = f"{self.base_url}/student/osiris/owc/cursussen/{internal_id}"
 
         try:
             headers = self.client.headers.copy()
-            headers.update({
-                "host": "utwente.osiris-student.nl",
-                "connection": "keep-alive",
-            })
+            headers.update(
+                {
+                    "host": "utwente.osiris-student.nl",
+                    "connection": "keep-alive",
+                }
+            )
             response = await self.client.get(url, headers=headers)
             response.raise_for_status()
             details = response.json()
@@ -126,9 +127,11 @@ class OsirisScraperService:
             course_info["contacts"] = list(course_info["contacts"])
 
         except Exception as e:
-            logger.warning(f"Could not fetch extended details for course {internal_id}: {e}")
+            logger.warning(
+                f"Could not fetch extended details for course {internal_id}: {e}"
+            )
 
-    async def fetch_person_data(self, person_name: str) -> Dict[str, Any]:
+    async def fetch_person_data(self, person_name: str) -> dict[str, Any]:
         """
         Fetch person data from people.utwente.nl.
         """
@@ -171,11 +174,7 @@ class OsirisScraperService:
 
                 # Basic ratio check
                 ratio = Levenshtein.ratio(full_name.lower(), compare_name)
-                matches.append({
-                    "name": full_name,
-                    "url": url,
-                    "ratio": ratio
-                })
+                matches.append({"name": full_name, "url": url, "ratio": ratio})
 
             if not matches:
                 return {}
@@ -184,7 +183,9 @@ class OsirisScraperService:
             best_match = matches[0]
 
             if best_match["ratio"] < 0.5:
-                logger.warning(f"Low confidence match for {person_name}: {best_match['name']} ({best_match['ratio']})")
+                logger.warning(
+                    f"Low confidence match for {person_name}: {best_match['name']} ({best_match['ratio']})"
+                )
                 return {}
 
             # Fetch detail page
@@ -195,8 +196,8 @@ class OsirisScraperService:
             # Extract email
             email = ""
             for a in detail_soup.find_all("a", href=True):
-                if a["href"].startswith("mailto:"):
-                    email = a["href"].replace("mailto:", "")
+                if str(a["href"]).startswith("mailto:"):
+                    email = str(a["href"]).replace("mailto:", "")
                     break
 
             # Extract organizations

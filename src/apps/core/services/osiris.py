@@ -1,30 +1,26 @@
 import asyncio
 import logging
-import contextlib
 import urllib.parse as _u
-from datetime import datetime
-from typing import Set, Dict, List, Optional, Any
 
 import bs4
 import httpx
-import Levenshtein
-from bs4 import Tag
-from django.conf import settings
-from django.db import transaction
 from django.utils import timezone
 
 from apps.core.models import CopyrightItem, Course, MissingCourse, Person
+from apps.core.services.relations import link_persons_to_courses
 from apps.core.utils.course_parser import determine_course_code
 from apps.core.utils.safecast import safe_int
-from apps.core.services.relations import link_persons_to_courses
 
 logger = logging.getLogger(__name__)
 
 # Constants
-OSIRIS_SEARCH_URL = "https://utwente.osiris-student.nl/student/osiris/student/cursussen/zoeken"
+OSIRIS_SEARCH_URL = (
+    "https://utwente.osiris-student.nl/student/osiris/student/cursussen/zoeken"
+)
 PEOPLE_SEARCH_URL = "https://people.utwente.nl/overview?query="
 
-async def gather_target_course_codes() -> Set[int]:
+
+async def gather_target_course_codes() -> set[int]:
     """Gather all unique course codes from copyright items that need enrichment."""
     logger.info("Gathering target course codes for enrichment...")
 
@@ -45,7 +41,9 @@ async def gather_target_course_codes() -> Set[int]:
     return valid_codes
 
 
-async def select_missing_or_stale_courses(course_codes: Set[int], ttl_days: int = 30) -> Set[int]:
+async def select_missing_or_stale_courses(
+    course_codes: set[int], ttl_days: int = 30
+) -> set[int]:
     """Select course codes that are missing or stale."""
     logger.info("Selecting courses that need enrichment...")
 
@@ -70,18 +68,16 @@ async def select_missing_or_stale_courses(course_codes: Set[int], ttl_days: int 
     stale_existing = set()
 
     for c in existing_courses_list:
-        if not c.modified_at:
-            stale_existing.add(c.cursuscode)
-        elif (now - c.modified_at).days > ttl_days:
+        if not c.modified_at or (now - c.modified_at).days > ttl_days:
             stale_existing.add(c.cursuscode)
 
     # 4. Retry missing if stale
     retry_missing = set()
     if tracked_missing_codes:
-        async for m in MissingCourse.objects.filter(cursuscode__in=tracked_missing_codes):
-            if not m.modified_at:
-                retry_missing.add(m.cursuscode)
-            elif (now - m.modified_at).days > ttl_days:
+        async for m in MissingCourse.objects.filter(
+            cursuscode__in=tracked_missing_codes
+        ):
+            if not m.modified_at or (now - m.modified_at).days > ttl_days:
                 retry_missing.add(m.cursuscode)
 
     to_fetch = new_missing | retry_missing | stale_existing
@@ -92,7 +88,9 @@ async def select_missing_or_stale_courses(course_codes: Set[int], ttl_days: int 
     return to_fetch
 
 
-async def fetch_and_parse_courses(course_codes: Set[int], max_concurrent: int = 10) -> Dict[int, dict]:
+async def fetch_and_parse_courses(
+    course_codes: set[int], max_concurrent: int = 10
+) -> dict[int, dict]:
     """Fetch parse courses concurrently."""
     logger.info(f"Fetching {len(course_codes)} courses concurrently...")
 
@@ -121,11 +119,8 @@ async def fetch_and_parse_courses(course_codes: Set[int], max_concurrent: int = 
     return results
 
 
-
-
 async def fetch_course_data(course_code: int, client: httpx.AsyncClient) -> dict:
     """Fetch single course data from OSIRIS."""
-
 
     def _process_teacher_items(items) -> set[str]:
         """Helper function to process teacher items into a consistent set format"""
@@ -136,8 +131,14 @@ async def fetch_course_data(course_code: int, client: httpx.AsyncClient) -> dict
                 if isinstance(item, dict):
                     # Try to extract name from common dictionary keys
                     name = None
-                    for key in ["name", "docent", "teacher", "person_name", "main_name"]:
-                        if key in item and item[key]:
+                    for key in [
+                        "name",
+                        "docent",
+                        "teacher",
+                        "person_name",
+                        "main_name",
+                    ]:
+                        if item.get(key):
                             name = str(item[key]).strip()
                             break
                     # If no specific key found, try to find any string value
@@ -161,7 +162,7 @@ async def fetch_course_data(course_code: int, client: httpx.AsyncClient) -> dict
             # Handle single dictionary
             name = None
             for key in ["name", "docent", "teacher", "person_name", "main_name"]:
-                if key in items and items[key]:
+                if items.get(key):
                     name = str(items[key]).strip()
                     break
             if not name:
@@ -219,8 +220,8 @@ async def fetch_course_data(course_code: int, client: httpx.AsyncClient) -> dict
         resp = await client.post(OSIRIS_SEARCH_URL, headers=headers, content=body)
 
         if resp.status_code != 200:
-             logger.error(f"OSIRIS API Error {resp.status_code}: {resp.text[:500]}")
-             return {}
+            logger.error(f"OSIRIS API Error {resp.status_code}: {resp.text[:500]}")
+            return {}
 
         raw = resp.json()
         hits = raw.get("hits", {}).get("hits", [])
@@ -265,8 +266,6 @@ async def fetch_course_data(course_code: int, client: httpx.AsyncClient) -> dict
             "unknown_role": set(),
             "tutors": set(),
         }
-
-
 
         # Fetch details
         await _fetch_course_details(course_data, client)
@@ -366,9 +365,8 @@ async def _fetch_course_details(course_data: dict, client: httpx.AsyncClient):
         logger.error(f"Error fetching course details: {e}")
 
 
-
-
 # --- Person Fetching Logic (Simplified Port) ---
+
 
 async def fetch_person_data(name: str, client: httpx.AsyncClient) -> dict | None:
     """Fetch person data by scraping people.utwente.nl."""
@@ -387,7 +385,7 @@ async def fetch_person_data(name: str, client: httpx.AsyncClient) -> dict | None
 
         # If single result redirect happened, we are on profile page
         if "people.utwente.nl" in str(resp.url) and "overview" not in str(resp.url):
-             return _parse_person_page(soup, str(resp.url), name)
+            return _parse_person_page(soup, str(resp.url), name)
 
         # Else parse search results
         results = soup.select("div.ut-person-tile")
@@ -398,15 +396,15 @@ async def fetch_person_data(name: str, client: httpx.AsyncClient) -> dict | None
         first_result = results[0]
         link = first_result.select_one(".ut-person-tile__profilelink a")
         if link and link.has_attr("href"):
-             profile_url = link["href"]
-             if not profile_url.startswith("http"):
-                  profile_url = f"https://people.utwente.nl{profile_url}"
+            profile_url = link["href"]
+            if not str(profile_url).startswith("http"):
+                profile_url = f"https://people.utwente.nl{profile_url}"
 
-             # Fetch profile
-             profile_resp = await client.get(profile_url, follow_redirects=True)
-             if profile_resp.status_code == 200:
-                 profile_soup = bs4.BeautifulSoup(profile_resp.text, "html.parser")
-                 return _parse_person_page(profile_soup, profile_url, name)
+            # Fetch profile
+            profile_resp = await client.get(str(profile_url), follow_redirects=True)
+            if profile_resp.status_code == 200:
+                profile_soup = bs4.BeautifulSoup(profile_resp.text, "html.parser")
+                return _parse_person_page(profile_soup, str(profile_url), name)
 
         return None
 
@@ -414,13 +412,14 @@ async def fetch_person_data(name: str, client: httpx.AsyncClient) -> dict | None
         logger.error(f"Error scraping person {name}: {e}")
         return None
 
+
 def _parse_person_page(soup: bs4.BeautifulSoup, url: str, input_name: str) -> dict:
     data = {
         "input_name": input_name,
         "people_page_url": url,
         "main_name": None,
         "email": None,
-        "faculty_abbrev": None, # to be extracted
+        "faculty_abbrev": None,  # to be extracted
     }
 
     # Name (H1)
@@ -439,7 +438,10 @@ def _parse_person_page(soup: bs4.BeautifulSoup, url: str, input_name: str) -> di
 
     return data
 
-async def fetch_and_parse_persons(names: Set[str], max_concurrent: int = 20) -> Dict[str, dict]:
+
+async def fetch_and_parse_persons(
+    names: set[str], max_concurrent: int = 20
+) -> dict[str, dict]:
     """Fetch person data concurrently."""
     logger.info(f"Fetching {len(names)} persons concurrently...")
 
@@ -484,34 +486,40 @@ async def enrich_async(course_ttl_days: int = 30):
 
         # Persist Courses
         for code, data in courses_data.items():
-             await Course.objects.aupdate_or_create(
-                 cursuscode=code,
-                 defaults={
-                     "internal_id": data.get("internal_id"),
-                     "year": data.get("year") or 2024,
-                     "name": data.get("name") or "Unknown",
-                     "short_name": data.get("short_name"),
-                     "programme_text": data.get("programme") or data.get("programme_text"),
-                     # Faculty lookup could be added here if we had a mapping
-                 }
-             )
+            await Course.objects.aupdate_or_create(
+                cursuscode=code,
+                defaults={
+                    "internal_id": data.get("internal_id"),
+                    "year": data.get("year") or 2024,
+                    "name": data.get("name") or "Unknown",
+                    "short_name": data.get("short_name"),
+                    "programme_text": data.get("programme")
+                    or data.get("programme_text"),
+                    # Faculty lookup could be added here if we had a mapping
+                },
+            )
 
     # 2. Persons
     # Collect names from the course data we just fetched
     person_names = set()
-    course_to_persons = {} # code -> {role: [names]}
+    course_to_persons = {}  # code -> {role: [names]}
 
     # We only process persons for courses we just fetched/parsed,
     # because we need the raw data dict which contains names.
     for code, data in courses_data.items():
         c_persons = {}
-        for role_field in ["teachers", "contacts", "docenten", "examinators", "tutors", "unknown_role"]:
+        for role_field in [
+            "teachers",
+            "contacts",
+            "docenten",
+            "examinators",
+            "tutors",
+            "unknown_role",
+        ]:
             names = data.get(role_field, [])
             if names:
                 clean_names = set()
-                if isinstance(names, list):
-                    clean_names.update([str(n).strip() for n in names if n])
-                elif isinstance(names, set):
+                if isinstance(names, list | set):
                     clean_names.update([str(n).strip() for n in names if n])
 
                 if clean_names:
@@ -546,7 +554,7 @@ async def enrich_async(course_ttl_days: int = 30):
                         "main_name": p_data.get("main_name"),
                         "email": p_data.get("email"),
                         "people_page_url": p_data.get("people_page_url"),
-                    }
+                    },
                 )
         else:
             logger.info("All persons already exist.")
@@ -559,18 +567,16 @@ async def enrich_async(course_ttl_days: int = 30):
         # Build lookup for all relevant persons
         all_related_persons = {}
         async for p in Person.objects.filter(input_name__in=person_names):
-             all_related_persons[p.input_name] = p.people_page_url
+            all_related_persons[p.input_name] = p.people_page_url
 
         for code, roles_map in course_to_persons.items():
             person_list = []
             for role, names in roles_map.items():
                 for name in names:
                     url = all_related_persons.get(name, "")
-                    person_list.append({
-                        "name": name,
-                        "people_page_url": url,
-                        "role": role
-                    })
+                    person_list.append(
+                        {"name": name, "people_page_url": url, "role": role}
+                    )
             linking_map[code] = person_list
 
         # Call the sync service wrapper or async variant?
@@ -584,4 +590,5 @@ async def enrich_async(course_ttl_days: int = 30):
         # We'll use sync_to_async to call it.
 
         from asgiref.sync import sync_to_async
+
         await sync_to_async(link_persons_to_courses)(linking_map)

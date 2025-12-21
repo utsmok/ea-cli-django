@@ -8,6 +8,7 @@ Loads:
 - Course-Person relationships
 """
 
+import contextlib
 import sqlite3
 from pathlib import Path
 
@@ -271,10 +272,8 @@ class Command(BaseCommand):
                 # Map faculty if exists
                 faculty = None
                 if row.get("faculty_id"):
-                    try:
+                    with contextlib.suppress(Faculty.DoesNotExist):
                         faculty = Faculty.objects.get(abbreviation=row["faculty_id"])
-                    except Faculty.DoesNotExist:
-                        pass
 
                 person, was_created = Person.objects.update_or_create(
                     id=row["id"],

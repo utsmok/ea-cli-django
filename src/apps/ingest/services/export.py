@@ -13,13 +13,14 @@ This is a Django-native implementation inspired by the legacy ea-cli exporter.
 
 from __future__ import annotations
 
+import contextlib
 import csv
 import logging
 import os
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import polars as pl
 from django.conf import settings
@@ -61,14 +62,14 @@ class ExportService:
         "done": {WorkflowStatus.DONE, "Done", "done"},
     }
 
-    def __init__(self, faculty_abbr: Optional[str] = None):
+    def __init__(self, faculty_abbr: str | None = None):
         self.faculty_abbr = faculty_abbr
 
     # ---------------------------------------------------------------------
     # Public API
     # ---------------------------------------------------------------------
 
-    def export_workflow_tree(self, output_dir: Optional[Path] = None) -> dict[str, Any]:
+    def export_workflow_tree(self, output_dir: Path | None = None) -> dict[str, Any]:
         """Create the full faculty_sheets directory tree on disk."""
         output_dir = Path(
             output_dir
@@ -83,11 +84,9 @@ class ExportService:
         self._backup_entire_export_dir(output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
 
-
         faculties = self._get_faculty_codes()
         if self.faculty_abbr:
             faculties = [self.faculty_abbr]
-        print(f"Exporting faculties: {', '.join(faculties)}")
         builder = ExcelBuilder()
         exported_files: list[Path] = []
         summary_rows: list[tuple[str, str, BucketStats]] = []
@@ -95,7 +94,6 @@ class ExportService:
 
         for faculty in faculties:
             faculty_df = self._fetch_faculty_dataframe(faculty)
-            print(f"  - {faculty}: {faculty_df.height} items")
             if faculty_df.is_empty():
                 logger.info("No items for faculty %s; skipping", faculty)
                 continue
@@ -110,7 +108,6 @@ class ExportService:
             stats_by_bucket: dict[str, BucketStats] = {}
             for bucket_name, bucket_df in buckets.items():
                 if bucket_df.is_empty():
-                    print(f"    - {bucket_name}: 0 items; skipping")
                     stats_by_bucket[bucket_name] = BucketStats(old=0, new=0)
                     continue
 
@@ -119,9 +116,6 @@ class ExportService:
                 # Since we start with a fresh directory, old_count is always 0
                 old_count = 0
 
-                print(
-                    f"Now exporting {faculty} -> {bucket_name}: {bucket_df.height} items to {target_path}"
-                )
                 wb = builder.build_workbook_for_dataframe(
                     bucket_df, style_iter=style_iter
                 )
@@ -135,11 +129,7 @@ class ExportService:
                 summary_rows.append(
                     (faculty, bucket_name, stats_by_bucket[bucket_name])
                 )
-            print(f"    - Completed export for faculty {faculty}, writing update info.")
             self._write_update_info(faculty_dir, faculty, stats_by_bucket)
-        print(
-            f"Export completed, writing summary CSV to {output_dir} with {len(summary_rows)} rows."
-        )
         self._append_update_overview_csv(output_dir, summary_rows)
 
         return {
@@ -151,7 +141,9 @@ class ExportService:
     def _backup_entire_export_dir(self, output_dir: Path):
         """Move the entire export directory to a timestamped backup location."""
         if not output_dir.exists() or not any(output_dir.iterdir()):
-            logger.info("Export directory is empty or does not exist. No backup needed.")
+            logger.info(
+                "Export directory is empty or does not exist. No backup needed."
+            )
             return
 
         backup_root = output_dir.parent / "backups"
@@ -176,7 +168,6 @@ class ExportService:
     def _get_faculty_codes(self) -> list[str]:
         qs = Faculty.objects.all().values_list("abbreviation", flat=True)
         codes = sorted({c for c in qs if c})
-        print(f"Found faculties: {', '.join(codes)}")
         # Include UNM as a fallback bucket if present?
         return codes
 
@@ -192,7 +183,9 @@ class ExportService:
 
         # 3. Determine which columns can be fetched directly from the DB
         # Note: ml_prediction (legacy) == ml_classification (Django)
-        db_cols = [col for col in all_export_cols if col in model_fields and col != "faculty"]
+        db_cols = [
+            col for col in all_export_cols if col in model_fields and col != "faculty"
+        ]
         if "ml_prediction" in all_export_cols and "ml_classification" in model_fields:
             db_cols.append("ml_classification")
 
@@ -200,7 +193,9 @@ class ExportService:
         fetch_cols = list(set(db_cols) | {"canvas_course_id"})
 
         # 4. Fetch the items from the database with related data
-        items = CopyrightItem.objects.filter(faculty__abbreviation=faculty).prefetch_related(
+        items = CopyrightItem.objects.filter(
+            faculty__abbreviation=faculty
+        ).prefetch_related(
             "courses__courseemployee_set__person__faculty",
             "courses__courseemployee_set__person__orgs",
         )
@@ -218,16 +213,18 @@ class ExportService:
                     target_col = "ml_prediction"
 
                 # Strip timezone from datetime objects for Excel (openpyxl) compatibility
-                if isinstance(val, datetime) and getattr(val, "tzinfo", None) is not None:
+                if (
+                    isinstance(val, datetime)
+                    and getattr(val, "tzinfo", None) is not None
+                ):
                     val = val.replace(tzinfo=None)
                 # Legacy Parity: file_exists should be Yes/No
                 elif col == "file_exists":
                     val = "Yes" if val else "No"
                 # Legacy Parity: in_collection False should be NULL (None)
-                elif col == "in_collection" and val is False:
-                    val = None
-                # Legacy Parity: map 'onbekend' back to None if it was NULL in legacy
-                elif col == "manual_classification" and val == "onbekend":
+                elif (col == "in_collection" and val is False) or (
+                    col == "manual_classification" and val == "onbekend"
+                ):
                     val = None
 
                 # We put it in item_data anyway (internal ones will be dropped from DF)
@@ -240,9 +237,21 @@ class ExportService:
             if courses:
                 # Legacy Parity: use sorted() for consistency
                 # In legacy, order was often non-deterministic but sorted usually matches best.
-                item_data["cursuscodes"] = " | ".join(sorted({str(c.cursuscode) for c in courses}))
-                item_data["course_names"] = " | ".join(sorted({c.name.replace(",", " | ") for c in courses if c.name}))
-                item_data["programmes"] = " | ".join(sorted({c.programme_text.replace(",", " | ") for c in courses if c.programme_text}))
+                item_data["cursuscodes"] = " | ".join(
+                    sorted({str(c.cursuscode) for c in courses})
+                )
+                item_data["course_names"] = " | ".join(
+                    sorted({c.name.replace(",", " | ") for c in courses if c.name})
+                )
+                item_data["programmes"] = " | ".join(
+                    sorted(
+                        {
+                            c.programme_text.replace(",", " | ")
+                            for c in courses
+                            if c.programme_text
+                        }
+                    )
+                )
 
                 # Contacts (teachers with role 'contacts')
                 contacts = set()
@@ -254,17 +263,33 @@ class ExportService:
 
                 if contacts:
                     # Sort to be deterministic
-                    sorted_contacts = sorted(list(contacts), key=lambda p: p.main_name if p.main_name else "")
-                    item_data["course_contacts_names"] = " | ".join(sorted({p.main_name for p in sorted_contacts if p.main_name}))
-                    item_data["course_contacts_emails"] = " | ".join(sorted({p.email for p in sorted_contacts if p.email}))
-                    item_data["course_contacts_faculties"] = " | ".join(sorted({p.faculty.abbreviation for p in sorted_contacts if p.faculty}))
+                    sorted_contacts = sorted(
+                        contacts, key=lambda p: p.main_name if p.main_name else ""
+                    )
+                    item_data["course_contacts_names"] = " | ".join(
+                        sorted({p.main_name for p in sorted_contacts if p.main_name})
+                    )
+                    item_data["course_contacts_emails"] = " | ".join(
+                        sorted({p.email for p in sorted_contacts if p.email})
+                    )
+                    item_data["course_contacts_faculties"] = " | ".join(
+                        sorted(
+                            {
+                                p.faculty.abbreviation
+                                for p in sorted_contacts
+                                if p.faculty
+                            }
+                        )
+                    )
 
                     orgs = set()
                     for p in contacts:
                         for org in p.orgs.all():
                             if org.full_abbreviation:
                                 orgs.add(org.full_abbreviation.replace(",", " | "))
-                    item_data["course_contacts_organizations"] = " | ".join(sorted(orgs))
+                    item_data["course_contacts_organizations"] = " | ".join(
+                        sorted(orgs)
+                    )
 
             values.append(item_data)
 
@@ -284,7 +309,10 @@ class ExportService:
                             pl.lit(f"{base_url}/courses/"),
                             pl.col("canvas_course_id").cast(pl.Utf8),
                             pl.lit("/files/search?search_term="),
-                            pl.col("filename").map_elements(lambda x: str(x).replace(" ", "%20") if x else "", return_dtype=pl.Utf8),
+                            pl.col("filename").map_elements(
+                                lambda x: str(x).replace(" ", "%20") if x else "",
+                                return_dtype=pl.Utf8,
+                            ),
                         ],
                         separator="",
                     )
@@ -345,6 +373,7 @@ class ExportService:
             "in_progress": in_progress_df,
             "done": done_df,
         }
+
     def _atomic_save_workbook(self, wb, target_path: Path):
         """Save a workbook to a temporary file then rename it to target_path."""
         target_path.parent.mkdir(parents=True, exist_ok=True)
@@ -355,7 +384,6 @@ class ExportService:
                 target_path.unlink()
             temp_path.rename(target_path)
         except Exception as e:
-            print(f"\nERROR SAVING WORKBOOK TO {target_path}: {type(e).__name__}: {e}")
             if temp_path.exists():
                 temp_path.unlink()
             raise e
@@ -391,10 +419,8 @@ class ExportService:
 
         # Remove previous update_info files (keep only newest info, like the legacy does)
         for p in faculty_dir.glob("update_info_*.txt"):
-            try:
+            with contextlib.suppress(Exception):
                 p.unlink(missing_ok=True)
-            except Exception:
-                pass
 
         def _line(text: str = "") -> str:
             return text + "\n"
