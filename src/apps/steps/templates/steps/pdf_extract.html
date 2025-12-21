@@ -51,7 +51,7 @@
               {% endif %}
             </td>
             <td>
-              {% if item.document and item.document.text %}
+              {% if item.document and item.document.extracted_text %}
                 <span class="badge badge-success badge-sm">Parsed</span>
               {% elif item.document %}
                 <span class="badge badge-warning badge-sm">Unparsed</span>

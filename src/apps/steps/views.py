@@ -17,6 +17,19 @@ from django.views.decorators.http import require_GET, require_POST, require_http
 from apps.core.models import CopyrightItem
 
 
+def _parse_item_ids(item_ids_str: list[str]) -> tuple[list[int] | None, str | None]:
+    """
+    Parse and validate item IDs from request.
+    
+    Returns:
+        Tuple of (parsed_ids, error_message). If successful, error_message is None.
+    """
+    try:
+        return [int(i) for i in item_ids_str], None
+    except (ValueError, TypeError):
+        return None, "Invalid item IDs"
+
+
 @login_required
 @require_GET
 def steps_index(request):
@@ -58,7 +71,7 @@ def ingest_qlik_step(request):
             source_type=IngestionBatch.SourceType.QLIK,
             status__in=[IngestionBatch.Status.COMPLETED, IngestionBatch.Status.PARTIAL]
         ).count()
-        success_rate = int((completed_batches / total_qlik * 100))
+        success_rate = int((completed_batches / total_qlik) * 100)
     else:
         success_rate = 0
     
@@ -180,10 +193,10 @@ def run_enrich_osiris(request):
     elif not item_ids:
         return JsonResponse({"error": "No items selected"}, status=400)
     else:
-        try:
-            item_ids = [int(i) for i in item_ids]
-        except (ValueError, TypeError):
-            return JsonResponse({"error": "Invalid item IDs"}, status=400)
+        parsed_ids, error = _parse_item_ids(item_ids)
+        if error:
+            return JsonResponse({"error": error}, status=400)
+        item_ids = parsed_ids
     
     # Create enrichment batch
     batch = EnrichmentBatch.objects.create(
@@ -356,10 +369,10 @@ def run_pdf_canvas_status(request):
     elif not item_ids:
         return JsonResponse({"error": "No items selected"}, status=400)
     else:
-        try:
-            item_ids = [int(i) for i in item_ids]
-        except (ValueError, TypeError):
-            return JsonResponse({"error": "Invalid item IDs"}, status=400)
+        parsed_ids, error = _parse_item_ids(item_ids)
+        if error:
+            return JsonResponse({"error": error}, status=400)
+        item_ids = parsed_ids
     
     # Trigger download task
     # Note: This is async, so we return immediately
@@ -406,7 +419,7 @@ def pdf_extract_step(request):
     # Get items with PDFs that haven't been parsed
     items = CopyrightItem.objects.filter(
         document__isnull=False,
-        document__text__isnull=True
+        document__extracted_text__isnull=True
     ).select_related("document").order_by("-created_at")[:100]
     
     # Count items by parsing status
@@ -415,7 +428,7 @@ def pdf_extract_step(request):
     ).count()
     total_parsed = CopyrightItem.objects.filter(
         document__isnull=False,
-        document__text__isnull=False
+        document__extracted_text__isnull=False
     ).count()
     total_unparsed = total_with_pdfs - total_parsed
     
@@ -444,16 +457,16 @@ def run_pdf_extract(request):
     if extract_all:
         items = CopyrightItem.objects.filter(
             document__isnull=False,
-            document__text__isnull=True
+            document__extracted_text__isnull=True
         )
         item_ids = list(items.values_list("material_id", flat=True))
     elif not item_ids:
         return JsonResponse({"error": "No items selected"}, status=400)
     else:
-        try:
-            item_ids = [int(i) for i in item_ids]
-        except (ValueError, TypeError):
-            return JsonResponse({"error": "Invalid item IDs"}, status=400)
+        parsed_ids, error = _parse_item_ids(item_ids)
+        if error:
+            return JsonResponse({"error": error}, status=400)
+        item_ids = parsed_ids
     
     # Trigger parsing task
     try:
