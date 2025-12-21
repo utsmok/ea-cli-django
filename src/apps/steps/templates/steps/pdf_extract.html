@@ -1,0 +1,236 @@
+{% extends "steps/base_step.html" %}
+
+{% block input_selection %}
+<form id="pdf-extract-form" method="post" action="{% url 'steps:run_pdf_extract' %}">
+  {% csrf_token %}
+
+  <div class="form-control mb-4">
+    <label class="label cursor-pointer">
+      <span class="label-text font-semibold">Selection Mode</span>
+      <input type="radio" name="selection_mode" value="all" class="radio radio-primary" checked id="extract-all-radio">
+    </label>
+    <label class="label cursor-pointer">
+      <span class="label-text">Extract all unparsed PDFs ({{ total_unparsed }} items)</span>
+    </label>
+  </div>
+
+  <div class="form-control mb-4">
+    <label class="label cursor-pointer">
+      <input type="radio" name="selection_mode" value="specific" class="radio radio-primary" id="extract-specific-radio">
+      <span class="label-text font-semibold">Select specific items</span>
+    </label>
+  </div>
+
+  <div id="item-selection" class="hidden">
+    <div class="overflow-x-auto max-h-96 border rounded-lg">
+      <table class="table table-sm table-zebra">
+        <thead class="sticky top-0 bg-base-200">
+          <tr>
+            <th>
+              <input type="checkbox" class="checkbox checkbox-sm" id="select-all-items">
+            </th>
+            <th>Material ID</th>
+            <th>Title</th>
+            <th>PDF</th>
+            <th>Parse Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in items %}
+          <tr>
+            <td>
+              <input type="checkbox" name="item_ids" value="{{ item.material_id }}" class="checkbox checkbox-sm item-checkbox">
+            </td>
+            <td class="font-mono">{{ item.material_id }}</td>
+            <td class="max-w-xs truncate">{{ item.title|default:"—" }}</td>
+            <td>
+              {% if item.document %}
+                <span class="badge badge-success badge-sm">Available</span>
+              {% else %}
+                <span class="badge badge-ghost badge-sm">None</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if item.document and item.document.extracted_text %}
+                <span class="badge badge-success badge-sm">Parsed</span>
+              {% elif item.document %}
+                <span class="badge badge-warning badge-sm">Unparsed</span>
+              {% else %}
+                <span class="badge badge-ghost badge-sm">No PDF</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <p class="text-sm text-base-content/60 mt-2">
+      Showing up to 100 items with unparsed PDFs
+    </p>
+  </div>
+</form>
+{% endblock %}
+
+{% block settings %}
+<div class="space-y-4">
+  <div class="form-control">
+    <label class="label">
+      <span class="label-text font-semibold">OCR Engine</span>
+    </label>
+    <select class="select select-bordered" disabled>
+      <option>PaddleOCR (GPU)</option>
+    </select>
+    <label class="label">
+      <span class="label-text-alt text-base-content/60">Using Kreuzberg with PaddleOCR backend</span>
+    </label>
+  </div>
+
+  <div class="form-control">
+    <label class="label">
+      <span class="label-text font-semibold">Quality Threshold</span>
+    </label>
+    <input type="range"
+           min="0"
+           max="100"
+           value="50"
+           class="range range-primary"
+           disabled>
+    <div class="w-full flex justify-between text-xs px-2">
+      <span>0</span>
+      <span>50</span>
+      <span>100</span>
+    </div>
+    <label class="label">
+      <span class="label-text-alt text-base-content/60">Minimum quality score for extraction</span>
+    </label>
+  </div>
+
+  <div class="form-control">
+    <label class="cursor-pointer label">
+      <span class="label-text font-semibold">Extract entities (spaCy)</span>
+      <input type="checkbox"
+             class="checkbox checkbox-primary"
+             checked
+             disabled>
+    </label>
+  </div>
+
+  <div class="form-control">
+    <label class="cursor-pointer label">
+      <span class="label-text font-semibold">Detect language</span>
+      <input type="checkbox"
+             class="checkbox checkbox-primary"
+             checked
+             disabled>
+    </label>
+  </div>
+
+  <div class="alert alert-warning">
+    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+    </svg>
+    <span class="text-sm">PDF extraction is resource-intensive. Large batches may take several hours.</span>
+  </div>
+</div>
+{% endblock %}
+
+{% block action_button %}
+<button type="button"
+        id="run-extract-btn"
+        class="btn btn-accent btn-lg w-full"
+        hx-post="{% url 'steps:run_pdf_extract' %}"
+        hx-include="#pdf-extract-form"
+        hx-target="#progress-container"
+        hx-swap="innerHTML">
+  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+  </svg>
+  Extract PDF Details
+</button>
+{% endblock %}
+
+{% block quick_stats %}
+<div class="stats stats-vertical shadow">
+  <div class="stat">
+    <div class="stat-title">PDFs Available</div>
+    <div class="stat-value text-2xl">{{ total_with_pdfs }}</div>
+  </div>
+
+  <div class="stat">
+    <div class="stat-title">Already Parsed</div>
+    <div class="stat-value text-2xl text-success">{{ total_parsed }}</div>
+  </div>
+
+  <div class="stat">
+    <div class="stat-title">Need Parsing</div>
+    <div class="stat-value text-2xl text-warning">{{ total_unparsed }}</div>
+  </div>
+</div>
+{% endblock %}
+
+{% block progress %}
+<div class="text-center text-base-content/60 py-4">
+  <p>Click "Extract PDF Details" to start</p>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Toggle between "all" and "specific" selection modes
+document.getElementById('extract-all-radio').addEventListener('change', function() {
+  if (this.checked) {
+    document.getElementById('item-selection').classList.add('hidden');
+  }
+});
+
+document.getElementById('extract-specific-radio').addEventListener('change', function() {
+  if (this.checked) {
+    document.getElementById('item-selection').classList.remove('hidden');
+  }
+});
+
+// Handle "select all items" checkbox
+document.getElementById('select-all-items').addEventListener('change', function() {
+  const checkboxes = document.querySelectorAll('.item-checkbox');
+  checkboxes.forEach(cb => cb.checked = this.checked);
+});
+
+// Intercept form submission
+document.body.addEventListener('htmx:configRequest', function(evt) {
+  if (evt.detail.path === '{% url "steps:run_pdf_extract" %}') {
+    const extractAll = document.getElementById('extract-all-radio').checked;
+    evt.detail.parameters['extract_all'] = extractAll ? 'true' : 'false';
+  }
+});
+
+// Handle response
+document.body.addEventListener('htmx:afterRequest', function(evt) {
+  if (evt.detail.pathInfo.requestPath === '{% url "steps:run_pdf_extract" %}') {
+    if (evt.detail.successful) {
+      let response;
+      try {
+        response = JSON.parse(evt.detail.xhr.response);
+      } catch (e) {
+        console.error('Failed to parse response:', e);
+        return;
+      }
+      if (response.success) {
+        const container = document.getElementById('progress-container');
+        container.innerHTML = '';
+
+        const alertDiv = document.createElement('div');
+        alertDiv.className = 'alert alert-success';
+        alertDiv.innerHTML = `
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+          </svg>`;
+        const span = document.createElement('span');
+        span.textContent = response.message;
+        alertDiv.appendChild(span);
+        container.appendChild(alertDiv);
+      }
+    }
+  }
+});
+</script>
+{% endblock %}

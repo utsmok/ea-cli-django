@@ -9,6 +9,7 @@ urlpatterns = [
     path("api/", include("apps.api.urls")),
     path("ingest/", include("apps.ingest.urls")),
     path("enrichment/", include("apps.enrichment.urls")),
+    path("steps/", include("apps.steps.urls")),
     path("", include("apps.dashboard.urls")),
 ]
 

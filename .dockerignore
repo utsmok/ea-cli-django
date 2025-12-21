@@ -1,27 +1,35 @@
-.git
-.venv
-ea-cli
-__pycache__
+# Git
+.git/
+
+# Python
+.venv/
+__pycache__/
 *.pyc
 *.pyo
 *.pyd
-.pytest_cache
-.ruff_cache
-.kreuzberg
-.letta
-.gemini
-documents/downloads
-documents/processed
-logs
-static_files
-test_data
-exports
-ingestion_batches
-conductor
-raw_data
+
+# Caching and temporary files
+.pytest_cache/
+.ruff_cache/
+.kreuzberg/
+.letta/
+.gemini/
+*.log
+
+# Project-specific directories to ignore
+ea-cli/
+downloads/
+documents/
+exports/
+ingestion_batches/
+raw_data/
+static_files/
+test_data/
 tmp_export_test.sqlite3
+
+# IDE and editor directories
+.vscode/
+
+# Don't ignore these files, even if they are in an ignored directory
 !uv.lock
 !pyproject.toml
-ea-cli
-downloads
-.vscode
