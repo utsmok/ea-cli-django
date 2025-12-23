@@ -13,7 +13,7 @@ from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
-from django.views.decorators.http import require_GET, require_POST, require_http_methods
+from django.views.decorators.http import require_GET, require_POST
 
 from apps.core.models import CopyrightItem
 
@@ -59,8 +59,7 @@ def ingest_qlik_step(request):
     # Recent Qlik batches (last 30 days)
     thirty_days_ago = timezone.now() - timedelta(days=30)
     qlik_batches = IngestionBatch.objects.filter(
-        source_type=IngestionBatch.SourceType.QLIK,
-        uploaded_at__gte=thirty_days_ago
+        source_type=IngestionBatch.SourceType.QLIK, uploaded_at__gte=thirty_days_ago
     ).count()
 
     # Success rate
@@ -70,7 +69,7 @@ def ingest_qlik_step(request):
     if total_qlik > 0:
         completed_batches = IngestionBatch.objects.filter(
             source_type=IngestionBatch.SourceType.QLIK,
-            status__in=[IngestionBatch.Status.COMPLETED, IngestionBatch.Status.PARTIAL]
+            status__in=[IngestionBatch.Status.COMPLETED, IngestionBatch.Status.PARTIAL],
         ).count()
         success_rate = int((completed_batches / total_qlik) * 100)
     else:
@@ -110,14 +109,16 @@ def ingest_faculty_step(request):
     # Recent faculty batches (last 30 days)
     thirty_days_ago = timezone.now() - timedelta(days=30)
     faculty_batches = IngestionBatch.objects.filter(
-        source_type=IngestionBatch.SourceType.FACULTY,
-        uploaded_at__gte=thirty_days_ago
+        source_type=IngestionBatch.SourceType.FACULTY, uploaded_at__gte=thirty_days_ago
     ).count()
 
     # Total items updated from faculty sheets
-    total_updated = IngestionBatch.objects.filter(
-        source_type=IngestionBatch.SourceType.FACULTY
-    ).aggregate(Sum("items_updated"))["items_updated__sum"] or 0
+    total_updated = (
+        IngestionBatch.objects.filter(
+            source_type=IngestionBatch.SourceType.FACULTY
+        ).aggregate(Sum("items_updated"))["items_updated__sum"]
+        or 0
+    )
 
     # Recent batches
     recent_batches = IngestionBatch.objects.filter(
@@ -155,21 +156,23 @@ def enrich_osiris_step(request):
     from django.db.models import Exists, OuterRef
 
     # Get items that need enrichment with has_courses annotation to avoid N+1
-    items = CopyrightItem.objects.filter(
-        course_code__isnull=False
-    ).annotate(
-        has_courses=Exists(
-            CopyrightItem.courses.through.objects.filter(
-                copyrightitem_id=OuterRef('pk')
+    items = (
+        CopyrightItem.objects.filter(course_code__isnull=False)
+        .annotate(
+            has_courses=Exists(
+                CopyrightItem.courses.through.objects.filter(
+                    copyrightitem_id=OuterRef("pk")
+                )
             )
         )
-    ).order_by("-created_at")[:100]
+        .order_by("-created_at")[:100]
+    )
 
     # Count items by status
     total_items = CopyrightItem.objects.count()
-    items_with_courses = CopyrightItem.objects.filter(
-        courses__isnull=False
-    ).distinct().count()
+    items_with_courses = (
+        CopyrightItem.objects.filter(courses__isnull=False).distinct().count()
+    )
     items_without_courses = total_items - items_with_courses
 
     context = {
@@ -188,9 +191,10 @@ def enrich_osiris_step(request):
 @require_POST
 def run_enrich_osiris(request):
     """Trigger Osiris enrichment for selected items."""
+    from django.utils import timezone
+
     from apps.enrichment.models import EnrichmentBatch, EnrichmentResult
     from apps.enrichment.tasks import enrich_item
-    from django.utils import timezone
 
     # Get selected items
     item_ids = request.POST.getlist("item_ids")
@@ -217,25 +221,29 @@ def run_enrich_osiris(request):
     )
 
     # Bulk create results for better performance
-    results = EnrichmentResult.objects.bulk_create([
-        EnrichmentResult(
-            item_id=material_id,
-            batch=batch,
-            status=EnrichmentResult.Status.PENDING,
-        )
-        for material_id in item_ids
-    ])
+    results = EnrichmentResult.objects.bulk_create(
+        [
+            EnrichmentResult(
+                item_id=material_id,
+                batch=batch,
+                status=EnrichmentResult.Status.PENDING,
+            )
+            for material_id in item_ids
+        ]
+    )
 
     # Enqueue tasks
     for res in results:
         enrich_item.enqueue(res.item_id, batch_id=batch.id, result_id=res.id)
 
-    return JsonResponse({
-        "success": True,
-        "batch_id": batch.id,
-        "total_items": len(item_ids),
-        "message": f"Enrichment started for {len(item_ids)} items",
-    })
+    return JsonResponse(
+        {
+            "success": True,
+            "batch_id": batch.id,
+            "total_items": len(item_ids),
+            "message": f"Enrichment started for {len(item_ids)} items",
+        }
+    )
 
 
 @login_required
@@ -294,7 +302,7 @@ def enrich_people_step(request):
     messages.info(
         request,
         "People page enrichment is integrated with Osiris enrichment (Step 3). "
-        "Person data is automatically fetched when enriching course information."
+        "Person data is automatically fetched when enriching course information.",
     )
     return redirect("steps:enrich_osiris")
 
@@ -305,10 +313,13 @@ def run_enrich_people(request):
     """Trigger people page enrichment for selected items."""
     # People page enrichment is integrated with Osiris enrichment
     # Redirect to Step 3 for both course and person enrichment
-    return JsonResponse({
-        "error": "People page enrichment is integrated with Osiris enrichment (Step 3)",
-        "redirect": reverse("steps:enrich_osiris"),
-    }, status=400)
+    return JsonResponse(
+        {
+            "error": "People page enrichment is integrated with Osiris enrichment (Step 3)",
+            "redirect": reverse("steps:enrich_osiris"),
+        },
+        status=400,
+    )
 
 
 @login_required
@@ -316,9 +327,12 @@ def run_enrich_people(request):
 def enrich_people_status(request):
     """Get status of people page enrichment."""
     # People page enrichment is integrated with Osiris enrichment
-    return JsonResponse({
-        "error": "People page enrichment is integrated with Osiris enrichment (Step 3)",
-    }, status=400)
+    return JsonResponse(
+        {
+            "error": "People page enrichment is integrated with Osiris enrichment (Step 3)",
+        },
+        status=400,
+    )
 
 
 # ============================================================================
@@ -338,19 +352,17 @@ def pdf_canvas_status_step(request):
     - Check PDF availability and metadata
     """
     # Get items with Canvas URLs
-    items = CopyrightItem.objects.filter(
-        url__contains="/files/"
-    ).order_by("-created_at")[:100]
+    items = CopyrightItem.objects.filter(url__contains="/files/").order_by(
+        "-created_at"
+    )[:100]
 
     # Count items by document status
     total_items = CopyrightItem.objects.count()
-    items_with_pdfs = CopyrightItem.objects.filter(
-        document__isnull=False
-    ).count()
+    items_with_pdfs = CopyrightItem.objects.filter(document__isnull=False).count()
     items_without_pdfs = total_items - items_with_pdfs
-    items_with_urls = CopyrightItem.objects.filter(
-        url__isnull=False
-    ).exclude(url="").count()
+    items_with_urls = (
+        CopyrightItem.objects.filter(url__isnull=False).exclude(url="").count()
+    )
 
     context = {
         "step_title": "Get PDF Status from Canvas",
@@ -377,8 +389,7 @@ def run_pdf_canvas_status(request):
 
     if check_all:
         items = CopyrightItem.objects.filter(
-            url__contains="/files/",
-            document__isnull=True
+            url__contains="/files/", document__isnull=True
         )
         item_ids = list(items.values_list("material_id", flat=True))
     elif not item_ids:
@@ -392,11 +403,13 @@ def run_pdf_canvas_status(request):
     # Trigger async download task
     download_pdfs_for_items.enqueue(item_ids)
 
-    return JsonResponse({
-        "success": True,
-        "total_items": len(item_ids),
-        "message": f"PDF download queued for {len(item_ids)} items",
-    })
+    return JsonResponse(
+        {
+            "success": True,
+            "total_items": len(item_ids),
+            "message": f"PDF download queued for {len(item_ids)} items",
+        }
+    )
 
 
 @login_required
@@ -404,22 +417,21 @@ def run_pdf_canvas_status(request):
 def pdf_canvas_status_status(request):
     """Get status of PDF Canvas check."""
     # Check extraction status of items
-    from django.db.models import Count, Q
 
     total_pending = CopyrightItem.objects.filter(
         extraction_status__in=["download_pending", "extraction_pending"]
     ).count()
 
-    total_downloaded = CopyrightItem.objects.filter(
-        document__isnull=False
-    ).count()
+    total_downloaded = CopyrightItem.objects.filter(document__isnull=False).count()
 
-    return JsonResponse({
-        "status": "running" if total_pending > 0 else "completed",
-        "total_downloaded": total_downloaded,
-        "pending": total_pending,
-        "message": f"{'Download in progress' if total_pending > 0 else 'Download completed'}",
-    })
+    return JsonResponse(
+        {
+            "status": "running" if total_pending > 0 else "completed",
+            "total_downloaded": total_downloaded,
+            "pending": total_pending,
+            "message": f"{'Download in progress' if total_pending > 0 else 'Download completed'}",
+        }
+    )
 
 
 # ============================================================================
@@ -439,18 +451,18 @@ def pdf_extract_step(request):
     - Run extraction and view results
     """
     # Get items with PDFs that haven't been parsed
-    items = CopyrightItem.objects.filter(
-        document__isnull=False,
-        document__extracted_text__isnull=True
-    ).select_related("document").order_by("-created_at")[:100]
+    items = (
+        CopyrightItem.objects.filter(
+            document__isnull=False, document__extracted_text__isnull=True
+        )
+        .select_related("document")
+        .order_by("-created_at")[:100]
+    )
 
     # Count items by parsing status
-    total_with_pdfs = CopyrightItem.objects.filter(
-        document__isnull=False
-    ).count()
+    total_with_pdfs = CopyrightItem.objects.filter(document__isnull=False).count()
     total_parsed = CopyrightItem.objects.filter(
-        document__isnull=False,
-        document__extracted_text__isnull=False
+        document__isnull=False, document__extracted_text__isnull=False
     ).count()
     total_unparsed = total_with_pdfs - total_parsed
 
@@ -478,8 +490,7 @@ def run_pdf_extract(request):
 
     if extract_all:
         items = CopyrightItem.objects.filter(
-            document__isnull=False,
-            document__extracted_text__isnull=True
+            document__isnull=False, document__extracted_text__isnull=True
         )
         item_ids = list(items.values_list("material_id", flat=True))
     elif not item_ids:
@@ -493,11 +504,13 @@ def run_pdf_extract(request):
     # Trigger async extraction task
     extract_pdfs_for_items.enqueue(item_ids)
 
-    return JsonResponse({
-        "success": True,
-        "total_items": len(item_ids),
-        "message": f"PDF extraction queued for {len(item_ids)} items",
-    })
+    return JsonResponse(
+        {
+            "success": True,
+            "total_items": len(item_ids),
+            "message": f"PDF extraction queued for {len(item_ids)} items",
+        }
+    )
 
 
 @login_required
@@ -510,22 +523,22 @@ def pdf_extract_status(request):
     ).count()
 
     total_parsed = CopyrightItem.objects.filter(
-        document__isnull=False,
-        document__extracted_text__isnull=False
+        document__isnull=False, document__extracted_text__isnull=False
     ).count()
 
     total_unparsed = CopyrightItem.objects.filter(
-        document__isnull=False,
-        document__extracted_text__isnull=True
+        document__isnull=False, document__extracted_text__isnull=True
     ).count()
 
-    return JsonResponse({
-        "status": "running" if total_pending > 0 else "completed",
-        "total_parsed": total_parsed,
-        "total_unparsed": total_unparsed,
-        "pending": total_pending,
-        "message": f"{'Extraction in progress' if total_pending > 0 else 'Extraction completed'}",
-    })
+    return JsonResponse(
+        {
+            "status": "running" if total_pending > 0 else "completed",
+            "total_parsed": total_parsed,
+            "total_unparsed": total_unparsed,
+            "pending": total_pending,
+            "message": f"{'Extraction in progress' if total_pending > 0 else 'Extraction completed'}",
+        }
+    )
 
 
 # ============================================================================
@@ -554,6 +567,7 @@ def export_faculty_step(request):
 
     # Count by workflow status
     from apps.core.models import Faculty, WorkflowStatus
+
     todo_count = CopyrightItem.objects.filter(
         workflow_status=WorkflowStatus.TODO
     ).count()
@@ -599,19 +613,18 @@ def export_faculty_step(request):
 @require_POST
 def run_export_faculty(request):
     """Trigger faculty sheet export for selected faculties."""
+    from django.utils import timezone
+
     from apps.core.models import Faculty
     from apps.ingest.models import ExportHistory
     from apps.ingest.services.export import ExportService
-    from django.utils import timezone
 
     # Get selected faculties
     faculty_codes = request.POST.getlist("faculty_codes")
     export_all = request.POST.get("export_all") == "true"
 
     if export_all:
-        faculty_codes = list(
-            Faculty.objects.values_list("abbreviation", flat=True)
-        )
+        faculty_codes = list(Faculty.objects.values_list("abbreviation", flat=True))
     elif not faculty_codes:
         return JsonResponse({"error": "No faculties selected"}, status=400)
 
@@ -627,7 +640,6 @@ def run_export_faculty(request):
 
     # Run export synchronously (could be made async in the future)
     try:
-        from pathlib import Path
 
         export_service = ExportService()
         result = export_service.export_workflow_tree()
@@ -641,13 +653,15 @@ def run_export_faculty(request):
         export_history.output_dir = str(result.get("output_dir", ""))
         export_history.save()
 
-        return JsonResponse({
-            "success": True,
-            "export_id": export_history.id,
-            "total_files": export_history.total_files,
-            "total_items": export_history.total_items,
-            "message": f"Export completed: {export_history.total_files} files created",
-        })
+        return JsonResponse(
+            {
+                "success": True,
+                "export_id": export_history.id,
+                "total_files": export_history.total_files,
+                "total_items": export_history.total_items,
+                "message": f"Export completed: {export_history.total_files} files created",
+            }
+        )
 
     except Exception as e:
         export_history.status = ExportHistory.Status.FAILED
@@ -655,9 +669,12 @@ def run_export_faculty(request):
         export_history.completed_at = timezone.now()
         export_history.save()
 
-        return JsonResponse({
-            "error": f"Export failed: {e}",
-        }, status=500)
+        return JsonResponse(
+            {
+                "error": f"Export failed: {e}",
+            },
+            status=500,
+        )
 
 
 @login_required
@@ -682,7 +699,9 @@ def download_export_file(request, export_id: int, file_index: int):
 
         # Determine content type
         if file_path.endswith(".xlsx"):
-            content_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            content_type = (
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
         elif file_path.endswith(".csv"):
             content_type = "text/csv"
         elif file_path.endswith(".txt"):
@@ -691,13 +710,9 @@ def download_export_file(request, export_id: int, file_index: int):
             content_type = "application/octet-stream"
 
         # Serve the file
-        import mmap
 
         with path.open("rb") as f:
-            response = HttpResponse(
-                f.read(),
-                content_type=content_type
-            )
+            response = HttpResponse(f.read(), content_type=content_type)
             response["Content-Disposition"] = f'attachment; filename="{path.name}"'
             return response
 

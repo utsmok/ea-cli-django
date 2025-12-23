@@ -13,7 +13,7 @@ class IngestModelsTest(TestCase):
         from django.contrib.auth import get_user_model
 
         User = get_user_model()
-        user, created = User.objects.get_or_create(username="testuser")
+        user, _created = User.objects.get_or_create(username="testuser")
 
         batch = IngestionBatch.objects.create(
             source_type=IngestionBatch.SourceType.QLIK,

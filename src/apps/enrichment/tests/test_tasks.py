@@ -91,7 +91,7 @@ async def test_enrich_item_persistence():
 @pytest.mark.asyncio
 async def test_enrich_item_org_persistence():
     # Setup: Create a test item
-    item, _ = await CopyrightItem.objects.aget_or_create(
+    _item, _ = await CopyrightItem.objects.aget_or_create(
         material_id=67890,
         defaults={
             "course_code": "202200096",

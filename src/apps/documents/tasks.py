@@ -72,8 +72,7 @@ async def extract_pdfs_for_items(item_ids: list[int]) -> dict:
     try:
         # Get items that have documents
         items = CopyrightItem.objects.filter(
-            material_id__in=item_ids,
-            document__isnull=False
+            material_id__in=item_ids, document__isnull=False
         )
         count = items.count()
 
@@ -95,7 +94,12 @@ async def extract_pdfs_for_items(item_ids: list[int]) -> dict:
 
     except Exception as e:
         logger.error(f"Error in extract_pdfs_for_items: {e}")
-        return {"error": str(e), "processed": 0, "successful": 0, "failed": len(item_ids)}
+        return {
+            "error": str(e),
+            "processed": 0,
+            "successful": 0,
+            "failed": len(item_ids),
+        }
 
 
 @task

@@ -169,9 +169,7 @@ LOGGING = {
 # Canvas LMS API (for PDF downloads and metadata)
 # Set CANVAS_API_URL to your Canvas instance URL
 # Set CANVAS_API_TOKEN to your Canvas API access token
-CANVAS_API_URL = env(
-    "CANVAS_API_URL", default="https://utwente.instructure.com/api/v1"
-)
+CANVAS_API_URL = env("CANVAS_API_URL", default="https://utwente.instructure.com/api/v1")
 # Support both CANVAS_API_TOKEN and CANVAS_API_KEY (legacy name)
 CANVAS_API_TOKEN = env("CANVAS_API_TOKEN", default="") or env(
     "CANVAS_API_KEY", default=""
@@ -179,9 +177,7 @@ CANVAS_API_TOKEN = env("CANVAS_API_TOKEN", default="") or env(
 
 # Osiris Scraper Settings (University of Twente course/teacher data)
 # OSIRIS_BASE_URL: The Osiris student portal URL
-OSIRIS_BASE_URL = env(
-    "OSIRIS_BASE_URL", default="https://utwente.osiris-student.nl"
-)
+OSIRIS_BASE_URL = env("OSIRIS_BASE_URL", default="https://utwente.osiris-student.nl")
 # OSIRIS_HEADERS: HTTP headers required by the Osiris API
 # These are technical headers for API communication and typically don't need changes
 OSIRIS_HEADERS = {

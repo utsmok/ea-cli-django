@@ -85,7 +85,7 @@ async def test_extraction_service_call():
     # This test verifies that parse_pdfs calls the extraction service
     from apps.documents.services.parse import parse_pdfs
 
-    faculty, _ = await Faculty.objects.aget_or_create(
+    _faculty, _ = await Faculty.objects.aget_or_create(
         abbreviation="BMS",
         defaults={"name": "BMS", "hierarchy_level": 1, "full_abbreviation": "UT-BMS-2"},
     )

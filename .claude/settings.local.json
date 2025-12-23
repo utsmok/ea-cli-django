@@ -10,7 +10,11 @@
       "Bash(uv run python:*)",
       "Bash(git push:*)",
       "Bash(tree:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(uv run ruff format:*)",
+      "Bash(uv run ruff check:*)",
+      "Bash(uv run ty:*)",
+      "Bash(uvx ty:*)"
     ]
   },
   "outputStyle": "default"

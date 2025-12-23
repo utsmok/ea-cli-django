@@ -9,8 +9,8 @@ import functools
 import os
 import shutil
 import time
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable
 
 from loguru import logger
 
@@ -202,7 +202,7 @@ def check_file_in_use(path: Path) -> bool:
                 with path.open("rb") as f:
                     msvcrt.locking(f.fileno(), msvcrt.LK_NBLCK, 1)
                 return False
-            except (OSError, IOError):
+            except OSError:
                 return True
         else:
             # On Unix, try to rename to same name (will fail if locked)
@@ -211,7 +211,7 @@ def check_file_in_use(path: Path) -> bool:
                 path.rename(temp_name)
                 temp_name.rename(path)
                 return False
-            except (OSError, IOError):
+            except OSError:
                 return True
     except Exception:
         # If check fails, assume not in use

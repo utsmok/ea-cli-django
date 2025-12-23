@@ -22,9 +22,7 @@ def client():
 def user(db):
     """Create a test user."""
     return User.objects.create_user(
-        username="testuser",
-        email="test@example.com",
-        password="testpass123"
+        username="testuser", email="test@example.com", password="testpass123"
     )
 
 
@@ -112,14 +110,10 @@ class TestEnrichOsirisStep:
         """Osiris enrichment step shows items that need enrichment."""
         # Create test items
         CopyrightItem.objects.create(
-            material_id=1,
-            title="Test Item 1",
-            course_code="123456789"
+            material_id=1, title="Test Item 1", course_code="123456789"
         )
         CopyrightItem.objects.create(
-            material_id=2,
-            title="Test Item 2",
-            course_code="987654321"
+            material_id=2, title="Test Item 2", course_code="987654321"
         )
 
         url = reverse("steps:enrich_osiris")

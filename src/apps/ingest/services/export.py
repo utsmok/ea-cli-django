@@ -16,7 +16,6 @@ from __future__ import annotations
 import contextlib
 import csv
 import logging
-import os
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -29,9 +28,9 @@ from apps.core.models import CopyrightItem, Faculty, WorkflowStatus
 
 from .excel_builder import ExcelBuilder
 from .file_utils import (
+    RetriesExhaustedError,
     rename_with_retry,
     save_workbook_with_retry,
-    RetriesExhaustedError,
 )
 
 logger = logging.getLogger(__name__)
@@ -213,7 +212,7 @@ class ExportService:
         values = []
         for item in items:
             # Initialize ALL export columns to None to ensure consistency for Polars
-            item_data = {col: None for col in all_export_cols}
+            item_data = dict.fromkeys(all_export_cols)
 
             # Fill in fields from fetched data
             for col in fetch_cols:
