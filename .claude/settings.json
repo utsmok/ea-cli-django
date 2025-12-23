@@ -1,0 +1,6 @@
+{
+  "statusLine": {
+    "type": "command",
+    "command": "pwsh -NoProfile -Command \"& 'C:\\\\dev\\\\ea-cli-django\\\\.claude\\\\statusline.ps1'\""
+  }
+}

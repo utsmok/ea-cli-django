@@ -18,6 +18,8 @@ build/
 .coverage
 htmlcov/
 
+
+
 # Databases
 *.sqlite3
 *.db
@@ -41,6 +43,7 @@ ingestion_batches/
 .DS_Store
 .kreuzberg
 
+
 # Documents and media
 *.pdf
 src/documents/
@@ -48,3 +51,10 @@ src/documents/
 # Logs
 *.log
 *.txt
+
+#AI stuff
+.letta/
+.gemini/
+# -- note: this is currently only used for ai coding agents, if we ever use node packages remove this 
+package-lock.json
+package.json

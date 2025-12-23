@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Skill(glm-plan-usage:usage-query)",
+      "Skill(glm-plan-usage:usage-query-skill)",
+      "Bash(uv run pytest:*)",
+      "Bash(git mv:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(uv run python:*)",
+      "Bash(git push:*)",
+      "Bash(tree:*)",
+      "Bash(cat:*)"
+    ]
+  },
+  "outputStyle": "default"
+}
