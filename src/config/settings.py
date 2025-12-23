@@ -80,23 +80,30 @@ TEMPLATES = [
 WSGI_APPLICATION = "config.wsgi.application"
 
 
-# DATABASE configuration, support DATABASE_URL for Docker/Postgres
-# When running from host, 'db' hostname won't resolve, so we replace it with 'localhost'
-# If running on host but URL points to 'db' or 'redis' (Docker hostnames),
-# replace with 'localhost' so host-based tools can connect.
-# We detect Docker by checking for /.dockerenv
+# =============================================================================
+# DATABASE Configuration
+# =============================================================================
+# Supports DATABASE_URL for Docker/Postgres environments
+# When running from host, Docker hostnames ('db', 'redis') won't resolve
+# Auto-detects Docker environment and adjusts hostnames accordingly
+
 RUNNING_IN_DOCKER = os.path.exists("/.dockerenv")
 
-_db_url = os.getenv(
-    "DATABASE_URL", "postgres://admin:dev_password@localhost:5432/copyright_db"
+# Get database URL from environment, or use sensible defaults
+# Format: postgres://user:password@host:port/database
+_db_url = env(
+    "DATABASE_URL",
+    default="postgres://admin:dev_password@db:5432/copyright_db"
+    if RUNNING_IN_DOCKER
+    else "postgres://admin:dev_password@localhost:5432/copyright_db",
 )
-_redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 
-if not RUNNING_IN_DOCKER:
-    if "@db:" in _db_url:
-        _db_url = _db_url.replace("@db:", "@localhost:")
-    if "//redis:" in _redis_url:
-        _redis_url = _redis_url.replace("//redis:", "//localhost:")
+# Get Redis URL from environment, or use sensible defaults
+# Format: redis://host:port/database
+_redis_url = env(
+    "REDIS_URL",
+    default="redis://redis:6379/0" if RUNNING_IN_DOCKER else "redis://localhost:6379/0",
+)
 
 DATABASES = {"default": env.db_url_config(_db_url)}
 DATABASES["default"]["TEST"] = {
@@ -155,15 +162,28 @@ LOGGING = {
     },
 }
 
-# Canvas LMS API Configuration
-CANVAS_API_URL = env("CANVAS_API_URL", default="https://utwente.instructure.com/api/v1")
+# =============================================================================
+# External API Configuration
+# =============================================================================
+
+# Canvas LMS API (for PDF downloads and metadata)
+# Set CANVAS_API_URL to your Canvas instance URL
+# Set CANVAS_API_TOKEN to your Canvas API access token
+CANVAS_API_URL = env(
+    "CANVAS_API_URL", default="https://utwente.instructure.com/api/v1"
+)
 # Support both CANVAS_API_TOKEN and CANVAS_API_KEY (legacy name)
 CANVAS_API_TOKEN = env("CANVAS_API_TOKEN", default="") or env(
     "CANVAS_API_KEY", default=""
 )
 
-# Osiris Scraper Settings
-OSIRIS_BASE_URL = env("OSIRIS_BASE_URL", default="https://utwente.osiris-student.nl")
+# Osiris Scraper Settings (University of Twente course/teacher data)
+# OSIRIS_BASE_URL: The Osiris student portal URL
+OSIRIS_BASE_URL = env(
+    "OSIRIS_BASE_URL", default="https://utwente.osiris-student.nl"
+)
+# OSIRIS_HEADERS: HTTP headers required by the Osiris API
+# These are technical headers for API communication and typically don't need changes
 OSIRIS_HEADERS = {
     "sec-ch-ua-platform": '"Windows"',
     "authorization": "undefined undefined",

@@ -1,5 +1,7 @@
 # Git
 .git/
+.gitignore
+.github/
 
 # Python
 .venv/
@@ -7,6 +9,12 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
 
 # Caching and temporary files
 .pytest_cache/
@@ -14,21 +22,38 @@ __pycache__/
 .kreuzberg/
 .letta/
 .gemini/
+.coverage
+htmlcov/
 *.log
 
-# Project-specific directories to ignore
-ea-cli/
-downloads/
-documents/
-exports/
-ingestion_batches/
-raw_data/
-static_files/
+# Databases
+*.sqlite3
+*.db
+
+# Generated data and exports
 test_data/
-tmp_export_test.sqlite3
+exports/
+downloads/
+ingestion_batches/
+*.xlsx
+*.csv
+*.arrow
+*.msgpack
+
+# Documents and media
+*.pdf
+documents/
+
+# Submodule (reference only)
+ea-cli/
 
 # IDE and editor directories
 .vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
 
 # Don't ignore these files, even if they are in an ignored directory
 !uv.lock

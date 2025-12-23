@@ -1,16 +1,50 @@
+# Environment
 .env
-*.pdf
+.env.local
 .venv
+
+# Python
 *.pyc
+*.pyo
+*.pyd
+__pycache__/
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Databases
 *.sqlite3
-__pycache__
-.vscode/
-.kreuzberg
+*.db
+
+# Generated data and exports
+test_data/
+exports/backups/
+downloads/
+ingestion_batches/
 *.arrow
 *.msgpack
-*.json
 *.xlsx
 *.csv
+
+# Development tools
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+.kreuzberg
+
+# Documents and media
+*.pdf
 src/documents/
-*.pyc
+
+# Logs
+*.log
 *.txt

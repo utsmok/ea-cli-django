@@ -9,7 +9,6 @@ def dashboard_index(request):
 
 
 def grid_partial(request):
-    # Standard filtering logic here
     items_list = CopyrightItem.objects.all().order_by("-created_at")
 
     paginator = Paginator(items_list, 15)
