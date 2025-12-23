@@ -62,3 +62,11 @@ package.json
 
 # Local logs
 logs/
+
+# Node.js for testing
+node_modules/
+package.json
+package-lock.json
+
+# Screenshots and testing artifacts
+screenshots/
