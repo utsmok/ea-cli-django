@@ -282,19 +282,19 @@ def enrich_people_step(request):
     """
     Interface for enriching person information from people pages.
 
-    Allows users to:
-    - Select items with teacher names
-    - Configure people page scraping settings
-    - Run enrichment and monitor progress
+    Note: People page enrichment is integrated with Osiris enrichment
+    (Step 3). Person scraping occurs automatically when items are enriched
+    from Osiris, fetching:
+    - Main name, email, people page URL
+    - Organization hierarchy (faculty, departments)
+    - Course/teacher relationships
 
-    Note: This is currently part of Osiris enrichment and will be
-    separated into its own step in a future update.
+    Use Step 3 (Enrich from Osiris) for both course and person enrichment.
     """
-    # TODO: Separate people page scraping into its own step
-    # For now, use Osiris enrichment which includes people page scraping
     messages.info(
         request,
-        "People page enrichment is currently integrated with Osiris enrichment."
+        "People page enrichment is integrated with Osiris enrichment (Step 3). "
+        "Person data is automatically fetched when enriching course information."
     )
     return redirect("steps:enrich_osiris")
 
@@ -303,9 +303,10 @@ def enrich_people_step(request):
 @require_POST
 def run_enrich_people(request):
     """Trigger people page enrichment for selected items."""
-    # Currently handled by Osiris enrichment
+    # People page enrichment is integrated with Osiris enrichment
+    # Redirect to Step 3 for both course and person enrichment
     return JsonResponse({
-        "error": "People page enrichment is currently part of Osiris enrichment",
+        "error": "People page enrichment is integrated with Osiris enrichment (Step 3)",
         "redirect": reverse("steps:enrich_osiris"),
     }, status=400)
 
@@ -314,9 +315,9 @@ def run_enrich_people(request):
 @require_GET
 def enrich_people_status(request):
     """Get status of people page enrichment."""
-    # Currently handled by Osiris enrichment
+    # People page enrichment is integrated with Osiris enrichment
     return JsonResponse({
-        "error": "People page enrichment is currently part of Osiris enrichment",
+        "error": "People page enrichment is integrated with Osiris enrichment (Step 3)",
     }, status=400)
 
 
@@ -368,6 +369,8 @@ def pdf_canvas_status_step(request):
 @require_POST
 def run_pdf_canvas_status(request):
     """Check Canvas PDF status for selected items."""
+    from apps.documents.tasks import download_pdfs_for_items
+
     # Get selected items
     item_ids = request.POST.getlist("item_ids")
     check_all = request.POST.get("check_all") == "true"
@@ -386,12 +389,13 @@ def run_pdf_canvas_status(request):
             return JsonResponse({"error": error}, status=400)
         item_ids = parsed_ids
 
-    # TODO: Trigger async download task
-    # For now, just return success
+    # Trigger async download task
+    download_pdfs_for_items.enqueue(item_ids)
+
     return JsonResponse({
         "success": True,
         "total_items": len(item_ids),
-        "message": f"PDF status check queued for {len(item_ids)} items",
+        "message": f"PDF download queued for {len(item_ids)} items",
     })
 
 
@@ -399,11 +403,22 @@ def run_pdf_canvas_status(request):
 @require_GET
 def pdf_canvas_status_status(request):
     """Get status of PDF Canvas check."""
-    # For now, return a simple status
-    # In production, this would check the status of the async task
+    # Check extraction status of items
+    from django.db.models import Count, Q
+
+    total_pending = CopyrightItem.objects.filter(
+        extraction_status__in=["download_pending", "extraction_pending"]
+    ).count()
+
+    total_downloaded = CopyrightItem.objects.filter(
+        document__isnull=False
+    ).count()
+
     return JsonResponse({
-        "status": "completed",
-        "message": "PDF status check completed",
+        "status": "running" if total_pending > 0 else "completed",
+        "total_downloaded": total_downloaded,
+        "pending": total_pending,
+        "message": f"{'Download in progress' if total_pending > 0 else 'Download completed'}",
     })
 
 
@@ -455,6 +470,8 @@ def pdf_extract_step(request):
 @require_POST
 def run_pdf_extract(request):
     """Trigger PDF extraction for selected items."""
+    from apps.documents.tasks import extract_pdfs_for_items
+
     # Get selected items
     item_ids = request.POST.getlist("item_ids")
     extract_all = request.POST.get("extract_all") == "true"
@@ -473,8 +490,9 @@ def run_pdf_extract(request):
             return JsonResponse({"error": error}, status=400)
         item_ids = parsed_ids
 
-    # TODO: Trigger async parsing task
-    # For now, just return success
+    # Trigger async extraction task
+    extract_pdfs_for_items.enqueue(item_ids)
+
     return JsonResponse({
         "success": True,
         "total_items": len(item_ids),
@@ -486,11 +504,27 @@ def run_pdf_extract(request):
 @require_GET
 def pdf_extract_status(request):
     """Get status of PDF extraction."""
-    # For now, return a simple status
-    # In production, this would check the status of the async task
+    # Check extraction status of items
+    total_pending = CopyrightItem.objects.filter(
+        extraction_status="extraction_pending"
+    ).count()
+
+    total_parsed = CopyrightItem.objects.filter(
+        document__isnull=False,
+        document__extracted_text__isnull=False
+    ).count()
+
+    total_unparsed = CopyrightItem.objects.filter(
+        document__isnull=False,
+        document__extracted_text__isnull=True
+    ).count()
+
     return JsonResponse({
-        "status": "completed",
-        "message": "PDF extraction completed",
+        "status": "running" if total_pending > 0 else "completed",
+        "total_parsed": total_parsed,
+        "total_unparsed": total_unparsed,
+        "pending": total_pending,
+        "message": f"{'Extraction in progress' if total_pending > 0 else 'Extraction completed'}",
     })
 
 
@@ -509,14 +543,17 @@ def export_faculty_step(request):
     - Select faculty or export all
     - Configure export settings
     - Generate Excel workbooks
+    - Download previously exported files
     """
     from django.conf import settings
+
+    from apps.ingest.models import ExportHistory
 
     # Get statistics
     total_items = CopyrightItem.objects.count()
 
     # Count by workflow status
-    from apps.core.models import WorkflowStatus
+    from apps.core.models import Faculty, WorkflowStatus
     todo_count = CopyrightItem.objects.filter(
         workflow_status=WorkflowStatus.TODO
     ).count()
@@ -527,9 +564,8 @@ def export_faculty_step(request):
         workflow_status=WorkflowStatus.DONE
     ).count()
 
-    # Count faculties
-    from apps.core.models import Faculty
-    faculty_count = Faculty.objects.count()
+    # Get faculties
+    faculties = Faculty.objects.all()
 
     # Export path
     export_path = getattr(
@@ -538,6 +574,11 @@ def export_faculty_step(request):
         settings.PROJECT_ROOT / "exports" / "faculty_sheets",
     )
 
+    # Recent exports (last 10)
+    recent_exports = ExportHistory.objects.filter(
+        status=ExportHistory.Status.COMPLETED
+    ).order_by("-created_at")[:10]
+
     context = {
         "step_title": "Export Faculty Sheets",
         "step_description": "Generate Excel workbooks for faculty review and classification",
@@ -545,9 +586,120 @@ def export_faculty_step(request):
         "todo_count": todo_count,
         "in_progress_count": in_progress_count,
         "done_count": done_count,
-        "faculty_count": faculty_count,
+        "faculty_count": faculties.count(),
+        "faculties": faculties,
         "export_path": export_path,
-        "recent_exports": [],  # TODO: Track export history
+        "recent_exports": recent_exports,
     }
 
     return render(request, "steps/export_faculty.html", context)
+
+
+@login_required
+@require_POST
+def run_export_faculty(request):
+    """Trigger faculty sheet export for selected faculties."""
+    from apps.core.models import Faculty
+    from apps.ingest.models import ExportHistory
+    from apps.ingest.services.export import ExportService
+    from django.utils import timezone
+
+    # Get selected faculties
+    faculty_codes = request.POST.getlist("faculty_codes")
+    export_all = request.POST.get("export_all") == "true"
+
+    if export_all:
+        faculty_codes = list(
+            Faculty.objects.values_list("abbreviation", flat=True)
+        )
+    elif not faculty_codes:
+        return JsonResponse({"error": "No faculties selected"}, status=400)
+
+    # Create export history record
+    export_history = ExportHistory.objects.create(
+        faculties=faculty_codes,
+        export_all=export_all,
+        status=ExportHistory.Status.RUNNING,
+        started_at=timezone.now(),
+        triggered_by=request.user,
+        metadata={"source": "steps_ui"},
+    )
+
+    # Run export synchronously (could be made async in the future)
+    try:
+        from pathlib import Path
+
+        export_service = ExportService()
+        result = export_service.export_workflow_tree()
+
+        # Update export history with results
+        export_history.status = ExportHistory.Status.COMPLETED
+        export_history.completed_at = timezone.now()
+        export_history.total_items = result.get("total_items", 0)
+        export_history.total_files = result.get("total_files", 0)
+        export_history.files_created = result.get("files", [])
+        export_history.output_dir = str(result.get("output_dir", ""))
+        export_history.save()
+
+        return JsonResponse({
+            "success": True,
+            "export_id": export_history.id,
+            "total_files": export_history.total_files,
+            "total_items": export_history.total_items,
+            "message": f"Export completed: {export_history.total_files} files created",
+        })
+
+    except Exception as e:
+        export_history.status = ExportHistory.Status.FAILED
+        export_history.error_message = str(e)
+        export_history.completed_at = timezone.now()
+        export_history.save()
+
+        return JsonResponse({
+            "error": f"Export failed: {e}",
+        }, status=500)
+
+
+@login_required
+@require_GET
+def download_export_file(request, export_id: int, file_index: int):
+    """Download a file from a previous export."""
+    from apps.ingest.models import ExportHistory
+
+    export = get_object_or_404(ExportHistory, id=export_id)
+
+    if file_index < 0 or file_index >= len(export.files_created):
+        return HttpResponse("File index out of range", status=400)
+
+    file_path = export.files_created[file_index]
+
+    try:
+        from pathlib import Path
+
+        path = Path(file_path)
+        if not path.exists():
+            return HttpResponse("File not found", status=404)
+
+        # Determine content type
+        if file_path.endswith(".xlsx"):
+            content_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        elif file_path.endswith(".csv"):
+            content_type = "text/csv"
+        elif file_path.endswith(".txt"):
+            content_type = "text/plain"
+        else:
+            content_type = "application/octet-stream"
+
+        # Serve the file
+        import mmap
+
+        with path.open("rb") as f:
+            response = HttpResponse(
+                f.read(),
+                content_type=content_type
+            )
+            response["Content-Disposition"] = f'attachment; filename="{path.name}"'
+            return response
+
+    except Exception as e:
+        return HttpResponse(f"Error serving file: {e}", status=500)

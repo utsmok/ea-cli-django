@@ -1,34 +1,31 @@
 {% extends "steps/base_step.html" %}
+{% load steps_filters %}
 
 {% block input_selection %}
-<form id="export-form" method="get" action="{% url 'ingest:export_faculty_sheets' %}">
+<form id="export-form" method="post" action="{% url 'steps:run_export_faculty' %}">
+  {% csrf_token %}
   <div class="form-control mb-6">
     <label class="label">
       <span class="label-text font-semibold">Export Scope</span>
     </label>
     <label class="label cursor-pointer">
+      <input type="checkbox" name="export_all" value="true" class="checkbox checkbox-info" id="export-all" checked>
       <span class="label-text">Export all faculties</span>
-      <input type="radio" name="scope" value="all" class="radio radio-info" checked id="export-all">
     </label>
   </div>
 
-  <div class="form-control mb-4">
-    <label class="label cursor-pointer">
-      <input type="radio" name="scope" value="specific" class="radio radio-info" id="export-specific">
-      <span class="label-text">Export specific faculty</span>
+  <div id="faculty-selection" class="hidden ml-6 mb-4">
+    <label class="label">
+      <span class="label-text font-semibold">Select Faculties</span>
     </label>
-  </div>
-
-  <div id="faculty-selection" class="hidden ml-6">
-    <select name="faculty" id="faculty-select" class="select select-bordered select-info w-full">
-      <option value="">-- Select Faculty --</option>
-      <option value="EEMCS">EEMCS - Electrical Engineering, Mathematics & Computer Science</option>
-      <option value="BMS">BMS - Behavioural, Management & Social Sciences</option>
-      <option value="ET">ET - Engineering Technology</option>
-      <option value="TNW">TNW - Science & Technology</option>
-      <option value="ITC">ITC - Geo-Information Science & Earth Observation</option>
-      <option value="MB">MB - Management & Governance</option>
-    </select>
+    <div class="form-control">
+      {% for faculty in faculties %}
+      <label class="label cursor-pointer justify-start gap-2">
+        <input type="checkbox" name="faculty_codes" value="{{ faculty.abbreviation }}" class="checkbox checkbox-info">
+        <span class="label-text">{{ faculty.abbreviation }} - {{ faculty.name }}</span>
+      </label>
+      {% endfor %}
+    </div>
   </div>
 </form>
 {% endblock %}
@@ -114,7 +111,10 @@
 {% block action_button %}
 <button type="submit"
         form="export-form"
-        class="btn btn-info btn-lg w-full">
+        class="btn btn-info btn-lg w-full"
+        hx-post="{% url 'steps:run_export_faculty' %}"
+        hx-target="#progress-container"
+        hx-swap="innerHTML">
   <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
   </svg>
@@ -148,6 +148,20 @@
 </div>
 {% endblock %}
 
+{% block progress %}
+<div id="progress-container" class="hidden">
+  <div class="alert alert-success">
+    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+    </svg>
+    <div>
+      <h3 class="font-bold">Export Completed!</h3>
+      <p class="text-sm">Your faculty sheets have been generated successfully.</p>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
 {% block results %}
 <div class="alert alert-info">
   <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -157,9 +171,6 @@
     <p class="text-sm">
       Export files will be saved to: <code class="bg-base-200 px-2 py-1 rounded">{{ export_path }}</code>
     </p>
-    <p class="text-sm mt-2">
-      After export completes, files can be accessed through the file system or downloaded via the ingestion dashboard.
-    </p>
   </div>
 </div>
 
@@ -167,24 +178,58 @@
 <div class="mt-6">
   <h3 class="text-lg font-semibold mb-4">Recent Exports</h3>
   <div class="overflow-x-auto">
-    <table class="table table-zebra">
+    <table class="table table-zebra table-sm">
       <thead>
         <tr>
-          <th>Faculty</th>
+          <th>Faculties</th>
           <th>Exported</th>
+          <th>Items</th>
           <th>Files</th>
+          <th>Status</th>
           <th>Actions</th>
         </tr>
       </thead>
       <tbody>
         {% for export in recent_exports %}
         <tr>
-          <td><span class="badge badge-outline">{{ export.faculty }}</span></td>
-          <td>{{ export.timestamp|date:"Y-m-d H:i" }}</td>
-          <td>{{ export.file_count }} files</td>
           <td>
-            <!-- TODO: Implement download endpoint -->
-            <span class="btn btn-sm btn-ghost btn-disabled" aria-disabled="true">Download (Coming Soon)</span>
+            {% for faculty in export.faculties %}
+            <span class="badge badge-outline">{{ faculty }}</span>
+            {% empty %}
+            <span class="badge badge-info">All</span>
+            {% endfor %}
+          </td>
+          <td>{{ export.created_at|date:"Y-m-d H:i" }}</td>
+          <td>{{ export.total_items }}</td>
+          <td>{{ export.total_files }}</td>
+          <td>
+            {% if export.status == "COMPLETED" %}
+            <span class="badge badge-success">Complete</span>
+            {% elif export.status == "RUNNING" %}
+            <span class="badge badge-warning">Running</span>
+            {% else %}
+            <span class="badge badge-error">Failed</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if export.status == "COMPLETED" and export.files_created %}
+            <div class="dropdown">
+              <label tabindex="0" class="btn btn-sm btn-primary">Download</label>
+              <ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-52">
+                {% for file_path in export.files_created %}
+                <li>
+                  <a href="{% url 'steps:download_export_file' export.id forloop.counter0 %}"
+                     class="link link-primary"
+                     download="{{ file_path|filename }}">
+                    📄 {{ file_path|filename }}
+                  </a>
+                </li>
+                {% endfor %}
+              </ul>
+            </div>
+            {% elif export.status == "FAILED" %}
+            <span class="text-xs text-error" title="{{ export.error_message }}">Failed</span>
+            {% endif %}
           </td>
         </tr>
         {% endfor %}
@@ -197,23 +242,42 @@
 
 {% block extra_js %}
 <script>
-const facultySelect = document.getElementById('faculty-select');
-const exportAllRadio = document.getElementById('export-all');
-const exportSpecificRadio = document.getElementById('export-specific');
+const exportAllCheckbox = document.getElementById('export-all');
+const facultySelection = document.getElementById('faculty-selection');
+const exportForm = document.getElementById('export-form');
+const facultyCheckboxes = document.querySelectorAll('input[name="faculty_codes"]');
 
-// Toggle faculty selection and required attribute
-exportAllRadio.addEventListener('change', function() {
+// Toggle faculty selection visibility
+exportAllCheckbox.addEventListener('change', function() {
   if (this.checked) {
-    document.getElementById('faculty-selection').classList.add('hidden');
-    facultySelect.required = false;
+    facultySelection.classList.add('hidden');
+    // Uncheck all faculty checkboxes
+    facultyCheckboxes.forEach(cb => cb.checked = false);
+  } else {
+    facultySelection.classList.remove('hidden');
   }
 });
 
-exportSpecificRadio.addEventListener('change', function() {
-  if (this.checked) {
-    document.getElementById('faculty-selection').classList.remove('hidden');
-    facultySelect.required = true;
+// Uncheck "export all" when any faculty is selected
+facultyCheckboxes.forEach(cb => {
+  cb.addEventListener('change', function() {
+    if (this.checked) {
+      exportAllCheckbox.checked = false;
+    }
+  });
+});
+
+// Validate form before submission
+exportForm.addEventListener('submit', function(e) {
+  const anyFacultyChecked = Array.from(facultyCheckboxes).some(cb => cb.checked);
+
+  if (!exportAllCheckbox.checked && !anyFacultyChecked) {
+    e.preventDefault();
+    alert('Please select at least one faculty or check "Export all faculties"');
+    return false;
   }
+
+  return true;
 });
 </script>
 {% endblock %}

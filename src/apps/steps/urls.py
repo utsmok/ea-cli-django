@@ -38,4 +38,6 @@ urlpatterns = [
 
     # Step 7: Export Faculty Sheets
     path("export-faculty/", views.export_faculty_step, name="export_faculty"),
+    path("export-faculty/run/", views.run_export_faculty, name="run_export_faculty"),
+    path("export-faculty/download/<int:export_id>/<int:file_index>/", views.download_export_file, name="download_export_file"),
 ]

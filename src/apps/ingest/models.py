@@ -3,6 +3,114 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 
 
+class ExportHistory(models.Model):
+    """
+    Tracks faculty sheet export operations.
+
+    Records each time faculty sheets are exported, including
+    which faculties, how many items, file locations, and who triggered it.
+    """
+
+    class Status(models.TextChoices):
+        PENDING = "PENDING", _("Pending")
+        RUNNING = "RUNNING", _("Running")
+        COMPLETED = "COMPLETED", _("Completed")
+        FAILED = "FAILED", _("Failed")
+
+    # Identity
+    id: int
+
+    # Export parameters
+    faculties = models.JSONField(
+        help_text="List of faculty abbreviations that were exported"
+    )
+    export_all = models.BooleanField(
+        default=False,
+        help_text="Whether all faculties were exported",
+    )
+
+    # File locations
+    output_dir = models.CharField(
+        max_length=512,
+        help_text="Directory where exports were written",
+    )
+    files_created = models.JSONField(
+        help_text="List of file paths that were created",
+        default=list,
+    )
+
+    # Statistics
+    total_items = models.IntegerField(
+        default=0,
+        help_text="Total number of items exported",
+    )
+    total_files = models.IntegerField(
+        default=0,
+        help_text="Total number of Excel files created",
+    )
+
+    # Processing state
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.PENDING,
+        db_index=True,
+    )
+    started_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When export started",
+    )
+    completed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When export finished",
+    )
+
+    # Error tracking
+    error_message = models.TextField(
+        null=True,
+        blank=True,
+        help_text="Error message if export failed",
+    )
+
+    # User tracking
+    triggered_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="triggered_exports",
+        help_text="User who triggered this export",
+    )
+
+    # Metadata
+    metadata = models.JSONField(
+        default=dict,
+        help_text="Additional export metadata (buckets, backup info, etc.)",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "ingest_export_history"
+        verbose_name = "Export History"
+        verbose_name_plural = "Export Histories"
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["status", "created_at"]),
+            models.Index(fields=["triggered_by", "created_at"]),
+        ]
+
+    def __str__(self):
+        faculties_str = ", ".join(self.faculties) if self.faculties else "All"
+        return f"Export {faculties_str} - {self.created_at.strftime('%Y-%m-%d %H:%M')} ({self.status})"
+
+    @property
+    def duration(self):
+        """Calculate export duration if completed."""
+        if self.started_at and self.completed_at:
+            return self.completed_at - self.started_at
+        return None
+
+
 class IngestionBatch(models.Model):
     """
     Tracks a single file ingestion operation.
