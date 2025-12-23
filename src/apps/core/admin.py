@@ -54,6 +54,8 @@ class CourseEmployeeAdmin(admin.ModelAdmin):
 
 @admin.register(CopyrightItem)
 class CopyrightItemAdmin(admin.ModelAdmin):
+    """Admin interface for CopyrightItem with inline editing capabilities."""
+
     list_display = [
         "material_id",
         "url",
@@ -61,6 +63,7 @@ class CopyrightItemAdmin(admin.ModelAdmin):
         "workflow_status",
         "status",
         "faculty",
+        "classification",
         "modified_at",
     ]
     list_filter = [
@@ -69,6 +72,7 @@ class CopyrightItemAdmin(admin.ModelAdmin):
         "faculty",
         "filetype",
         "classification",
+        "file_exists",
     ]
     search_fields = [
         "material_id",
@@ -77,6 +81,7 @@ class CopyrightItemAdmin(admin.ModelAdmin):
         "author",
         "course_code",
         "course_name",
+        "remarks",
     ]
     readonly_fields = [
         "created_at",
@@ -94,7 +99,6 @@ class CopyrightItemAdmin(admin.ModelAdmin):
         "course_code",
         "course_name",
         "status",
-        "classification",
         "ml_classification",
         "isbn",
         "doi",
@@ -111,18 +115,33 @@ class CopyrightItemAdmin(admin.ModelAdmin):
         "last_canvas_check",
         "courses",
         "canvas_course_id",
+        # NOTE: Human-annotated fields are NOT in readonly_fields:
+        # workflow_status, classification, manual_classification,
+        # v2_manual_classification, v2_overnamestatus, v2_lengte,
+        # remarks, scope, manual_identifier, auditor
     ]
     date_hierarchy = "modified_at"
     filter_horizontal = ["courses"]
+    actions = ["mark_as_todo", "mark_as_done", "set_file_exists_flag"]
+
+    # Enable pagination for large datasets
+    list_per_page = 50
+    list_max_show_all = 200
 
     fieldsets = (
-        ("Identity", {"fields": ("material_id", "filehash", "faculty")}),
+        (
+            "Identity",
+            {
+                "fields": ("material_id", "filehash", "faculty"),
+                "classes": ("collapse",),
+            },
+        ),
         (
             "File Info",
             {"fields": ("filename", "filetype", "url", "status", "file_exists")},
         ),
         (
-            "Classification",
+            "Classification (Editable)",
             {
                 "fields": (
                     "remarks",
@@ -133,12 +152,16 @@ class CopyrightItemAdmin(admin.ModelAdmin):
                     "v2_manual_classification",
                     "v2_overnamestatus",
                     "v2_lengte",
+                    "classification",
                 )
             },
         ),
-        ("CRC classification", {"fields": ("classification", "ml_classification")}),
         (
-            "Content",
+            "CRC classification",
+            {"fields": ("ml_classification",), "classes": ("collapse",)},
+        ),
+        (
+            "Content (System)",
             {
                 "fields": (
                     "title",
@@ -148,11 +171,12 @@ class CopyrightItemAdmin(admin.ModelAdmin):
                     "doi",
                     "owner",
                     "in_collection",
-                )
+                ),
+                "classes": ("collapse",),
             },
         ),
         (
-            "Course Info",
+            "Course Info (System)",
             {
                 "fields": (
                     "period",
@@ -161,11 +185,12 @@ class CopyrightItemAdmin(admin.ModelAdmin):
                     "course_name",
                     "canvas_course_id",
                     "courses",
-                )
+                ),
+                "classes": ("collapse",),
             },
         ),
         (
-            "Metrics",
+            "Metrics (System)",
             {
                 "fields": (
                     "count_students_registered",
@@ -193,6 +218,39 @@ class CopyrightItemAdmin(admin.ModelAdmin):
         return obj.filename or "—"
 
     filename_short.short_description = "Filename"
+
+    def mark_as_todo(self, request, queryset):
+        """Admin action: Mark selected items as ToDo."""
+        updated = queryset.update(workflow_status="ToDo")
+        self.message_user(request, f"{updated} items marked as ToDo.")
+
+    mark_as_todo.short_description = "Mark as ToDo"
+
+    def mark_as_done(self, request, queryset):
+        """Admin action: Mark selected items as Done."""
+        updated = queryset.update(workflow_status="Done")
+        self.message_user(request, f"{updated} items marked as Done.")
+
+    mark_as_done.short_description = "Mark as Done"
+
+    def set_file_exists_flag(self, request, queryset):
+        """Admin action: Update file_exists flag for selected items."""
+        # Check if documents exist for each item
+        from apps.documents.models import Document
+
+        updated = 0
+        for item in queryset:
+            item.file_exists = Document.objects.filter(items=item).exists()
+            item.save(update_fields=["file_exists"])
+            updated += 1
+        self.message_user(request, f"{updated} items had file_exists flag updated.")
+
+    set_file_exists_flag.short_description = "Update file_exists flag"
+
+    def get_search_results(self, request, keyword, queryset):
+        """Override search to use PostgreSQL full-text search if available."""
+        # Use Django's search backend, which can be PostgreSQL full-text search
+        return super().get_search_results(request, keyword, queryset)
 
 
 @admin.register(ChangeLog)

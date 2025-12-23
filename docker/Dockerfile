@@ -1,49 +1,41 @@
-# ---- Builder Stage ----
-FROM python:3.13-slim as builder
+FROM python:3.13-slim-bookworm AS builder
 
-# Install uv
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
 
-# Install system dependencies required for building some Python packages
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential libpq-dev \
-    && rm -rf /var/lib/apt/lists/*
+ENV UV_COMPILE_BYTECODE=1
+ENV UV_LINK_MODE=copy
 
 WORKDIR /app
 
-# Create a virtual environment
-RUN uv venv /opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
-
-# Copy the project's dependency files and install them
-COPY pyproject.toml uv.lock ./
+# Install dependencies ONLY (better caching)
+# --no-install-project so strictly dependencies are installed.
+# mount the lockfiles so they don't pollute the layer.
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --locked
+    --mount=type=bind,source=uv.lock,target=uv.lock \
+    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
+    uv sync --frozen --no-install-project --no-dev
+
+COPY . .
+
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-dev
 
 # ---- Runtime Stage ----
-FROM python:3.13-slim as runtime
+FROM python:3.13-slim-bookworm AS runtime
 
-# Install system dependencies required for the runtime
+ENV PATH="/app/.venv/bin:$PATH"
+ENV PYTHONUNBUFFERED=1
+
+WORKDIR /app
+
 RUN apt-get update && apt-get install -y --no-install-recommends \
     netcat-openbsd libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Set environment variables
-ENV PATH="/opt/venv/bin:$PATH" \
-    PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1 \
-    DJANGO_SETTINGS_MODULE=config.settings
+COPY --from=builder /app/.venv /app/.venv
 
-WORKDIR /app
+COPY --from=builder /app /app
 
-# Copy the virtual environment from the builder stage
-COPY --from=builder /opt/venv /opt/venv
-
-# Copy the application code
-COPY . .
-
-# Make the entrypoint script executable
 RUN chmod +x /app/docker/entrypoint.sh
 
-# Run the entrypoint script
 ENTRYPOINT ["/app/docker/entrypoint.sh"]

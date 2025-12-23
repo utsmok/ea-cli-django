@@ -28,6 +28,11 @@ from django.conf import settings
 from apps.core.models import CopyrightItem, Faculty, WorkflowStatus
 
 from .excel_builder import ExcelBuilder
+from .file_utils import (
+    rename_with_retry,
+    save_workbook_with_retry,
+    RetriesExhaustedError,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -139,7 +144,11 @@ class ExportService:
         }
 
     def _backup_entire_export_dir(self, output_dir: Path):
-        """Move the entire export directory to a timestamped backup location."""
+        """
+        Move the entire export directory to a timestamped backup location.
+
+        Uses retry logic to handle Windows file locking issues.
+        """
         if not output_dir.exists() or not any(output_dir.iterdir()):
             logger.info(
                 "Export directory is empty or does not exist. No backup needed."
@@ -153,12 +162,13 @@ class ExportService:
         backup_dest = backup_root / f"{output_dir.name}_{ts}"
 
         try:
-            os.rename(output_dir, backup_dest)
+            rename_with_retry(output_dir, backup_dest)
             logger.info(f"Successfully backed up '{output_dir}' to '{backup_dest}'")
-        except PermissionError as e:
+        except RetriesExhaustedError as e:
             raise ExportAbortedError(
-                "Could not back up the existing export directory. "
-                "Please ensure no files inside it are open in another program."
+                f"Could not back up the existing export directory after multiple retries. "
+                f"Please ensure no files inside it are open in another program (Excel, Explorer, etc.). "
+                f"Destination: {backup_dest}"
             ) from e
 
     # ---------------------------------------------------------------------
@@ -375,14 +385,29 @@ class ExportService:
         }
 
     def _atomic_save_workbook(self, wb, target_path: Path):
-        """Save a workbook to a temporary file then rename it to target_path."""
+        """
+        Save a workbook to a temporary file then rename it to target_path.
+
+        Uses retry logic for Windows file locking issues.
+        """
         target_path.parent.mkdir(parents=True, exist_ok=True)
         temp_path = target_path.with_suffix(".tmp")
         try:
-            wb.save(temp_path)
+            save_workbook_with_retry(wb, temp_path)
             if target_path.exists():
                 target_path.unlink()
             temp_path.rename(target_path)
+        except RetriesExhaustedError as e:
+            # Clean up temp file if it exists
+            if temp_path.exists():
+                try:
+                    temp_path.unlink()
+                except Exception:
+                    pass
+            raise ExportAbortedError(
+                f"Could not save workbook to {target_path.name} after multiple retries. "
+                f"Please ensure the file is not open in another program."
+            ) from e
         except Exception as e:
             if temp_path.exists():
                 temp_path.unlink()

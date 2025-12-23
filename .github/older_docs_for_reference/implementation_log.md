@@ -365,24 +365,24 @@ BMS/
 
 ## Commands for Quick Validation
 
-```powershell
+```bash
 # Run tests
 uv run pytest src/ -v
 
 # Verify migration
-uv run src/manage.py verify_migration
+uv run python src/manage.py verify_migration
 
 # Load legacy data (dry-run)
-uv run src/manage.py load_legacy_data --dry-run
+uv run python src/manage.py load_legacy_data --dry-run
 
 # Load legacy data (actual)
-uv run src/manage.py load_legacy_data --skip-faculties
+uv run python src/manage.py load_legacy_data --skip-faculties
 
 # Export faculty sheets
-uv run src/manage.py export_faculty_sheets --faculty BMS
+uv run python src/manage.py export_faculty_sheets --faculty BMS
 
 # Start server
-uv run src/manage.py runserver
+uv run python src/manage.py runserver
 ```
 
 ---
