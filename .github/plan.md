@@ -135,6 +135,32 @@ The Easy Access Platform is a Django-based web application that refactors a lega
 | 6 | Extract PDF Details | ✅ Complete | Async extraction task, status tracking |
 | 7 | Export Faculty Sheets | ✅ Complete | Export generation, download endpoints, history |
 
+### Step-Based UI Enhancements ✅
+
+**Completed:** December 23, 2025
+
+**Achievements:**
+- **Round-Trip Export Tests**: Created comprehensive test suite in `src/apps/ingest/tests/test_round_trip.py`
+  - 3 tests covering export → modify → reimport cycle
+  - Validates data integrity through complete workflow
+  - Tests empty export handling
+
+- **Windows File Locking Retry Logic**: Created `src/apps/ingest/services/file_utils.py`
+  - `@retry_on_permission_error` decorator with exponential backoff
+  - Separate retry functions: `rename_with_retry`, `save_workbook_with_retry`, `rmtree_with_retry`
+  - `atomic_file_write` using temp file + rename pattern
+  - `check_file_in_use` helper for Windows file locking detection
+  - Integrated into ExportService for backup and save operations
+
+- **Admin UI Improvements**: Updated `src/apps/core/admin.py`
+  - Bulk admin actions: mark_as_todo, mark_as_done, set_file_exists_flag
+  - Pagination: list_per_page=50, list_max_show_all=200
+  - Collapsed system fieldsets for cleaner UI
+  - Added "remarks" to search fields
+  - Maintained proper field editability (human-annotated editable, system readonly)
+
+**Test Coverage:** Added 3 new tests, bringing total to 72 tests
+
 ---
 
 ## Remaining Work (Prioritized)
@@ -167,31 +193,37 @@ The Easy Access Platform is a Django-based web application that refactors a lega
 
 ### Medium Priority
 
-5. **Round-Trip Export Tests** (Still Pending)
-   - Automated test: export → modify → reimport cycle
-   - Verify data integrity through full cycle
+5. ~~**Round-Trip Export Tests**~~ ✅ Complete
+   - Created `src/apps/ingest/tests/test_round_trip.py` with 3 comprehensive tests
+   - Tests verify: export → modify → reimport cycle
+   - Validates data integrity through full cycle
 
-6. **Manual UI Testing** (Still Pending)
+6. **Manual UI Testing** (Still Pending - Blocked)
    - Full manual testing of Step interfaces
    - Blocked by environment constraints (needs browser testing)
 
-7. **UI Screenshots** (Still Pending)
+7. **UI Screenshots** (Still Pending - Blocked)
    - Capture screenshots for documentation
    - Add to IMPLEMENTATION_SUMMARY.md
 
 ### Low Priority
 
-8. **Admin UI Improvements**
-   - Inline editing for CopyrightItem records
-   - Django admin customization
+8. ~~**Admin UI Improvements**~~ ✅ Complete
+   - Added bulk actions: mark_as_todo, mark_as_done, set_file_exists_flag
+   - Pagination settings: list_per_page=50, list_max_show_all=200
+   - Collapsed system fieldsets for cleaner UI
+   - Added "remarks" to search fields
+   - Proper field editability (human-annotated fields editable, system fields readonly)
 
-9. **Scale Testing**
+9. **Scale Testing** (Still Pending)
    - Test with 100k+ row Qlik export
    - Performance tuning for large datasets
 
-10. **Windows File Locking**
-    - Add retry logic for locked files during backup
-    - Handle concurrent export scenarios
+10. ~~**Windows File Locking**~~ ✅ Complete
+    - Created `src/apps/ingest/services/file_utils.py` with retry decorators
+    - Exponential backoff: 5 retries for backup, 3 for save
+    - Atomic file write pattern with temp file + rename
+    - File locking detection helper for Windows
 
 ---
 
@@ -405,7 +437,7 @@ CANVAS_API_TOKEN=...
 | Phase B: Enrichment | ✅ Complete | 100% |
 | Step-Based UI (Core) | ✅ Complete | 100% |
 | Step-Based UI (Enhancements) | ✅ Complete | 100% |
-| Testing & Documentation | ✅ Good | 85%+ |
+| Testing & Documentation | ✅ Good | 90%+ |
 
 **Overall Project Status:** 🟢 Production Ready
 
@@ -413,7 +445,15 @@ CANVAS_API_TOKEN=...
 - All 7 Step interfaces fully functional
 - Async tasks for PDF download and extraction
 - Export history tracking with download endpoints
-- 15 tests passing for steps app
+- Round-trip export tests (3 new tests)
+- Windows file locking retry logic
+- Admin UI improvements
+- **Total Tests: 72 passing** (up from 69)
+
+**Remaining (Blocked/Low Priority):**
+- Manual UI testing (blocked - needs browser access)
+- UI screenshots (blocked - needs browser access)
+- Scale testing (low priority - requires large dataset)
 
 ---
 
