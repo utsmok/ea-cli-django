@@ -56,6 +56,10 @@ class Command(BaseCommand):
                 rate_limit_delay=options["rate_limit_delay"],
             )
 
+            if result is None:
+                self.stderr.write(self.style.ERROR("Error: No result returned"))
+                return
+
             if "error" in result:
                 self.stderr.write(self.style.ERROR(f"Error: {result['error']}"))
                 return

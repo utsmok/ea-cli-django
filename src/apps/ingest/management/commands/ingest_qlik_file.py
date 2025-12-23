@@ -37,7 +37,7 @@ class Command(BaseCommand):
 
         self.stdout.write(f"Ingesting file: {file_path}")
 
-        with Path.open(file_path, "rb") as f:
+        with open(file_path, "rb") as f:
             django_file = DjangoFile(f, name=os.path.basename(file_path))
 
             # Create the IngestionBatch

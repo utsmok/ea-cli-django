@@ -12,23 +12,15 @@ Tests the complete cycle of:
 from pathlib import Path
 
 import openpyxl
-import polars as pl
 import pytest
 from django.core.files import File
 
 from apps.core.models import CopyrightItem, Faculty, WorkflowStatus
 from apps.ingest.models import (
-    FacultyEntry,
     IngestionBatch,
-    QlikEntry,
 )
 from apps.ingest.services.export import ExportService
 from apps.ingest.services.processor import BatchProcessor
-from apps.ingest.services.standardizer import standardize_dataframe
-from apps.ingest.services.validators import (
-    validate_faculty_data,
-    validate_qlik_data,
-)
 from apps.ingest.tasks import stage_batch
 from apps.users.models import User
 
@@ -145,7 +137,7 @@ class TestRoundTripExportImport:
         # Step 2: Export faculty sheets
         export_dir = tmp_path / "exports"
         exporter = ExportService()
-        export_result = exporter.export_workflow_tree(output_dir=export_dir)
+        exporter.export_workflow_tree(output_dir=export_dir)
 
         assert export_dir.exists(), "Export directory not created"
 
@@ -200,7 +192,7 @@ class TestRoundTripExportImport:
                             )
                             break
 
-        wb.save(modify_file_path := tmp_path / "modified.xlsx")
+        wb.save(tmp_path / "modified.xlsx")
 
         assert len(modifications) > 0, "No modifications were made to the file"
 
@@ -218,10 +210,20 @@ class TestRoundTripExportImport:
         # Data rows with modifications
         for mod in modifications:
             item = CopyrightItem.objects.get(material_id=mod["material_id"])
-            ws_faculty.cell(row=modifications.index(mod) + 2, column=1, value=item.material_id)
-            ws_faculty.cell(row=modifications.index(mod) + 2, column=2, value=mod["new_value"])
-            ws_faculty.cell(row=modifications.index(mod) + 2, column=3, value=item.classification or "")
-            ws_faculty.cell(row=modifications.index(mod) + 2, column=4, value=item.remarks or "")
+            ws_faculty.cell(
+                row=modifications.index(mod) + 2, column=1, value=item.material_id
+            )
+            ws_faculty.cell(
+                row=modifications.index(mod) + 2, column=2, value=mod["new_value"]
+            )
+            ws_faculty.cell(
+                row=modifications.index(mod) + 2,
+                column=3,
+                value=item.classification or "",
+            )
+            ws_faculty.cell(
+                row=modifications.index(mod) + 2, column=4, value=item.remarks or ""
+            )
 
         faculty_file_path = tmp_path / "faculty_sheet.xlsx"
         wb_faculty.save(faculty_file_path)
@@ -236,7 +238,7 @@ class TestRoundTripExportImport:
             )
 
         # Use task directly - we need to run synchronously
-        stage_result = stage_batch.enqueue(faculty_batch.id)
+        stage_batch.enqueue(faculty_batch.id)
         process_result = _process_batch_sync(faculty_batch)
 
         assert process_result["success"], f"Faculty processing failed: {process_result}"
@@ -300,7 +302,11 @@ def test_empty_export_does_not_fail(test_user, tmp_path):
     # Create a faculty but no items
     Faculty.objects.get_or_create(
         abbreviation="EMPTY",
-        defaults={"name": "Empty Faculty", "hierarchy_level": 1, "full_abbreviation": "EMPTY"},
+        defaults={
+            "name": "Empty Faculty",
+            "hierarchy_level": 1,
+            "full_abbreviation": "EMPTY",
+        },
     )
 
     # Export should succeed even with no data

@@ -247,10 +247,10 @@ class CopyrightItemAdmin(admin.ModelAdmin):
 
     set_file_exists_flag.short_description = "Update file_exists flag"
 
-    def get_search_results(self, request, keyword, queryset):
+    def get_search_results(self, request, queryset, search_term):
         """Override search to use PostgreSQL full-text search if available."""
         # Use Django's search backend, which can be PostgreSQL full-text search
-        return super().get_search_results(request, keyword, queryset)
+        return super().get_search_results(request, queryset, search_term)
 
 
 @admin.register(ChangeLog)

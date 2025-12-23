@@ -29,6 +29,10 @@ class Command(BaseCommand):
                 limit=options["limit"],
             )
 
+            if result is None:
+                self.stderr.write(self.style.ERROR("Error: No result returned"))
+                return
+
             if "error" in result:
                 self.stderr.write(self.style.ERROR(f"Error: {result['error']}"))
                 return

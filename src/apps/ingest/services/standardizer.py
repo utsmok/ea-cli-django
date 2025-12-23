@@ -5,6 +5,8 @@ Pure functions for transforming raw Excel data into standardized format.
 No I/O, no Django dependencies - only Polars DataFrame transformations.
 """
 
+from datetime import date as date_type
+from datetime import datetime
 from typing import Any
 
 import polars as pl
@@ -293,7 +295,7 @@ def safe_datetime(value: Any) -> Any | None:
     """
     if value is None:
         return None
-    if isinstance(value, datetime | date):
+    if isinstance(value, datetime | date_type):
         return value
 
     from dateutil import parser

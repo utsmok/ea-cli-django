@@ -240,18 +240,22 @@ async def parse_pdfs(
 
                     # Create PDFText record with all extracted data
                     @sync_to_async
-                    def create_pdf_text():
+                    def create_pdf_text(
+                        result=extraction_result,
+                        chunks=chunks_with_data,
+                        ents=entities,
+                    ):
                         return PDFText.objects.create(
-                            extracted_text=extraction_result["content"],
-                            num_pages=extraction_result.get("num_pages"),
-                            text_quality=extraction_result.get("quality_score", 0.0),
-                            detected_language=extraction_result.get(
+                            extracted_text=result["content"],
+                            num_pages=result.get("num_pages"),
+                            text_quality=result.get("quality_score", 0.0),
+                            detected_language=result.get(
                                 "detected_language"
                             ),
-                            extracted_keywords=extraction_result.get("keywords"),
+                            extracted_keywords=result.get("keywords"),
                             chunks_with_embeddings={
-                                "chunks": chunks_with_data,
-                                "entities": entities,
+                                "chunks": chunks,
+                                "entities": ents,
                             },
                         )
 
@@ -285,8 +289,8 @@ async def parse_pdfs(
 
             # Save Document record
             @sync_to_async
-            def save_doc():
-                doc.save()
+            def save_doc(document=doc):
+                document.save()
 
             await save_doc()
             processed += 1

@@ -1,3 +1,4 @@
+
 [project]
 name = "ea-cli-django"
 version = "0.0.1"
@@ -29,18 +30,18 @@ dependencies = [
     "python-dateutil>=2.9.0.post0",
     "django-tasks[rq]>=0.10.0",
     "django-rq>=3.2.1",
+    "ty>=0.0.5",
 ]
 
-[project.optional-dependencies]
-dev = ["ruff", "ipython", "django-debug-toolbar"]
-test = ["pytest", "pytest-django", "pytest-cov"]
 
 [dependency-groups]
+dev = ["ruff", "django-debug-toolbar", "ty"]
+
 test = [
-    "pytest>=9.0.2",
-    "pytest-asyncio>=1.0.0",
-    "pytest-cov>=7.0.0",
-    "pytest-django>=4.11.1",
+    "pytest",
+    "pytest-asyncio",
+    "pytest-cov",
+    "pytest-django",
 ]
 
 [tool.ruff]
@@ -73,12 +74,12 @@ exclude = [
     "node_modules",
     "site-packages",
     "venv",
+    "ea-cli",
 ]
 
 [tool.ruff.lint]
 select = [
     "E", "F", "W",       # pycodestyle + pyflakes
-    "C90",               # mccabe
     "I",                 # isort
     "N",                 # pep8-naming
     "UP",                # pyupgrade
@@ -87,13 +88,25 @@ select = [
     "C4",                # flake8-comprehensions
     "T10",               # flake8-debugger
     "TCH",               # flake8-type-checking
-    "PTH",               # flake8-use-pathlib
-    "PL",                # pylint
     "RUF",               # ruff-specific rules
 ]
 ignore = [
-    "E501",  # line too long, handled by formatter
-    "ISC001", # handled by formatter
+    "E501",     # line too long, handled by formatter
+    "ISC001",   # handled by formatter
+    # Django patterns and project-specific ignores:
+    "RUF012",   # Mutable class attributes - Django admin pattern
+    "PLR2004",  # Magic values - often self-explanatory in context
+    "PLR0913",  # Too many arguments - complex Django functions
+    "PLR0912",  # Too many branches - complex logic
+    "PLR0915",  # Too many statements - complex functions
+    "PLR6301",  # Method could be a function - Django pattern
+    "C901",     # Too complex - would require major refactoring
+    "PTH",      # Pathlib suggestions - not critical
+    "UP031",    # Use explicit literals for empty sets - minor
+    "E402",     # Module level import not at top - intentional in Django
+    "PLC0415",  # Import at top level - intentional in Django
+    "N806",     # Variable should be lowercase - common patterns (Mock classes, User=..., constants)
+    "B904",     # Exception chaining - good practice but not critical
 ]
 fixable = ["ALL"]
 unfixable = []
@@ -101,6 +114,22 @@ unfixable = []
 [tool.ruff.lint.isort]
 known-first-party = ["apps", "ea_cli"]
 section-order = ["future", "standard-library", "third-party", "first-party", "local-folder"]
+
+[tool.ty]
+# Type checker configuration for Django project
+# Many Django patterns produce false positives, so we disable rules that don't work well with Django's dynamic nature
+[[ty.overrides]]
+# Enable specific rules that catch real bugs
+enable = [
+    "invalid-argument-type",
+    "invalid-attribute-access",
+    "invalid-method-override",
+]
+# Disable Django-specific false positives
+ignore = [
+    "unresolved-attribute",  # Django ORM, middleware, admin patterns
+    "possibly-missing-attribute",  # Django ORM models
+]
 
 [tool.ruff.format]
 quote-style = "double"

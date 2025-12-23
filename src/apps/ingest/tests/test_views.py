@@ -9,6 +9,27 @@ from apps.ingest.models import IngestionBatch
 from apps.users.models import User
 
 
+def test_upload_requires_faculty_code_for_faculty_sheets(
+    authenticated_client, tmp_path
+):
+    """Faculty sheets should require faculty_code."""
+    # Create a dummy file
+    test_file = tmp_path / "test.xlsx"
+    test_file.write_bytes(b"dummy content")
+
+    with open(test_file, "rb") as f:
+        response = authenticated_client.post(
+            reverse("ingest:upload"),
+            {
+                "source_type": "FACULTY",
+                "file": f,
+            },
+        )
+
+    # Should redirect back with error
+    assert response.status_code == 302
+
+
 @pytest.fixture
 def test_user(db):
     """Create a test user."""
@@ -126,7 +147,7 @@ class TestUploadView:
         test_file = tmp_path / "test.xlsx"
         test_file.write_bytes(b"dummy content")
 
-        with Path.open(test_file, "rb") as f:
+        with open(test_file, "rb") as f:
             response = authenticated_client.post(
                 reverse("ingest:upload"),
                 {
