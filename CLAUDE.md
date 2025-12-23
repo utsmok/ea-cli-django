@@ -147,3 +147,11 @@ CANVAS_API_TOKEN=...
 - `conductor/product.md` - Product vision and goals
 - `conductor/tech-stack.md` - Technology stack details
 - `src/apps/steps/README.md` - Step interface documentation
+
+## Git Commit Standards
+
+**IMPORTANT**: When creating git commits:
+- **NEVER** add "Co-Authored-By" or "Generated with Claude Code" footers to commit messages
+- Use the user's git identity: `utsmok <s.mok@utwente.nl>`
+- Keep commit messages concise and focused on the "why" not the "what"
+- Use conventional commit format: `feat:`, `fix:`, `chore:`, `refactor:`, etc.
