@@ -10,7 +10,28 @@ The Easy Access Platform is a Django-based web application for managing copyrigh
 
 ## Development Commands
 
-### Docker (Recommended)
+### Hybrid Development (Recommended for WSL/Linux)
+```bash
+# Quick start: one command to start everything
+./start-dev.sh
+
+# Manual setup:
+# 1. Start Docker containers (db + redis)
+docker compose up -d
+
+# 2. Install dependencies and run migrations
+uv sync
+uv run python src/manage.py migrate
+
+# 3. Start Django server and RQ worker
+# Terminal 1: Django server
+uv run python src/manage.py runserver
+
+# Terminal 2: RQ worker
+uv run python src/manage.py rqworker --job-class django_tasks.backends.rq.Job default
+```
+
+### Docker (Alternative)
 ```bash
 # Start all services
 docker compose up --build
@@ -57,6 +78,18 @@ uv run ruff check src/
 
 # Check imports specifically
 uv run ruff check src/ --select I
+```
+
+### Frontend Testing
+```bash
+# Run automated frontend verification (requires server running)
+bash scripts/verify_frontend_auth.sh
+
+# Run backend endpoint verification
+bash scripts/verify_backend.sh
+
+# Verification results are saved to screenshots/ (gitignored)
+# Screenshots and reports help verify UI functionality after changes
 ```
 
 ## Architecture
