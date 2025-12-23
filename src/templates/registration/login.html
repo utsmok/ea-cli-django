@@ -1,46 +1,66 @@
 {% extends "base.html" %}
 
+{% block title %}Login{% endblock %}
+
 {% block content %}
-<div class="flex justify-center items-center min-h-[60vh]">
-    <div class="card w-96 bg-base-100 shadow-xl border border-base-300">
-        <div class="card-body">
-            <h2 class="card-title justify-center text-2xl mb-4">Login</h2>
+<div class="flex justify-center items-center min-h-[60vh] px-4">
+  <div class="card w-full max-w-md bg-base-100 shadow-sm border border-base-300">
+    <div class="card-body p-8">
 
-            <form method="post">
-                {% csrf_token %}
+      <!-- Logo -->
+      <div class="text-center mb-6">
+        <img src="{% static 'UT_Logo_2400_Black_EN.png' %}" alt="University of Twente" class="h-16 mx-auto mb-4">
+        <h2 class="text-2xl font-bold uppercase tracking-wide">Sign In</h2>
+        <p class="text-base-content/60 text-sm mt-1">Copyright Compliance Platform</p>
+      </div>
 
-                {% if form.errors %}
-                <div class="alert alert-error mb-4">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none"
-                        viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <span>Invalid username or password.</span>
-                </div>
-                {% endif %}
+      <!-- Login Form -->
+      <form method="post">
+        {% csrf_token %}
 
-                <div class="form-control w-full max-w-xs">
-                    <label class="label">
-                        <span class="label-text">Username</span>
-                    </label>
-                    <input type="text" name="username" placeholder="Username"
-                        class="input input-bordered w-full max-w-xs" required />
-                </div>
-
-                <div class="form-control w-full max-w-xs mt-4">
-                    <label class="label">
-                        <span class="label-text">Password</span>
-                    </label>
-                    <input type="password" name="password" placeholder="Password"
-                        class="input input-bordered w-full max-w-xs" required />
-                </div>
-
-                <div class="card-actions justify-end mt-6">
-                    <button class="btn btn-primary w-full">Sign In</button>
-                </div>
-            </form>
+        {% if form.errors %}
+        <div class="alert alert-error mb-6">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+          <span>Invalid username or password.</span>
         </div>
+        {% endif %}
+
+        <div class="form-control">
+          <label class="label">
+            <span class="label-text font-semibold">Username</span>
+          </label>
+          <input type="text" name="username" placeholder="Enter your username" class="input input-bordered w-full" required autofocus />
+        </div>
+
+        <div class="form-control mt-4">
+          <label class="label">
+            <span class="label-text font-semibold">Password</span>
+          </label>
+          <input type="password" name="password" placeholder="Enter your password" class="input input-bordered w-full" required />
+        </div>
+
+        <div class="card-actions justify-center mt-8">
+          <button class="btn btn-ut btn-primary w-full">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"></path>
+            </svg>
+            Sign In
+          </button>
+        </div>
+      </form>
+
+      <!-- Footer -->
+      <div class="text-center mt-6 pt-6 border-t border-base-200">
+        <p class="text-sm text-base-content/60">
+          University of Twente
+          <span class="mx-2">•</span>
+          Copyright Compliance Platform
+        </p>
+      </div>
+
     </div>
+  </div>
 </div>
 {% endblock %}

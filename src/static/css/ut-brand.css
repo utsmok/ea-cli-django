@@ -1,0 +1,459 @@
+/**
+ * University of Twente - Brand Identity Styles
+ * Based on UT Visual Identity Guidelines 2025
+ *
+ * Color Palette: https://www.utwente.nl/en/communication/branding/
+ */
+
+/* ============================================================================
+   CSS CUSTOM PROPERTIES - UT BRAND COLORS
+   ============================================================================ */
+
+:root {
+  /* Corporate Colors */
+  --ut-black: #000000;
+  --ut-white: #FFFFFF;
+  --ut-off-black: #1E2328;
+
+  /* Primary Brand Colors (Online) */
+  --ut-pink: #CF0072;
+  --ut-pink-dark: #B2014A;      /* Hover state */
+  --ut-pink-light: #FAE5F1;     /* 10% variant */
+
+  --ut-purple: #4F2D7F;
+  --ut-purple-dark: #2F1957;
+  --ut-purple-light: #EDEAF2;
+
+  --ut-blue: #007D9C;           /* PRIMARY ACCENT for this app */
+  --ut-blue-dark: #005D7D;
+  --ut-blue-light: #E5F2F5;
+
+  --ut-darkblue: #002C5F;
+  --ut-darkblue-dark: #00183B;
+  --ut-darkblue-light: #E5EAEF;
+
+  --ut-green: #4A8355;
+  --ut-green-dark: #2F6338;
+  --ut-green-light: #EDF3EE;
+
+  --ut-darkgreen: #00675A;
+  --ut-darkgreen-dark: #004B48;
+  --ut-darkgreen-light: #E5F0EE;
+
+  --ut-red: #C60C30;
+  --ut-red-dark: #B0061C;
+  --ut-red-light: #F9E7EA;
+
+  --ut-darkred: #822433;
+  --ut-darkred-dark: #62141E;
+  --ut-darkred-light: #F2E9EB;
+
+  /* UI Greys */
+  --ut-grey-02: #686B6E;
+  --ut-grey-02b: #8E9193;
+  --ut-grey-03: #AFB1B3;
+  --ut-grey-04: #DCDDDE;
+  --ut-grey-05: #F0F1F2;
+  --ut-grey-05b: #F7F8F8;
+
+  /* Semantic mappings for app */
+  --ut-primary: var(--ut-blue);
+  --ut-primary-dark: var(--ut-blue-dark);
+  --ut-primary-light: var(--ut-blue-light);
+
+  --ut-success: var(--ut-darkgreen);
+  --ut-success-dark: var(--ut-darkgreen-dark);
+  --ut-success-light: var(--ut-darkgreen-light);
+
+  --ut-warning: var(--ut-red);
+  --ut-warning-dark: var(--ut-red-dark);
+  --ut-warning-light: var(--ut-red-light);
+
+  --ut-error: var(--ut-darkred);
+  --ut-error-dark: var(--ut-darkred-dark);
+  --ut-error-light: var(--ut-darkred-light);
+
+  --ut-info: var(--ut-purple);
+  --ut-info-dark: var(--ut-purple-dark);
+  --ut-info-light: var(--ut-purple-light);
+}
+
+/* ============================================================================
+   TYPOGRAPHY - UNIVERSITY OF TWENTE
+   ============================================================================ */
+
+/* Fallback fonts for web (Univers not licensed) */
+:root {
+  --font-ut-body: 'Arial', 'Helvetica', sans-serif;
+  --font-ut-condensed: 'Arial Narrow', 'Arial', 'Helvetica', sans-serif;
+  --font-ut-mono: 'Consolas', 'Monaco', 'Courier New', monospace;
+}
+
+/* Base typography */
+body {
+  font-family: var(--font-ut-body);
+  color: var(--ut-black);
+  background-color: var(--ut-grey-05b);
+}
+
+/* Headings - Condensed, UPPERCASE style */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-ut-condensed);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+}
+
+h1 { font-size: 2.5rem; }
+h2 { font-size: 2rem; }
+h3 { font-size: 1.75rem; }
+h4 { font-size: 1.5rem; }
+h5 { font-size: 1.25rem; }
+h6 { font-size: 1rem; }
+
+/* ============================================================================
+   DAISYUI THEME CONFIGURATION - UT BRANDED
+   ============================================================================ */
+
+/* UT Light Theme (default) */
+[data-theme="ut-light"] {
+  --h: 188;                     /* UT Blue hue */
+  --bc: var(--ut-grey-05b);     /* Background color */
+  --pc: var(--ut-blue);         /* Primary color */
+  --s: var(--ut-pink);          /* Secondary color */
+  --ac: var(--ut-purple);       /* Accent color */
+  --nc: var(--ut-grey-02);      /* Neutral color */
+  --b1: var(--ut-white);        /* Base 100 */
+  --b2: var(--ut-grey-05b);     /* Base 200 */
+  --b3: var(--ut-grey-05);      /* Base 300 */
+  --bc: var(--ut-off-black);    /* Base content */
+  --in: var(--ut-blue);         /* Info */
+  --su: var(--ut-darkgreen);    /* Success */
+  --wa: var(--ut-red);          /* Warning */
+  --er: var(--ut-darkred);      /* Error */
+}
+
+/* ============================================================================
+   UT-SPECIFIC COMPONENT STYLES
+   ============================================================================ */
+
+/* UT Logo placement */
+.ut-logo {
+  display: inline-block;
+  line-height: 0;
+}
+
+.ut-logo img {
+  height: 48px;
+  width: auto;
+}
+
+.ut-logo--stacked img {
+  height: 64px;
+}
+
+/* UT Card with subtle border */
+.ut-card {
+  border: 1px solid var(--ut-grey-04);
+  border-left: 4px solid var(--ut-primary);
+  transition: all 0.2s ease;
+}
+
+.ut-card:hover {
+  border-left-color: var(--ut-primary-dark);
+  box-shadow: 0 4px 12px rgba(0, 125, 156, 0.1);
+}
+
+/* UT Badge styles */
+.ut-badge {
+  font-family: var(--font-ut-condensed);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 0.75rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 4px;
+}
+
+/* UT Button with hover animation */
+.btn-ut {
+  font-family: var(--font-ut-condensed);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-ut::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.2),
+    transparent
+  );
+  transition: left 0.5s ease;
+}
+
+.btn-ut:hover::before {
+  left: 100%;
+}
+
+/* UT Progress bar */
+.ut-progress {
+  height: 8px;
+  border-radius: 4px;
+  background-color: var(--ut-grey-04);
+  overflow: hidden;
+}
+
+.ut-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--ut-primary), var(--ut-primary-dark));
+  transition: width 0.3s ease;
+  position: relative;
+}
+
+.ut-progress-bar::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.3),
+    transparent
+  );
+  animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+/* UT Stats card */
+.ut-stats {
+  display: grid;
+  gap: 1rem;
+}
+
+.ut-stat {
+  background: var(--ut-white);
+  border: 1px solid var(--ut-grey-04);
+  border-top: 4px solid var(--ut-primary);
+  padding: 1.5rem;
+  text-align: center;
+  transition: all 0.2s ease;
+}
+
+.ut-stat:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 125, 156, 0.15);
+}
+
+.ut-stat-value {
+  font-family: var(--font-ut-condensed);
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--ut-primary);
+  line-height: 1;
+}
+
+.ut-stat-label {
+  font-size: 0.875rem;
+  color: var(--ut-grey-02);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: 0.5rem;
+}
+
+/* UT Navbar */
+.ut-navbar {
+  background-color: var(--ut-white);
+  border-bottom: 2px solid var(--ut-primary);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.ut-navbar .ut-logo {
+  margin-right: auto;
+}
+
+/* UT Table */
+.ut-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.ut-table thead {
+  background-color: var(--ut-grey-05);
+  border-bottom: 2px solid var(--ut-primary);
+}
+
+.ut-table th {
+  font-family: var(--font-ut-condensed);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ut-off-black);
+  padding: 0.75rem 1rem;
+  text-align: left;
+}
+
+.ut-table td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--ut-grey-04);
+}
+
+.ut-table tbody tr:hover {
+  background-color: var(--ut-blue-light);
+}
+
+/* UT Status indicators with animation */
+.ut-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-ut-condensed);
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+}
+
+.ut-status--pending {
+  color: var(--ut-grey-02);
+}
+
+.ut-status--running {
+  color: var(--ut-blue);
+}
+
+.ut-status--running .ut-status-dot {
+  background-color: var(--ut-blue);
+  animation: pulse 1.5s infinite;
+}
+
+.ut-status--completed {
+  color: var(--ut-darkgreen);
+}
+
+.ut-status--failed {
+  color: var(--ut-darkred);
+}
+
+.ut-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: currentColor;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.2); }
+}
+
+/* ============================================================================
+   UT GRID SYSTEM
+   ============================================================================ */
+
+.ut-container {
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+}
+
+.ut-grid {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.ut-grid--12 {
+  grid-template-columns: repeat(12, 1fr);
+}
+
+.ut-grid--6 {
+  grid-template-columns: repeat(6, 1fr);
+}
+
+.ut-grid--4 {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.ut-grid--3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.ut-grid--2 {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+/* ============================================================================
+   RESPONSIVE BREAKPOINTS
+   ============================================================================ */
+
+@media (max-width: 1024px) {
+  .ut-grid--12,
+  .ut-grid--6 {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .ut-grid--12,
+  .ut-grid--6,
+  .ut-grid--4 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  h1 { font-size: 2rem; }
+  h2 { font-size: 1.75rem; }
+  h3 { font-size: 1.5rem; }
+}
+
+@media (max-width: 480px) {
+  .ut-grid--12,
+  .ut-grid--6,
+  .ut-grid--4,
+  .ut-grid--3,
+  .ut-grid--2 {
+    grid-template-columns: 1fr;
+  }
+
+  .ut-stat-value {
+    font-size: 2rem;
+  }
+}
+
+/* ============================================================================
+   UT FOOTER
+   ============================================================================ */
+
+.ut-footer {
+  background-color: var(--ut-off-black);
+  color: var(--ut-white);
+  padding: 2rem 0;
+  margin-top: auto;
+}
+
+.ut-footer a {
+  color: var(--ut-white);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.ut-footer a:hover {
+  color: var(--ut-blue);
+}

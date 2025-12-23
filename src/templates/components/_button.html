@@ -1,0 +1,31 @@
+{# ============================================================================
+   UT Button Component
+   Usage:
+     {% include "components/_button.html" with label="Click Me" %}
+     {% include "components/_button.html" with label="Submit" icon="<svg>...</svg>" %}
+     {% include "components/_button.html" with label="Delete" variant="error" %}
+   Options:
+     label: Button text (required)
+     variant: Color variant (default, primary, success, warning, error, ghost, outline)
+     size: Button size (xs, sm, md, lg, xl)
+     icon: SVG icon to display before label (optional)
+     type: Button type (button, submit, reset)
+     class: Additional CSS classes (optional)
+============================================================================ #}
+
+<button
+  type="{{ type|default:'button' }}"
+  class="btn btn-ut
+    {% if variant == "primary" %}btn-primary
+    {% elif variant == "success" %}btn-success
+    {% elif variant == "warning" %}btn-warning
+    {% elif variant == "error" %}btn-error
+    {% elif variant == "ghost" %}btn-ghost
+    {% elif variant == "outline" %}btn-outline
+    {% else %}btn-primary{% endif %}
+    {% if size %}btn-{{ size }}{% endif %}
+    {{ class|default:'' }}"
+>
+  {% if icon %}<span class="mr-2">{{ icon|safe }}</span>{% endif %}
+  {{ label }}
+</button>

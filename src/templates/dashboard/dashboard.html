@@ -1,60 +1,97 @@
 {% extends "base.html" %}
 
+{% block title %}Dashboard{% endblock %}
+
 {% block content %}
 <div class="p-4" x-data="{ showUploadModal: false }">
 
-    <!-- Toolbar -->
-    <div class="flex justify-between mb-4">
-        <h1 class="text-2xl font-bold">Copyright Dashboard</h1>
-        <div class="flex gap-2">
-            <button class="btn btn-outline btn-info" hx-post="{% url 'enrichment:trigger_batch' %}"
-                hx-confirm="Are you sure you want to enrich all items? This might take a while." hx-swap="none">
-                Enrich All
-            </button>
-            <a class="btn" href="{% url 'api:download_faculty_sheets' %}">
-                Download faculty sheets
-            </a>
-            <button @click="showUploadModal = true" class="btn btn-primary">
-                Upload Excel
-            </button>
-        </div>
+  <!-- Page Header -->
+  <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+    <div>
+      <h1 class="text-3xl font-bold uppercase tracking-wide">Copyright Dashboard</h1>
+      <p class="text-base-content/60 mt-1">Manage and monitor copyright items</p>
     </div>
-
-    <!-- The Grid (HTMX Target) -->
-    <div id="data-grid" hx-get="{% url 'dashboard:grid_partial' %}" hx-trigger="load">
-        <!-- Spinner while loading -->
-        <span class="loading loading-spinner loading-lg"></span>
+    <div class="flex flex-wrap gap-2">
+      <button class="btn btn-outline btn-ut"
+        hx-post="{% url 'enrichment:trigger_batch' %}"
+        hx-confirm="Are you sure you want to enrich all items? This might take a while."
+        hx-swap="none">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+        </svg>
+        Enrich All
+      </button>
+      <a class="btn btn-ut btn-outline" href="{% url 'api:download_faculty_sheets' %}">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+        </svg>
+        Download Faculty Sheets
+      </a>
+      <button @click="showUploadModal = true" class="btn btn-ut btn-primary">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
+        </svg>
+        Upload Excel
+      </button>
     </div>
+  </div>
 
-    <!-- Upload Modal (DaisyUI + Alpine) -->
-    <dialog class="modal" :class="{ 'modal-open': showUploadModal }">
-        <div class="modal-box">
-            <h3 class="font-bold text-lg">Upload Data</h3>
-            <form hx-post="{% url 'api:trigger_ingest' %}" hx-swap="none" hx-encoding="multipart/form-data"
-                enctype="multipart/form-data" @htmx:after-request="showUploadModal = false">
-                {% csrf_token %}
+  <!-- The Grid (HTMX Target) -->
+  <div id="data-grid" hx-get="{% url 'dashboard:grid_partial' %}" hx-trigger="load">
+    <!-- Spinner while loading -->
+    <div class="flex justify-center items-center py-20">
+      <span class="loading loading-spinner loading-lg text-primary"></span>
+    </div>
+  </div>
 
-                <label class="form-control w-full max-w-xs">
-                    <div class="label"><span class="label-text">Source type</span></div>
-                    <select name="source_type" class="select select-bordered">
-                        <option value="QLIK">Qlik export</option>
-                        <option value="FACULTY">Faculty sheet</option>
-                    </select>
-                </label>
+  <!-- Upload Modal (DaisyUI + Alpine) -->
+  <dialog class="modal" :class="{ 'modal-open': showUploadModal }">
+    <div class="modal-box">
+      <h3 class="font-bold text-lg uppercase tracking-wide mb-4">Upload Data</h3>
+      <form hx-post="{% url 'api:trigger_ingest' %}"
+            hx-swap="none"
+            hx-encoding="multipart/form-data"
+            enctype="multipart/form-data"
+            @htmx:after-request="showUploadModal = false">
+        {% csrf_token %}
 
-                <label class="form-control w-full max-w-xs mt-2">
-                    <div class="label"><span class="label-text">Faculty code (for faculty sheets)</span></div>
-                    <input type="text" name="faculty_code" placeholder="EEMCS" class="input input-bordered" />
-                </label>
-
-                <input type="file" name="file" class="file-input w-full max-w-xs" />
-                <div class="modal-action">
-                    <button type="submit" class="btn btn-success">Upload</button>
-                    <button type="button" class="btn" @click="showUploadModal = false">Close</button>
-                </div>
-            </form>
+        <div class="form-control">
+          <label class="label">
+            <span class="label-text font-semibold">Source type</span>
+          </label>
+          <select name="source_type" class="select select-bordered w-full">
+            <option value="QLIK">Qlik export</option>
+            <option value="FACULTY">Faculty sheet</option>
+          </select>
         </div>
-    </dialog>
+
+        <div class="form-control mt-4">
+          <label class="label">
+            <span class="label-text font-semibold">Faculty code (for faculty sheets)</span>
+          </label>
+          <input type="text" name="faculty_code" placeholder="EEMCS" class="input input-bordered w-full" />
+        </div>
+
+        <div class="form-control mt-4">
+          <label class="label">
+            <span class="label-text font-semibold">File</span>
+          </label>
+          <input type="file" name="file" class="file-input file-input-bordered w-full" />
+        </div>
+
+        <div class="modal-action">
+          <button type="submit" class="btn btn-ut btn-primary">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
+            </svg>
+            Upload
+          </button>
+          <button type="button" class="btn btn-ut btn-ghost" @click="showUploadModal = false">Close</button>
+        </div>
+      </form>
+    </div>
+    <label class="modal-backdrop" @click="showUploadModal = false"></label>
+  </dialog>
 
 </div>
 {% endblock %}

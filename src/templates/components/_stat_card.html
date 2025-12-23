@@ -1,0 +1,37 @@
+{# ============================================================================
+   UT Stat Card Component
+   Usage:
+     {% include "components/_stat_card.html" with value="1,234" label="Total Items" %}
+     {% include "components/_stat_card.html" with value="456" label="Completed" color="success" %}
+     {% include "components/_stat_card.html" with value="12" label="Failed" color="error" %}
+   Options:
+     value: The stat value to display (required)
+     label: The stat label (required)
+     color: Color variant (default, primary, success, warning, error, info)
+     icon: SVG icon to display above the value (optional)
+     href: Optional link to make the card clickable (optional)
+============================================================================ #}
+
+{% if href %}
+<a href="{{ href }}" class="group block">
+{% endif %}
+
+<div class="stat bg-base-100 border border-base-300 {% if color %}border-t-4 border-t-{{ color }}{% else %}border-t-4 border-t-primary{% endif%} p-4 text-center transition-all hover:shadow-md">
+  {% if icon %}
+  <div class="mb-2 {% if color %}text-{{ color }}{% else %}text-primary{% endif%}">
+    {{ icon|safe }}
+  </div>
+  {% endif %}
+
+  <div class="stat-value text-3xl font-bold {% if color %}text-{{ color }}{% else %}text-primary{% endif%} font-condensed uppercase">
+    {{ value }}
+  </div>
+
+  <div class="stat-title text-sm text-base-content/70 uppercase tracking-wider mt-1">
+    {{ label }}
+  </div>
+</div>
+
+{% if href %}
+</a>
+{% endif %}

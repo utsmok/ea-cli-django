@@ -24,6 +24,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 # Copy source code AFTER dependencies
 # This ensures dependency layer is cached unless deps change
 COPY src/ ./src/
+COPY docker/ ./docker/
 
 # Now install the project itself
 RUN --mount=type=cache,target=/root/.cache/uv \

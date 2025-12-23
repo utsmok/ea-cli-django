@@ -1,60 +1,114 @@
 {% if not only_items %}
 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="data-grid-inner">
-  {% endif %}
+{% endif %}
 
-  {% for item in items %}
-  <div class="card bg-base-100 shadow-xl border border-base-300" {% if forloop.last and page_obj.has_next %}
-    hx-get="{% url 'dashboard:grid_partial' %}?page={{ page_obj.next_page_number }}" hx-trigger="revealed"
-    hx-swap="afterend" hx-target="this" {% endif %}>
+{% for item in items %}
+  <div class="card bg-base-100 shadow-sm border border-base-300 hover:shadow-md transition-all duration-200"
+       {% if forloop.last and page_obj.has_next %}
+       hx-get="{% url 'dashboard:grid_partial' %}?page={{ page_obj.next_page_number }}"
+       hx-trigger="revealed"
+       hx-swap="afterend"
+       hx-target="this"
+       {% endif %}>
     <div class="card-body p-4">
-      <div class="flex justify-between items-start">
-        <h3 class="font-bold truncate" title="{{ item.filename }}">{{ item.filename|default:"Untitled" }}</h3>
+      <div class="flex justify-between items-start gap-2">
+        <div class="flex-1 min-w-0">
+          <h3 class="font-semibold truncate" title="{{ item.filename }}">
+            {{ item.filename|default:"Untitled"|truncatewords:6 }}
+          </h3>
+          <p class="text-xs text-base-content/50 font-mono mt-1">
+            ID: {{ item.material_id }}
+          </p>
+        </div>
         <div id="status-{{ item.material_id }}">
           {% if item.enrichment_status == "COMPLETED" %}
-          <span class="badge badge-success">Completed</span>
-          {% if item.document %}
-          <a href="{{ item.document.file.url }}" class="ml-2 underline text-xs" target="_blank">View PDF</a>
-          {% endif %}
+            <span class="badge bg-success/10 text-success border-0">
+              <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+              </svg>
+              Done
+            </span>
+            {% if item.document %}
+              <a href="{{ item.document.file.url }}" class="ml-2 text-xs underline text-primary hover:text-primary-dark" target="_blank">
+                View PDF
+              </a>
+            {% endif %}
           {% elif item.enrichment_status == "RUNNING" %}
-          <span class="badge badge-info animate-pulse" hx-get="{% url 'enrichment:item_status' item.material_id %}"
-            hx-trigger="load delay:2s" hx-swap="outerHTML">Running...</span>
+            <span class="badge bg-info/10 text-info border-0 animate-pulse"
+                  hx-get="{% url 'enrichment:item_status' item.material_id %}"
+                  hx-trigger="load delay:2s"
+                  hx-swap="outerHTML">
+              <svg class="w-3 h-3 mr-1 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+              </svg>
+              Running...
+            </span>
           {% elif item.enrichment_status == "FAILED" %}
-          <span class="badge badge-error">Failed</span>
+            <span class="badge bg-error/10 text-error border-0">
+              <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+              </svg>
+              Failed
+            </span>
           {% else %}
-          <span class="badge badge-ghost">Pending</span>
+            <span class="badge bg-base-200 text-base-content/70 border-0">
+              <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/>
+              </svg>
+              Pending
+            </span>
           {% endif %}
         </div>
       </div>
 
-      <div class="text-xs opacity-70 mt-2 space-y-1">
-        <p><span class="font-semibold">ID:</span> {{ item.material_id }}</p>
-        <p><span class="font-semibold">Course:</span> {{ item.course_code|default:"-" }}</p>
-        <p><span class="font-semibold">Faculty:</span> {{ item.faculty.abbreviation|default:"-" }}</p>
-        <p><span class="font-semibold">Class:</span> {{ item.v2_manual_classification|default:"Unknown" }}</p>
-        <p id="enriched-date-{{ item.material_id }}">
+      <div class="text-xs space-y-1 mt-3 border-t border-base-200 pt-3">
+        <div class="flex justify-between">
+          <span class="text-base-content/60">Course:</span>
+          <span class="font-medium">{{ item.course_code|default:"—" }}</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-base-content/60">Faculty:</span>
+          <span class="font-medium">{{ item.faculty.abbreviation|default:"—" }}</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-base-content/60">Class:</span>
+          <span class="font-medium">{{ item.v2_manual_classification|default:"Unknown" }}</span>
+        </div>
+        <div id="enriched-date-{{ item.material_id }}">
           {% if item.last_enrichment_attempt %}
-          <span class="font-semibold" title="Last checked">Enriched:</span> {{ item.last_enrichment_attempt|date:"Y-m-d
-          H:i" }}
+          <div class="flex justify-between">
+            <span class="text-base-content/60" title="Last checked">Enriched:</span>
+            <span class="font-mono">{{ item.last_enrichment_attempt|date:"Y-m-d H:i" }}</span>
+          </div>
           {% endif %}
-        </p>
+        </div>
       </div>
 
       <div class="card-actions justify-end mt-4">
-        <button class="btn btn-xs btn-outline" hx-post="{% url 'enrichment:trigger_item' item.material_id %}"
-          hx-target="#status-{{ item.material_id }}" hx-swap="outerHTML">
+        <button class="btn btn-xs btn-outline btn-ut"
+                hx-post="{% url 'enrichment:trigger_item' item.material_id %}"
+                hx-target="#status-{{ item.material_id }}"
+                hx-swap="outerHTML">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+          </svg>
           Enrich
         </button>
       </div>
     </div>
   </div>
-  {% empty %}
+{% empty %}
   {% if not only_items %}
-  <div class="col-span-full py-10 text-center opacity-50">
-    <p>No items found. Upload an Excel file to get started.</p>
+  <div class="col-span-full py-20 text-center">
+    <svg class="w-16 h-16 mx-auto text-base-content/30 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+    </svg>
+    <p class="text-base-content/60 text-lg">No items found</p>
+    <p class="text-base-content/40 text-sm mt-1">Upload an Excel file to get started.</p>
   </div>
   {% endif %}
-  {% endfor %}
+{% endfor %}
 
-  {% if not only_items %}
+{% if not only_items %}
 </div>
 {% endif %}

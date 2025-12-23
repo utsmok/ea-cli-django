@@ -1,10 +1,12 @@
 {% extends "base.html" %}
 
+{% block title %}Processing Steps{% endblock %}
+
 {% block content %}
 <div class="max-w-7xl mx-auto">
   <div class="mb-8">
-    <h1 class="text-4xl font-bold mb-2">Processing Steps</h1>
-    <p class="text-lg text-base-content/70">
+    <h1 class="text-3xl md:text-4xl font-bold uppercase tracking-wide mb-2">Processing Steps</h1>
+    <p class="text-base-content/70">
       Select a step to configure and run data processing operations
     </p>
   </div>
@@ -13,18 +15,20 @@
   <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 
     <!-- Step 1: Ingest Qlik Export -->
-    <a href="{% url 'steps:ingest_qlik' %}" class="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow">
-      <div class="card-body">
-        <div class="flex items-start gap-3">
-          <div class="badge badge-primary badge-lg">1</div>
-          <div class="flex-1">
-            <h2 class="card-title text-xl">Ingest Qlik Export</h2>
-            <p class="text-sm text-base-content/60 mt-2">
-              Import Qlik export files to create new copyright items with system fields
-            </p>
-            <div class="mt-4">
-              <span class="badge badge-outline">File Upload</span>
-              <span class="badge badge-outline">Creates Items</span>
+    <a href="{% url 'steps:ingest_qlik' %}" class="group">
+      <div class="card bg-base-100 shadow-sm border border-base-300 hover:shadow-md hover:border-primary/50 transition-all duration-200 h-full">
+        <div class="card-body p-6">
+          <div class="flex items-start gap-4">
+            <div class="badge badge-primary badge-lg font-bold">1</div>
+            <div class="flex-1">
+              <h2 class="card-title text-lg group-hover:text-primary transition-colors">Ingest Qlik Export</h2>
+              <p class="text-sm text-base-content/60 mt-2">
+                Import Qlik export files to create new copyright items with system fields
+              </p>
+              <div class="flex flex-wrap gap-2 mt-4">
+                <span class="badge badge-outline">File Upload</span>
+                <span class="badge badge-outline">Creates Items</span>
+              </div>
             </div>
           </div>
         </div>
@@ -32,18 +36,20 @@
     </a>
 
     <!-- Step 2: Ingest Faculty Sheet -->
-    <a href="{% url 'steps:ingest_faculty' %}" class="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow">
-      <div class="card-body">
-        <div class="flex items-start gap-3">
-          <div class="badge badge-primary badge-lg">2</div>
-          <div class="flex-1">
-            <h2 class="card-title text-xl">Ingest Faculty Sheet</h2>
-            <p class="text-sm text-base-content/60 mt-2">
-              Update classification fields from faculty-edited Excel sheets
-            </p>
-            <div class="mt-4">
-              <span class="badge badge-outline">File Upload</span>
-              <span class="badge badge-outline">Updates Items</span>
+    <a href="{% url 'steps:ingest_faculty' %}" class="group">
+      <div class="card bg-base-100 shadow-sm border border-base-300 hover:shadow-md hover:border-primary/50 transition-all duration-200 h-full">
+        <div class="card-body p-6">
+          <div class="flex items-start gap-4">
+            <div class="badge badge-primary badge-lg font-bold">2</div>
+            <div class="flex-1">
+              <h2 class="card-title text-lg group-hover:text-primary transition-colors">Ingest Faculty Sheet</h2>
+              <p class="text-sm text-base-content/60 mt-2">
+                Update classification fields from faculty-edited Excel sheets
+              </p>
+              <div class="flex flex-wrap gap-2 mt-4">
+                <span class="badge badge-outline">File Upload</span>
+                <span class="badge badge-outline">Updates Items</span>
+              </div>
             </div>
           </div>
         </div>
@@ -51,18 +57,20 @@
     </a>
 
     <!-- Step 3: Enrich from Osiris -->
-    <a href="{% url 'steps:enrich_osiris' %}" class="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow">
-      <div class="card-body">
-        <div class="flex items-start gap-3">
-          <div class="badge badge-secondary badge-lg">3</div>
-          <div class="flex-1">
-            <h2 class="card-title text-xl">Enrich from Osiris</h2>
-            <p class="text-sm text-base-content/60 mt-2">
-              Fetch course details, teachers, and metadata from Osiris system
-            </p>
-            <div class="mt-4">
-              <span class="badge badge-outline">Select Items</span>
-              <span class="badge badge-outline">API Call</span>
+    <a href="{% url 'steps:enrich_osiris' %}" class="group">
+      <div class="card bg-base-100 shadow-sm border border-base-300 hover:shadow-md hover:border-secondary/50 transition-all duration-200 h-full">
+        <div class="card-body p-6">
+          <div class="flex items-start gap-4">
+            <div class="badge badge-secondary badge-lg font-bold">3</div>
+            <div class="flex-1">
+              <h2 class="card-title text-lg group-hover:text-secondary transition-colors">Enrich from Osiris</h2>
+              <p class="text-sm text-base-content/60 mt-2">
+                Fetch course details, teachers, and metadata from Osiris system
+              </p>
+              <div class="flex flex-wrap gap-2 mt-4">
+                <span class="badge badge-outline">Select Items</span>
+                <span class="badge badge-outline">API Call</span>
+              </div>
             </div>
           </div>
         </div>
@@ -70,18 +78,20 @@
     </a>
 
     <!-- Step 4: Enrich from People Pages -->
-    <a href="{% url 'steps:enrich_people' %}" class="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow">
-      <div class="card-body">
-        <div class="flex items-start gap-3">
-          <div class="badge badge-secondary badge-lg">4</div>
-          <div class="flex-1">
-            <h2 class="card-title text-xl">Enrich from People Pages</h2>
-            <p class="text-sm text-base-content/60 mt-2">
-              Scrape person information from UT people pages
-            </p>
-            <div class="mt-4">
-              <span class="badge badge-outline">Select Items</span>
-              <span class="badge badge-outline">Web Scraping</span>
+    <a href="{% url 'steps:enrich_people' %}" class="group">
+      <div class="card bg-base-100 shadow-sm border border-base-300 hover:shadow-md hover:border-secondary/50 transition-all duration-200 h-full">
+        <div class="card-body p-6">
+          <div class="flex items-start gap-4">
+            <div class="badge badge-secondary badge-lg font-bold">4</div>
+            <div class="flex-1">
+              <h2 class="card-title text-lg group-hover:text-secondary transition-colors">Enrich from People Pages</h2>
+              <p class="text-sm text-base-content/60 mt-2">
+                Scrape person information from UT people pages
+              </p>
+              <div class="flex flex-wrap gap-2 mt-4">
+                <span class="badge badge-outline">Select Items</span>
+                <span class="badge badge-outline">Web Scraping</span>
+              </div>
             </div>
           </div>
         </div>
@@ -89,18 +99,20 @@
     </a>
 
     <!-- Step 5: Get PDF Status from Canvas -->
-    <a href="{% url 'steps:pdf_canvas_status' %}" class="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow">
-      <div class="card-body">
-        <div class="flex items-start gap-3">
-          <div class="badge badge-accent badge-lg">5</div>
-          <div class="flex-1">
-            <h2 class="card-title text-xl">Get PDF Status from Canvas</h2>
-            <p class="text-sm text-base-content/60 mt-2">
-              Check Canvas for PDF metadata and download status
-            </p>
-            <div class="mt-4">
-              <span class="badge badge-outline">Select Items</span>
-              <span class="badge badge-outline">Canvas API</span>
+    <a href="{% url 'steps:pdf_canvas_status' %}" class="group">
+      <div class="card bg-base-100 shadow-sm border border-base-300 hover:shadow-md hover:border-accent/50 transition-all duration-200 h-full">
+        <div class="card-body p-6">
+          <div class="flex items-start gap-4">
+            <div class="badge badge-accent badge-lg font-bold">5</div>
+            <div class="flex-1">
+              <h2 class="card-title text-lg group-hover:text-accent transition-colors">Get PDF Status from Canvas</h2>
+              <p class="text-sm text-base-content/60 mt-2">
+                Check Canvas for PDF metadata and download status
+              </p>
+              <div class="flex flex-wrap gap-2 mt-4">
+                <span class="badge badge-outline">Select Items</span>
+                <span class="badge badge-outline">Canvas API</span>
+              </div>
             </div>
           </div>
         </div>
@@ -108,18 +120,20 @@
     </a>
 
     <!-- Step 6: Extract PDF Details -->
-    <a href="{% url 'steps:pdf_extract' %}" class="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow">
-      <div class="card-body">
-        <div class="flex items-start gap-3">
-          <div class="badge badge-accent badge-lg">6</div>
-          <div class="flex-1">
-            <h2 class="card-title text-xl">Extract PDF Details</h2>
-            <p class="text-sm text-base-content/60 mt-2">
-              Parse downloaded PDFs to extract text, metadata, and quality scores
-            </p>
-            <div class="mt-4">
-              <span class="badge badge-outline">Select Items</span>
-              <span class="badge badge-outline">OCR/Parse</span>
+    <a href="{% url 'steps:pdf_extract' %}" class="group">
+      <div class="card bg-base-100 shadow-sm border border-base-300 hover:shadow-md hover:border-accent/50 transition-all duration-200 h-full">
+        <div class="card-body p-6">
+          <div class="flex items-start gap-4">
+            <div class="badge badge-accent badge-lg font-bold">6</div>
+            <div class="flex-1">
+              <h2 class="card-title text-lg group-hover:text-accent transition-colors">Extract PDF Details</h2>
+              <p class="text-sm text-base-content/60 mt-2">
+                Parse downloaded PDFs to extract text, metadata, and quality scores
+              </p>
+              <div class="flex flex-wrap gap-2 mt-4">
+                <span class="badge badge-outline">Select Items</span>
+                <span class="badge badge-outline">OCR/Parse</span>
+              </div>
             </div>
           </div>
         </div>
@@ -127,18 +141,20 @@
     </a>
 
     <!-- Step 7: Export Faculty Sheets -->
-    <a href="{% url 'steps:export_faculty' %}" class="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow">
-      <div class="card-body">
-        <div class="flex items-start gap-3">
-          <div class="badge badge-info badge-lg">7</div>
-          <div class="flex-1">
-            <h2 class="card-title text-xl">Export Faculty Sheets</h2>
-            <p class="text-sm text-base-content/60 mt-2">
-              Generate Excel workbooks for faculty review and classification
-            </p>
-            <div class="mt-4">
-              <span class="badge badge-outline">Export</span>
-              <span class="badge badge-outline">Excel</span>
+    <a href="{% url 'steps:export_faculty' %}" class="group">
+      <div class="card bg-base-100 shadow-sm border border-base-300 hover:shadow-md hover:border-info/50 transition-all duration-200 h-full">
+        <div class="card-body p-6">
+          <div class="flex items-start gap-4">
+            <div class="badge badge-info badge-lg font-bold">7</div>
+            <div class="flex-1">
+              <h2 class="card-title text-lg group-hover:text-info transition-colors">Export Faculty Sheets</h2>
+              <p class="text-sm text-base-content/60 mt-2">
+                Generate Excel workbooks for faculty review and classification
+              </p>
+              <div class="flex flex-wrap gap-2 mt-4">
+                <span class="badge badge-outline">Export</span>
+                <span class="badge badge-outline">Excel</span>
+              </div>
             </div>
           </div>
         </div>
@@ -148,18 +164,18 @@
   </div>
 
   <!-- Info Card -->
-  <div class="card bg-base-100 shadow-xl mt-8">
-    <div class="card-body">
-      <h2 class="card-title">
-        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+  <div class="card bg-base-100 shadow-sm border border-base-300 mt-8">
+    <div class="card-body p-6">
+      <h2 class="card-title text-xl flex items-center gap-2">
+        <svg class="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
         </svg>
         About Processing Steps
       </h2>
-      <p class="text-base-content/70">
+      <p class="text-base-content/70 mb-4">
         Each step in the Easy Access workflow can be run independently. Steps allow you to:
       </p>
-      <ul class="list-disc list-inside space-y-1 text-base-content/70 mt-2">
+      <ul class="list-disc list-inside space-y-2 text-base-content/70 ml-2">
         <li>Select specific items from the database to process</li>
         <li>Upload files for ingestion and updates</li>
         <li>Configure step-specific settings (API keys, thresholds, etc.)</li>
@@ -168,5 +184,6 @@
       </ul>
     </div>
   </div>
+
 </div>
 {% endblock %}

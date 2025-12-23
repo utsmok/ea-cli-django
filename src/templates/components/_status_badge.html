@@ -1,0 +1,48 @@
+{# ============================================================================
+   UT Status Badge Component
+   Usage:
+     {% include "components/_status_badge.html" with status="completed" %}
+     {% include "components/_status_badge.html" with status="running" text="Processing..." %}
+     {% include "components/_status_badge.html" with status="failed" text="Error" %}
+   Options:
+     status: Status value (pending, running, completed, failed, partial, staging, processing)
+     text: Custom text (optional, uses default status text if not provided)
+     animated: Add pulse animation for running states (default: true)
+============================================================================ #}
+
+{% if text is None %}
+  {% if status == "pending" %}
+    {% set text = "Pending" %}
+  {% elif status == "running" or status == "processing" or status == "staging" %}
+    {% set text = "Running" %}
+  {% elif status == "completed" %}
+    {% set text = "Completed" %}
+  {% elif status == "failed" %}
+    {% set text = "Failed" %}
+  {% elif status == "partial" %}
+    {% set text = "Partial" %}
+  {% endif %}
+{% endif %}
+
+<span class="ut-badge inline-flex items-center gap-2
+  {% if status == "pending" %}
+    bg-base-200 text-base-content/70
+  {% elif status == "running" or status == "processing" or status == "staging" %}
+    bg-info/10 text-info
+  {% elif status == "completed" %}
+    bg-success/10 text-success
+  {% elif status == "failed" %}
+    bg-error/10 text-error
+  {% elif status == "partial" %}
+    bg-warning/10 text-warning
+  {% else %}
+    bg-base-200 text-base-content/70
+  {% endif %}
+">
+  {% if status == "running" or status == "processing" or status == "staging" %}
+  <span class="w-2 h-2 rounded-full bg-current animate-pulse"></span>
+  {% else %}
+  <span class="w-2 h-2 rounded-full bg-current"></span>
+  {% endif %}
+  {{ text|default:status|title }}
+</span>

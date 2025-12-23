@@ -55,6 +55,7 @@ src/documents/
 #AI stuff
 .letta/
 .gemini/
-# -- note: this is currently only used for ai coding agents, if we ever use node packages remove this 
+.playwright-mcp/
+# -- note: this is currently only used for ai coding agents, if we ever use node packages remove this
 package-lock.json
 package.json
