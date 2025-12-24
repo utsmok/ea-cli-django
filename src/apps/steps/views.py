@@ -381,7 +381,7 @@ def pdf_canvas_status_step(request):
 @require_POST
 def run_pdf_canvas_status(request):
     """Check Canvas PDF status for selected items."""
-    from apps.documents.tasks import download_pdfs_for_items
+    from apps.documents.tasks import check_and_download_pdfs
 
     # Get selected items
     item_ids = request.POST.getlist("item_ids")
@@ -400,14 +400,14 @@ def run_pdf_canvas_status(request):
             return JsonResponse({"error": error}, status=400)
         item_ids = parsed_ids
 
-    # Trigger async download task
-    download_pdfs_for_items.enqueue(item_ids)
+    # Trigger async Canvas check and download task
+    check_and_download_pdfs.enqueue(item_ids)
 
     return JsonResponse(
         {
             "success": True,
             "total_items": len(item_ids),
-            "message": f"PDF download queued for {len(item_ids)} items",
+            "message": f"Canvas file check and PDF download queued for {len(item_ids)} items",
         }
     )
 
@@ -640,16 +640,24 @@ def run_export_faculty(request):
 
     # Run export synchronously (could be made async in the future)
     try:
-
         export_service = ExportService()
         result = export_service.export_workflow_tree()
+
+        # Extract data from result
+        files_created = result.get("files", [])
+        faculties = result.get("faculties", [])
+
+        # Count total items exported
+        from apps.core.models import CopyrightItem
+
+        total_items = CopyrightItem.objects.count()
 
         # Update export history with results
         export_history.status = ExportHistory.Status.COMPLETED
         export_history.completed_at = timezone.now()
-        export_history.total_items = result.get("total_items", 0)
-        export_history.total_files = result.get("total_files", 0)
-        export_history.files_created = result.get("files", [])
+        export_history.total_items = total_items
+        export_history.total_files = len(files_created)
+        export_history.files_created = files_created
         export_history.output_dir = str(result.get("output_dir", ""))
         export_history.save()
 
@@ -657,9 +665,9 @@ def run_export_faculty(request):
             {
                 "success": True,
                 "export_id": export_history.id,
-                "total_files": export_history.total_files,
-                "total_items": export_history.total_items,
-                "message": f"Export completed: {export_history.total_files} files created",
+                "total_files": len(files_created),
+                "total_items": total_items,
+                "message": f"Export completed: {len(files_created)} files created for {len(faculties)} faculties",
             }
         )
 

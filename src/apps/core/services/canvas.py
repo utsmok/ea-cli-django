@@ -6,11 +6,12 @@ Ports logic from ea-cli/easy_access/maintenance/file_existence.py
 import asyncio
 import logging
 import time
-from datetime import datetime, timedelta
+from datetime import timedelta
 from typing import Any, TypedDict
 
 import httpx
 from django.conf import settings
+from django.utils import timezone
 
 from apps.core.models import CopyrightItem
 
@@ -25,7 +26,7 @@ class Item(TypedDict):
 class FileExistenceResult(TypedDict):
     material_id: int | None
     file_exists: bool
-    last_canvas_check: datetime
+    last_canvas_check: Any  # timezone-aware datetime
     canvas_course_id: int | None
 
 
@@ -61,7 +62,7 @@ async def select_items_needing_check(
 
     if not force:
         if ttl_days is not None:
-            cutoff_date = datetime.now() - timedelta(days=ttl_days)
+            cutoff_date = timezone.now() - timedelta(days=ttl_days)
             # Check items that are either unchecked or older than TTL
             from django.db.models import Q
 
@@ -129,7 +130,7 @@ async def check_single_file_existence(
             return FileExistenceResult(
                 material_id=material_id,
                 file_exists=file_exists,
-                last_canvas_check=datetime.now(),
+                last_canvas_check=timezone.now(),
                 canvas_course_id=canvas_course_id,
             )
         else:
@@ -137,7 +138,7 @@ async def check_single_file_existence(
             return FileExistenceResult(
                 material_id=material_id,
                 file_exists=False,
-                last_canvas_check=datetime.now(),
+                last_canvas_check=timezone.now(),
                 canvas_course_id=None,
             )
 
@@ -148,7 +149,7 @@ async def check_single_file_existence(
         return FileExistenceResult(
             material_id=material_id,
             file_exists=False,
-            last_canvas_check=datetime.now(),
+            last_canvas_check=timezone.now(),
             canvas_course_id=None,
         )
 

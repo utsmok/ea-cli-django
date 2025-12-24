@@ -96,10 +96,10 @@ def upload(request):
         # Auto-process option
         auto_process = request.POST.get("auto_process") == "on"
         if auto_process:
-            stage_batch.enqueue(batch.id)
+            stage_batch.enqueue(batch.id, auto_process=True)
             messages.success(
                 request,
-                f"Batch #{batch.id} uploaded. Background processing started.",
+                f"Batch #{batch.id} uploaded. Background processing started (stage → process).",
             )
         else:
             messages.success(

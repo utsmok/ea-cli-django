@@ -23,7 +23,7 @@ from .services import (
 
 
 @task
-def stage_batch(batch_id: int) -> dict[str, Any]:
+def stage_batch(batch_id: int, auto_process: bool = False) -> dict[str, Any]:
     """
     Stage a batch: Read Excel file and create staging entries.
 
@@ -31,6 +31,7 @@ def stage_batch(batch_id: int) -> dict[str, Any]:
 
     Args:
         batch_id: ID of the IngestionBatch to process
+        auto_process: If True, automatically trigger process_batch after staging completes
 
     Returns:
         Dictionary with staging results
@@ -102,6 +103,11 @@ def stage_batch(batch_id: int) -> dict[str, Any]:
         batch.save(update_fields=["rows_staged", "status"])
 
         logger.info(f"Staged {rows_staged} entries for batch {batch_id}")
+
+        # Auto-trigger processing if requested
+        if auto_process:
+            logger.info(f"Auto-triggering process_batch for batch {batch_id}")
+            process_batch.enqueue(batch_id)
 
         return {
             "success": True,

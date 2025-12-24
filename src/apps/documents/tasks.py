@@ -14,6 +14,58 @@ from apps.documents.services.parse import parse_pdfs
 
 
 @task
+async def check_and_download_pdfs(item_ids: list[int]) -> dict:
+    """
+    Check Canvas file existence and then download PDFs for CopyrightItems.
+
+    This task first checks which files exist on Canvas (setting file_exists=True),
+    then downloads the ones that exist.
+
+    Args:
+        item_ids: List of CopyrightItem material_id values
+
+    Returns:
+        Dictionary with combined statistics
+    """
+    from apps.core.services.canvas import refresh_file_existence_async
+
+    try:
+        # Step 1: Check file existence on Canvas
+        logger.info(f"Checking Canvas file existence for {len(item_ids)} items...")
+
+        # Only check items that haven't been checked or need rechecking
+        from apps.core.models import CopyrightItem
+
+        items_to_check = CopyrightItem.objects.filter(
+            material_id__in=item_ids,
+            file_exists__isnull=True,  # Only check unchecked items
+        )
+        unchecked_ids = list(items_to_check.values_list("material_id", flat=True))
+
+        if unchecked_ids:
+            # Limit batch size to avoid overwhelming the Canvas API
+            batch_size = min(len(unchecked_ids), 100)
+            existence_result = await refresh_file_existence_async(
+                batch_size=batch_size, force=False
+            )
+            logger.info(f"Canvas file existence check: {existence_result}")
+
+        # Step 2: Download PDFs for items with file_exists=True
+        logger.info(f"Downloading PDFs for {len(item_ids)} items...")
+        download_result = await download_pdfs_for_items(item_ids)
+
+        return {
+            "existence_check": existence_result if unchecked_ids else {"checked": 0},
+            "download": download_result,
+            "total_items": len(item_ids),
+        }
+
+    except Exception as e:
+        logger.error(f"Error in check_and_download_pdfs: {e}")
+        return {"error": str(e), "downloaded": 0, "failed": len(item_ids)}
+
+
+@task
 async def download_pdfs_for_items(item_ids: list[int]) -> dict:
     """
     Download PDFs for specific CopyrightItem IDs.
