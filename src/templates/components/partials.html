@@ -1,4 +1,38 @@
-{# Django 6.0 Template Partials - All reusable components #}
+{# ==============================================================================
+   DJANGO 6.0 TEMPLATE PARTIALS - Single Source of Truth
+
+   This file contains ALL reusable UI components for the Easy Access Platform.
+
+   Usage:
+     1. Use partials in any template: {% partial component_name param=value %}
+     2. For HTMX partial updates: render(request, "template.html#partial_name", context)
+
+   Benefits:
+     - Single template load (faster than multiple includes)
+     - Named, parameterized components (better DX)
+     - Type-safe parameters (documented below)
+     - Future-proof (Django 6.0+ native feature)
+     - Better encapsulation (only passed variables available)
+
+   DO NOT create new _*.html component files. Add new partials here.
+
+   Partial Naming Convention:
+     - snake_case matching component purpose
+     - Prefix with entity if specific (e.g., workflow_tabs, editable_cell)
+     - Generic components use descriptive name (e.g., button, card, toast)
+
+   Components (10 total):
+     - editable_cell: Inline edit for table cells with HTMX
+     - workflow_tabs: Status filter tabs with counts
+     - status_badge: Display status with conditional styling
+     - filter_dropdown: Generic select dropdown for filtering
+     - filter_search: Search input with delayed trigger
+     - button: Generic button with variants
+     - progress: Visual progress bar
+     - stat_card: Display stats with colored accent
+     - card: Generic card container
+     - toast: Auto-dismissing notifications
+   ============================================================================== #}
 {% load steps_filters %}
 
 {# ==============================================================================
