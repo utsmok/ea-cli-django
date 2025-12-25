@@ -503,17 +503,6 @@ pg_restore -d copyright_db backup.sql
 - [ ] Manual testing confirms data integrity
 - [ ] Performance is not degraded
 
-## Estimated Time
-
-- **Model design:** 4 hours
-- **Migration creation:** 8 hours (complex data migration)
-- **Update services:** 6 hours
-- **Update templates:** 4 hours
-- **Testing:** 10 hours (extensive testing required)
-- **Documentation:** 4 hours
-
-**Total: 3-4 days**
-
 ## Risks & Mitigations
 
 | Risk | Impact | Mitigation |

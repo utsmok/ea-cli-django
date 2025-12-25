@@ -383,17 +383,6 @@ Add to CSS or Tailwind config:
 - [ ] Performance acceptable with 50k+ items
 - [ ] All HTMX interactions work smoothly
 
-## Estimated Time
-
-- **Sorting implementation:** 4 hours
-- **Full-width layout:** 2 hours
-- **Slide-out panel:** 4 hours
-- **Row selection:** 2 hours
-- **Responsive design:** 2 hours
-- **Testing:** 4 hours
-
-**Total: 2-3 days**
-
 ---
 
 **All Tasks Complete!**
