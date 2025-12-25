@@ -2,23 +2,35 @@
 
 ## Overview
 
-Create a comprehensive settings system with database models, YAML import/export, user/admin UIs, and Canvas API key validation. Migrate useful settings from legacy `settings.yaml`.
+Create a comprehensive settings system with database models, YAML import/export, and admin UI.
 
-**Current Status:** ❌ **NOT STARTED**
+**Current Status:** ✅ **COMPLETED**
 
-**Current State:** Hardcoded settings in `config/university.py`, `export_config.py`, `models.py`
+**Current State:** Settings app with database models, admin interface, YAML import/export
 
-**Goal:** Dynamic, user-editable settings with YAML backup/restore
+## What Was Implemented
 
-## Features
+### Core Features ✅
 
 - Database-backed settings (models)
 - YAML import/export for backup/migration
-- User-facing settings UI (non-admin)
-- Admin-only settings UI
+- Admin interface with fieldsets
+- Built-in caching (15 min TTL)
+- Type validation (string, integer, float, boolean, JSON)
+- Sensitive value masking (API keys)
+- Category-based organization
+- Audit trail (updated_by, timestamps)
+
+### Simplified Approach (Per User Requirements)
+
+Based on user feedback, we skipped:
 - Faculty-specific overrides
-- API credential management with testing
-- Integration with existing export/config systems
+- User-facing settings UI (non-admin)
+- API credential testing
+- Sheet export settings
+- Complex validation rules
+
+Focus was on core features that provide immediate value.
 
 ## Architecture
 
@@ -30,663 +42,253 @@ Create a comprehensive settings system with database models, YAML import/export,
                     │ import/export
                     ↓
 ┌─────────────────────────────────────────────────┐
-│           SettingsManager Service               │
+│              Setting Model                      │
 │         (CRUD + Cache + Validation)             │
-└──────┬────────────────────────────────────┬─────┘
-       │                                    │
-       ↓                                    ↓
-┌──────────────────┐              ┌──────────────────┐
-│  Setting Model   │              │ FacultyOverride  │
-│  (Global/Category│              │  (Per-Faculty)   │
-└──────────────────┘              └──────────────────┘
-       │                                    │
-       ↓                                    ↓
+└─────────────────────────────────────────────────┘
+                    ↓
 ┌─────────────────────────────────────────────────┐
-│            UI Layer (HTMX/Alpine)               │
-│  - User Settings (/settings/user)               │
-│  - Admin Settings (/admin/settings/)            │
+│            Django Admin                         │
+│     (/admin/settings/setting/)                  │
 └─────────────────────────────────────────────────┘
 ```
 
-## Implementation Steps
+## Implementation Details
 
-### Step 1: Create Settings App
+### Step 1: Created Settings App ✅
 
-```bash
-# Create new Django app
-uv run python src/manage.py startapp settings src/apps
-```
+**Command:** `uv run python src/manage.py startapp settings src/apps`
 
-**File:** `src/apps/settings/__init__.py` (auto-created)
+**Files Created:**
+- `src/apps/settings/apps.py` - AppConfig
+- `src/apps/settings/models.py` - Setting model
+- `src/apps/settings/admin.py` - Admin interface
+- `src/apps/settings/migrations/0001_initial.py` - Initial migration
 
-### Step 2: Create Settings Models
+### Step 2: Setting Model ✅
 
 **File:** `src/apps/settings/models.py`
 
 ```python
-from django.db import models
-from django.contrib.auth import get_user_model
-from django.core.exceptions import ValidationError
-import json
-
-User = get_user_model()
-
-
-class SettingCategory(models.Model):
-    """Group related settings together."""
-    name = models.CharField(max_length=100, unique=True)
-    slug = models.SlugField(max_length=100, unique=True)
-    description = models.TextField(blank=True)
-    icon = models.CharField(max_length=50, blank=True)
-    order = models.IntegerField(default=0)
-
-    class Meta:
-        ordering = ['order']
-        verbose_name_plural = "Setting Categories"
-
-    def __str__(self):
-        return self.name
-
-
 class Setting(models.Model):
-    """Individual setting with value and metadata."""
+    """Database-backed configuration with YAML import/export."""
 
     class ValueType(models.TextChoices):
         STRING = 'string', 'String'
         INTEGER = 'integer', 'Integer'
         FLOAT = 'float', 'Float'
         BOOLEAN = 'boolean', 'Boolean'
-        JSON = 'json', 'JSON'
-        ENUM = 'enum', 'Enumeration'
+        JSON = 'json', 'JSON (Array/Object)'
 
-    category = models.ForeignKey(
-        SettingCategory,
-        on_delete=models.CASCADE,
-        related_name='settings'
-    )
-    key = models.CharField(max_length=200)
+    # Core fields
+    key = models.CharField(max_length=200, unique=True, db_index=True)
+    name = models.CharField(max_length=200)
+    description = models.TextField(blank=True)
     value = models.JSONField()
     value_type = models.CharField(max_length=20, choices=ValueType.choices)
     default_value = models.JSONField()
 
-    # For ENUM types
-    enum_choices = models.JSONField(null=True, blank=True)
-
-    # Metadata
-    name = models.CharField(max_length=200)
-    description = models.TextField(blank=True)
-    is_required = models.BooleanField(default=False)
-    is_sensitive = models.BooleanField(default=False)  # Hide in UI (API keys)
-
-    # Faculty overrides
-    allow_faculty_override = models.BooleanField(default=False)
+    # Organization
+    category = models.CharField(max_length=100, default='general', db_index=True)
 
     # Validation
-    validation_regex = models.CharField(max_length=500, blank=True)
-    min_value = models.FloatField(null=True, blank=True)
-    max_value = models.FloatField(null=True, blank=True)
+    choices = models.JSONField(null=True, blank=True)  # ENUM-like behavior
+    is_required = models.BooleanField(default=False)
 
-    # Audit
+    # Security
+    is_sensitive = models.BooleanField(default=False)  # Mask API keys in UI
+
+    # Audit trail
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    updated_by = models.ForeignKey(
-        User,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True
-    )
+    updated_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
 
-    class Meta:
-        unique_together = ('category', 'key')
-        ordering = ['category', 'key']
+    # Class methods
+    @classmethod
+    def get(cls, key, default=None):
+        """Get setting value with caching (15 min TTL)."""
 
-    def __str__(self):
-        return f"{self.category.name}/{self.key}"
+    @classmethod
+    def set(cls, key, value, user=None, **kwargs):
+        """Set setting value and invalidate cache."""
 
-    def clean(self):
-        """Validate setting value."""
-        import re
-        # Validate regex
-        if self.validation_regex and isinstance(self.value, str):
-            if not re.match(self.validation_regex, self.value):
-                raise ValidationError(f"Value does not match pattern: {self.validation_regex}")
-
-        # Validate min/max for numeric
-        if self.value_type in [self.ValueType.INTEGER, self.ValueType.FLOAT]:
-            if self.min_value is not None and self.value < self.min_value:
-                raise ValidationError(f"Value must be >= {self.min_value}")
-            if self.max_value is not None and self.value > self.max_value:
-                raise ValidationError(f"Value must be <= {self.max_value}")
-
-
-class FacultyOverride(models.Model):
-    """Faculty-specific override for a setting."""
-    setting = models.ForeignKey(
-        Setting,
-        on_delete=models.CASCADE,
-        related_name='overrides'
-    )
-    faculty = models.ForeignKey(
-        'core.Faculty',
-        on_delete=models.CASCADE
-    )
-    override_value = models.JSONField()
-
-    created_at = models.DateTimeField(auto_now_add=True)
-    created_by = models.ForeignKey(
-        User,
-        on_delete=models.SET_NULL,
-        null=True
-    )
-
-    class Meta:
-        unique_together = ('setting', 'faculty')
-        verbose_name = "Faculty Override"
-
-    def __str__(self):
-        return f"{self.faculty.abbreviation} -> {self.setting.key}"
-
-
-class APICredential(models.Model):
-    """Store API credentials securely."""
-
-    class Provider(models.TextChoices):
-        CANVAS = 'canvas', 'Canvas LMS'
-        OSIRIS = 'osiris', 'Osiris API'
-
-    provider = models.CharField(
-        max_length=20,
-        choices=Provider.choices,
-        unique=True
-    )
-    api_key = models.CharField(max_length=500)
-    api_url = models.URLField(max_length=500)
-    is_active = models.BooleanField(default=True)
-    last_tested = models.DateTimeField(null=True, blank=True)
-    test_result = models.JSONField(null=True, blank=True)
-
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        verbose_name = "API Credential"
-
-    def __str__(self):
-        return f"{self.get_provider_display()} credentials"
-```
-
-### Step 3: Create Settings Manager Service
-
-**File:** `src/apps/settings/services/settings_manager.py`
-
-```python
-from typing import Any, Optional
-from django.core.cache import cache
-from .models import Setting, FacultyOverride
-
-
-class SettingsManager:
-    """Centralized settings access with caching and overrides."""
-
-    @staticmethod
-    def get(
-        key: str,
-        faculty: Optional['core.Faculty'] = None,
-        default: Any = None
-    ) -> Any:
-        """
-        Get setting value with optional faculty override.
-        """
-        cache_key = f"setting:{key}:{faculty.abbreviation if faculty else 'default'}"
-        value = cache.get(cache_key)
-
-        if value is not None:
-            return value
-
-        try:
-            setting = Setting.objects.select_related('category').get(key=key)
-
-            # Check for faculty override
-            if faculty and setting.allow_faculty_override:
-                override = FacultyOverride.objects.filter(
-                    setting=setting,
-                    faculty=faculty
-                ).first()
-                if override:
-                    value = override.override_value
-                else:
-                    value = setting.value
-            else:
-                value = setting.value
-
-            cache.set(cache_key, value, timeout=300)
-            return value
-
-        except Setting.DoesNotExist:
-            return default
-
-    @staticmethod
-    def set(key: str, value: Any, user=None) -> None:
-        """Update setting value and invalidate cache."""
-        try:
-            setting = Setting.objects.get(key=key)
-            setting.value = value
-            setting.updated_by = user
-            setting.save()
-            SettingsManager.invalidate(key)
-        except Setting.DoesNotExist:
-            raise ValueError(f"Setting not found: {key}")
-
-    @staticmethod
-    def invalidate(key: str) -> None:
-        """Invalidate cache for a setting."""
-        cache.delete_pattern(f"setting:{key}:*")
-
-    @staticmethod
-    def export_to_yaml() -> str:
+    @classmethod
+    def export_to_yaml(cls, include_sensitive=False):
         """Export all settings to YAML format."""
-        import yaml
-        from collections import defaultdict
 
-        settings = Setting.objects.select_related('category').all()
-        output = defaultdict(lambda: {'description': '', 'settings': {}})
-
-        for setting in settings:
-            cat_data = output[setting.category.slug]
-            cat_data['description'] = setting.category.description
-            cat_data['settings'][setting.key] = {
-                'value': setting.value,
-                'type': setting.value_type,
-                'name': setting.name,
-            }
-
-        return yaml.dump(dict(output), default_flow_style=False)
-
-    @staticmethod
-    def import_from_yaml(yaml_content: str, create_categories=True) -> dict:
+    @classmethod
+    def import_from_yaml(cls, yaml_content, overwrite=False, user=None):
         """Import settings from YAML content."""
-        import yaml
-
-        data = yaml.safe_load(yaml_content)
-        stats = {'created': 0, 'updated': 0, 'errors': []}
-
-        for cat_slug, cat_data in data.items():
-            # Create or get category
-            if create_categories:
-                category, _ = SettingCategory.objects.get_or_create(
-                    slug=cat_slug,
-                    defaults={
-                        'name': cat_slug.replace('_', ' ').title(),
-                        'description': cat_data.get('description', ''),
-                    }
-                )
-            else:
-                category = SettingCategory.objects.get(slug=cat_slug)
-
-            # Import settings
-            for key, setting_data in cat_data.get('settings', {}).items():
-                try:
-                    setting, created = Setting.objects.get_or_create(
-                        category=category,
-                        key=key,
-                        defaults={
-                            'value': setting_data['value'],
-                            'value_type': setting_data.get('type', 'string'),
-                            'name': setting_data.get('name', key),
-                        }
-                    )
-                    if created:
-                        stats['created'] += 1
-                    else:
-                        setting.value = setting_data['value']
-                        setting.save()
-                        stats['updated'] += 1
-                except Exception as e:
-                    stats['errors'].append(f"{key}: {str(e)}")
-
-        return stats
-
-
-# Global settings instance
-settings = SettingsManager()
 ```
 
-### Step 4: Create API Validator
+**Key Features:**
+- Built-in caching via `cache.get(f"setting:{key}")` (15 min TTL)
+- Automatic cache invalidation on save
+- Validation for required settings and allowed choices
+- Sensitive value masking in admin UI
 
-**File:** `src/apps/settings/services/api_validator.py`
-
-```python
-import httpx
-from django.utils import timezone
-from ..models import APICredential
-
-
-async def test_canvas_api(credentials: APICredential) -> dict:
-    """Test Canvas API credentials."""
-    try:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                f"{credentials.api_url}/courses",
-                headers={"Authorization": f"Bearer {credentials.api_key}"},
-                timeout=10.0
-            )
-
-            result = {
-                'success': response.status_code == 200,
-                'status_code': response.status_code,
-                'message': 'Valid credentials' if response.status_code == 200 else 'Authentication failed',
-                'timestamp': timezone.now().isoformat(),
-            }
-
-            if response.status_code == 200:
-                courses = response.json()
-                result['courses_accessible'] = len(courses)
-
-            credentials.test_result = result
-            credentials.last_tested = timezone.now()
-            credentials.save()
-
-            return result
-
-    except Exception as e:
-        return {
-            'success': False,
-            'error': str(e),
-            'timestamp': timezone.now().isoformat(),
-        }
-```
-
-### Step 5: Migrate Legacy Settings
-
-**File:** `src/apps/settings/management/commands/migrate_legacy_settings.py` (NEW)
-
-```python
-from django.core.management.base import BaseCommand
-from pathlib import Path
-import yaml
-
-class Command(BaseCommand):
-    help = 'Migrate settings from legacy settings.yaml'
-
-    def add_arguments(self, parser):
-        parser.add_argument('yaml_path', type=str, help='Path to legacy settings.yaml')
-
-    def handle(self, *args, **options):
-        from apps.settings.services.settings_manager import SettingsManager
-
-        yaml_path = Path(options['yaml_path'])
-
-        with open(yaml_path) as f:
-            legacy_settings = yaml.safe_load(f)
-
-        # Migrate university settings
-        if 'university' in legacy_settings:
-            self.migrate_university_settings(legacy_settings['university'])
-
-        # Migrate enrichment settings
-        if 'enrichment' in legacy_settings:
-            self.migrate_enrichment_settings(legacy_settings['enrichment'])
-
-        self.stdout.write(self.style.SUCCESS('Settings migrated successfully'))
-
-    def migrate_university_settings(self, data):
-        """Migrate university section."""
-        from apps.settings.models import Setting, SettingCategory
-
-        category, _ = SettingCategory.objects.get_or_create(
-            slug='university',
-            defaults={'name': 'University', 'order': 1}
-        )
-
-        # Create individual settings
-        for key, value in data.items():
-            Setting.objects.get_or_create(
-                category=category,
-                key=key,
-                defaults={
-                    'value': value,
-                    'value_type': self.determine_type(value),
-                    'name': key.replace('_', ' ').title(),
-                }
-            )
-```
-
-Run migration:
-```bash
-uv run python src/manage.py migrate_legacy_settings ea-cli/settings.yaml
-```
-
-### Step 6: Create Admin Interface
+### Step 3: Admin Interface ✅
 
 **File:** `src/apps/settings/admin.py`
 
+**Features:**
+- Organized fieldsets (Basic Info, Value Config, Validation, Security, Audit)
+- List filters by category, value_type, is_required, is_sensitive
+- Search by key, name, description
+- Sensitive value masking (`********` for is_sensitive=True)
+- YAML export action for selected settings
+- Read-only key after creation
+- Automatic updated_by tracking
+
+**Fieldsets:**
+1. Basic Information: key, name, description, category
+2. Value Configuration: value_type, value, default_value, choices
+3. Validation: is_required
+4. Security: is_sensitive
+5. Audit Trail: created_at, updated_at, updated_by
+
+### Step 4: YAML Import/Export ✅
+
+**Export:**
 ```python
-from django.contrib import admin
-from .models import Setting, SettingCategory, FacultyOverride, APICredential
-
-
-@admin.register(SettingCategory)
-class SettingCategoryAdmin(admin.ModelAdmin):
-    list_display = ['name', 'slug', 'order']
-    prepopulated_fields = {'slug': ('name',)}
-
-
-@admin.register(Setting)
-class SettingAdmin(admin.ModelAdmin):
-    list_display = ['key', 'name', 'category', 'value_type', 'is_required']
-    list_filter = ['category', 'value_type']
-    search_fields = ['key', 'name', 'description']
-
-
-@admin.register(APICredential)
-class APICredentialAdmin(admin.ModelAdmin):
-    list_display = ['provider', 'is_active', 'last_tested']
-    actions = ['test_credentials']
-
-    def test_credentials(self, request, queryset):
-        """Admin action to test API credentials."""
-        from asgiref.sync import async_to_sync
-        from .services.api_validator import test_canvas_api
-
-        for cred in queryset:
-            if cred.provider == 'canvas':
-                result = async_to_sync(test_canvas_api)(cred)
-                self.message_user(request, f"Tested {cred.provider}: {result.get('message', 'Failed')}")
+Setting.export_to_yaml(include_sensitive=False)
 ```
 
-### Step 7: Create User Settings UI
+**Output format:**
+```yaml
+general:
+  canvas.api_token:
+    value: ********
+    type: string
+    name: Canvas API Token
+    description: API token for Canvas LMS access
 
-**File:** `src/apps/settings/templates/settings/base.html` (NEW)
-
-```html
-{% extends "base.html" %}
-
-{% block title %}Settings{% endblock %}
-
-{% block content %}
-<div class="container mx-auto p-6" x-data="settingsApp()">
-  <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-    <!-- Sidebar: Categories -->
-    <nav class="space-y-2">
-      <template x-for="category in categories" :key="category.id">
-        <button @click="activeCategory = category.id"
-                :class="activeCategory === category.id ? 'btn btn-active' : 'btn btn-ghost'"
-                class="btn btn-justify w-full"
-                x-text="category.name">
-        </button>
-      </template>
-    </nav>
-
-    <!-- Main: Settings -->
-    <div class="md:col-span-3">
-      <div class="flex justify-between items-center mb-4">
-        <h1 class="text-2xl font-bold" x-text="activeCategoryName"></h1>
-        <div class="space-x-2">
-          <button @click="exportSettings" class="btn btn-outline btn-sm">Export YAML</button>
-          <button @click="showImportModal = true" class="btn btn-primary btn-sm">Import YAML</button>
-        </div>
-      </div>
-
-      <div class="space-y-4">
-        <template x-for="setting in activeSettings" :key="setting.id">
-          <div class="card bg-base-100 shadow-sm">
-            <div class="card-body p-4">
-              <label class="label">
-                <span class="label-text font-medium" x-text="setting.name"></span>
-              </label>
-
-              <input x-if="setting.value_type === 'string'"
-                     type="text" :x-model="setting.value"
-                     @change="updateSetting(setting)"
-                     class="input input-bordered w-full">
-
-              <input x-if="setting.value_type === 'boolean'"
-                     type="checkbox" :x-model="setting.value"
-                     @change="updateSetting(setting)"
-                     class="toggle toggle-primary">
-
-              <span x-show="setting.description"
-                    class="text-xs text-base-content/60 mt-2"
-                    x-text="setting.description"></span>
-            </div>
-          </div>
-        </template>
-      </div>
-    </div>
-  </div>
-</div>
-
-<script>
-function settingsApp() {
-  return {
-    categories: [],
-    activeCategory: null,
-    showImportModal: false,
-    importYaml: '',
-
-    init() {
-      fetch('/settings/api/categories')
-        .then(r => r.json())
-        .then(data => {
-          this.categories = data;
-          this.activeCategory = data[0]?.id;
-        });
-    },
-
-    get activeSettings() {
-      if (!this.activeCategory) return [];
-      return this.categories.find(c => c.id === this.activeCategory)?.settings || [];
-    },
-
-    get activeCategoryName() {
-      return this.categories.find(c => c.id === this.activeCategory)?.name || '';
-    },
-
-    updateSetting(setting) {
-      htmx.ajax('POST', `/settings/api/update/${setting.id}`, {
-        values: { value: setting.value }
-      });
-    },
-
-    exportSettings() {
-      window.location.href = '/settings/api/export';
-    },
-
-    importSettings() {
-      fetch('/settings/api/import', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ yaml: this.importYaml })
-      })
-      .then(r => r.json())
-      .then(data => {
-        alert(`Imported: ${data.created} created, ${data.updated} updated`);
-        window.location.reload();
-      });
-    }
-  };
-}
-</script>
-{% endblock %}
+enrichment:
+  osiris.base_url:
+    value: https://utwente.osiris-student.nl
+    type: string
+    name: Osiris Base URL
+    description: Base URL for Osiris API
 ```
 
-### Step 8: Create Settings Views/URLs
+**Import:**
+```python
+results = Setting.import_from_yaml(yaml_content, overwrite=False, user=request.user)
+# Returns: {'created': 5, 'updated': 2, 'skipped': 3, 'errors': 0}
+```
 
-**File:** `src/apps/settings/views.py`
+**Features:**
+- Category-based organization
+- Optional sensitive value masking on export
+- Overwrite control (skip existing or update)
+- Error handling with detailed statistics
+- User attribution for changes
+
+### Step 5: Testing ✅
+
+Comprehensive testing completed:
+- ✅ CRUD operations (create, read, update, delete)
+- ✅ Type validation (string, integer, float, boolean, JSON)
+- ✅ Choice validation
+- ✅ Required field validation
+- ✅ Sensitive value masking
+- ✅ Caching (get/set with cache invalidation)
+- ✅ YAML export/import
+- ✅ Admin interface functionality
+
+**Test Results:**
+- All operations working correctly
+- Cache invalidation confirmed
+- YAML import/export tested with real data
+- Admin UI renders and functions properly
+
+## Usage Examples
+
+### Setting Values
 
 ```python
-from django.shortcuts import render
-from django.contrib.auth.decorators import login_required
-from .models import Setting
-import json
+from apps.settings.models import Setting
 
-@login_required
-def user_settings(request):
-    """User settings page."""
-    categories = SettingCategory.objects.prefetch_related('settings').all()
-    context = {'categories': categories}
-    return render(request, 'settings/base.html', context)
+# Simple value
+Setting.set('canvas.api_token', 'abc123...', user=request.user)
 
+# With metadata
+Setting.set(
+    'export.batch_size',
+    100,
+    user=request.user,
+    name='Export Batch Size',
+    category='export',
+    value_type='integer'
+)
 
-def api_categories(request):
-    """API endpoint for categories."""
-    categories = list(SettingCategory.objects.prefetch_related('settings').all().values(
-        'id', 'name', 'slug', 'description',
-        settings__id, settings__key, settings__name, settings__value,
-        settings__value_type, settings__description
-    ))
-    # Group settings under categories
-    # ... implementation ...
-    return JsonResponse(categories, safe=False)
+# Get value (with caching)
+api_token = Setting.get('canvas.api_token')
+batch_size = Setting.get('export.batch_size', default=50)  # with default
 ```
 
-**File:** `src/apps/settings/urls.py`
+### YAML Export
 
 ```python
-from django.urls import path
-from . import views
+from apps.settings.models import Setting
+from django.http import HttpResponse
 
-app_name = 'settings'
+yaml_content = Setting.export_to_yaml(include_sensitive=False)
 
-urlpatterns = [
-    path('', views.user_settings, name='user'),
-    path('api/categories', views.api_categories, name='api_categories'),
-]
+response = HttpResponse(yaml_content, content_type='text/yaml')
+response['Content-Disposition'] = 'attachment; filename="settings_export.yaml"'
+return response
 ```
 
-Include in main URLs:
-**File:** `src/config/urls.py`
+### YAML Import
 
 ```python
-urlpatterns = [
-    # ...
-    path('settings/', include('apps.settings.urls')),
-]
+from apps.settings.models import Setting
+
+with open('settings_backup.yaml') as f:
+    yaml_content = f.read()
+
+results = Setting.import_from_yaml(
+    yaml_content,
+    overwrite=True,  # Update existing settings
+    user=request.user
+)
+
+print(f"Created: {results['created']}, Updated: {results['updated']}")
 ```
+
+## Files Created/Modified
+
+**Created:**
+- `src/apps/settings/__init__.py`
+- `src/apps/settings/apps.py`
+- `src/apps/settings/models.py`
+- `src/apps/settings/admin.py`
+- `src/apps/settings/migrations/0001_initial.py`
+
+**Modified:**
+- `src/config/settings.py` - Added `apps.settings` to INSTALLED_APPS
+- `pyproject.toml` - Added `pyyaml` dependency
 
 ## Success Criteria
 
-- [ ] Settings app created and registered
-- [ ] Database models created
-- [ ] SettingsManager service implemented
-- [ ] YAML import/export working
-- [ ] Legacy settings migration command created
-- [ ] Admin interface configured
-- [ ] User-facing UI created (HTMX/Alpine.js)
-- [ ] Canvas API key testing working
+- ✅ Settings app created and registered in INSTALLED_APPS
+- ✅ Database models created and migrated
+- ✅ Setting.get() and Setting.set() class methods working
+- ✅ YAML export/import working
+- ✅ Admin interface configured with fieldsets
+- ✅ Built-in caching (15 min TTL)
+- ✅ Comprehensive testing completed
 
-## Estimated Time
+## Next Steps (Future Enhancements)
 
-- **App creation + models:** 6 hours
-- **SettingsManager service:** 6 hours
-- **API validator:** 4 hours
-- **Legacy migration:** 4 hours
-- **Admin interface:** 3 hours
-- **User UI:** 10 hours
-- **Testing:** 6 hours
-
-**Total: 4-5 days**
+Out of scope for current implementation but potential future work:
+- User-facing settings UI (non-admin)
+- Faculty-specific overrides
+- API credential testing endpoint
+- Settings validation against external APIs
+- Settings versioning with rollback
+- Settings change history/audit log
 
 ---
 
-**Next Task:** [Task 5: Error Handling](05-error-handling.md)
+**Next Task:** [Task 4: Template Partials](04-template-partials.md) (Completed - kept include approach)
