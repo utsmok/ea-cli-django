@@ -1,0 +1,102 @@
+<tr class="hover:bg-primary/5 transition-colors cursor-pointer group animate-fade-in"
+    hx-get="{% url 'dashboard:detail_panel' item.material_id %}"
+    hx-target="#detail-panel">
+
+  <!-- ID -->
+  <td class="p-3 text-base-content/40 font-mono text-xs">
+    {{ item.material_id }}
+  </td>
+
+  <!-- Faculty Badge -->
+  <td class="p-3">
+    {% if item.faculty %}
+    <span class="badge badge-ut badge-sm">{{ item.faculty.abbreviation }}</span>
+    {% else %}
+    <span class="text-base-content/30 text-xs">—</span>
+    {% endif %}
+  </td>
+
+  <!-- Filename + Title -->
+  <td class="p-3 min-w-[200px]">
+    <div class="font-medium text-sm truncate max-w-48" title="{{ item.filename|default:'' }}">
+      {{ item.filename|truncatechars:40|default:"Untitled" }}
+    </div>
+    <div class="text-xs text-base-content/60 truncate max-w-48" title="{{ item.title|default:'' }}">
+      {{ item.title|truncatechars:40|default:"—" }}
+    </div>
+  </td>
+
+  <!-- Department -->
+  <td class="p-3">
+    <span class="text-xs text-base-content/70">{{ item.department|default:"—" }}</span>
+  </td>
+
+  <!-- Classification (editable) -->
+  <td class="p-3">
+    {% include "components/_editable_cell.html" with item_id=item.material_id field_name="v2_manual_classification" value=item.v2_manual_classification choices=classification_choices %}
+  </td>
+
+  <!-- Workflow Status (editable) -->
+  <td class="p-3">
+    {% include "components/_editable_cell.html" with item_id=item.material_id field_name="workflow_status" value=item.workflow_status choices=workflow_choices badge=true %}
+  </td>
+
+  <!-- V1 Classification -->
+  <td class="p-3">
+    <span class="text-xs text-base-content/60">{{ item.manual_classification|default:"—" }}</span>
+  </td>
+
+  <!-- ML Classification -->
+  <td class="p-3">
+    <span class="text-xs
+      {% if item.ml_classification == item.v2_manual_classification %}text-success{% endif %}
+      {% if item.ml_classification != item.v2_manual_classification %}text-base-content/60{% endif %}">
+      {{ item.ml_classification|default:"—" }}
+    </span>
+  </td>
+
+  <!-- Remarks (editable) -->
+  <td class="p-3 min-w-[150px]">
+    {% include "components/_editable_cell.html" with item_id=item.material_id field_name="remarks" value=item.remarks input_type="text" %}
+  </td>
+
+  <!-- File Status -->
+  <td class="p-3">
+    {% if item.file_exists is True %}
+    <span class="text-success" title="File exists">
+      <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+      </svg>
+    </span>
+    {% elif item.file_exists is None %}
+    <span class="text-warning" title="File status unknown">
+      <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.936 11.936a.75.75 0 00-.625-1.239l-2.5-4a.75.75 0 00-1.25 0l-2.5 4a.75.75 0 001.25 1.239l1.625-2.6V14a.75.75 0 001.5 0V9.336l1.625 2.6a.75.75 0 001.25-1.239z" clip-rule="evenodd"/>
+      </svg>
+    </span>
+    {% else %}
+    <span class="text-base-content/30" title="File not found">
+      <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+      </svg>
+    </span>
+    {% endif %}
+  </td>
+
+  <!-- Actions -->
+  <td class="p-3">
+    <div class="flex gap-1" @click.stop>
+      <!-- Modal Button -->
+      <button hx-get="{% url 'dashboard:detail_modal' item.material_id %}{% if current_filters.status %}?status={{ current_filters.status }}{% endif %}{% if current_filters.faculty %}&faculty={{ current_filters.faculty }}{% endif %}{% if current_filters.search %}&search={{ current_filters.search|urlencode }}{% endif %}"
+              hx-target="#modal-container"
+              hx-on::after-request="htmx.trigger(window, 'show-detail-modal')"
+              class="btn btn-ghost btn-xs btn-circle"
+              title="View full details">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/>
+        </svg>
+      </button>
+    </div>
+  </td>
+
+</tr>

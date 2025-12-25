@@ -1,0 +1,45 @@
+<!-- Filter Bar -->
+<div class="p-4 border-b border-base-300 bg-base-50">
+  <div class="flex flex-wrap items-center gap-3">
+
+    <!-- Workflow Tabs -->
+    <div class="flex-1">
+      {% include "components/_workflow_tabs.html" with current_status=current_filters.status %}
+    </div>
+
+    <!-- Filters -->
+    <div class="flex flex-wrap items-center gap-2">
+
+      <!-- Hidden inputs to maintain filter state -->
+      <input type="hidden" name="status" value="{{ current_filters.status|default:'ToDo' }}">
+
+      <!-- Faculty Dropdown -->
+      {% include "components/_filter_dropdown.html" with name="faculty" options=faculties selected=current_filters.faculty include='[name="status"],[name="search"]' %}
+
+      <!-- Search Input -->
+      {% include "components/_filter_search.html" with value=current_filters.search include='[name="status"],[name="faculty"]' %}
+
+      <!-- Per Page Dropdown -->
+      <select name="per_page"
+              class="select select-bordered select-sm"
+              hx-get="{% url 'dashboard:index' %}"
+              hx-target="#table-container"
+              hx-include='[name="status"],[name="faculty"],[name="search"]'>
+        <option value="">All</option>
+        <option value="25" {% if current_filters.per_page == 25 %}selected{% endif %}>25 / page</option>
+        <option value="50" {% if current_filters.per_page == 50 %}selected{% endif %}>50 / page</option>
+        <option value="100" {% if current_filters.per_page == 100 %}selected{% endif %}>100 / page</option>
+      </select>
+
+    </div>
+
+  </div>
+
+  <!-- Hidden inputs for HTMX form inclusion -->
+  <input type="hidden" name="status" value="{{ current_filters.status }}">
+</div>
+
+<!-- Table Container (HTMX swap target) -->
+<div id="table-container-inner" class="flex-1 overflow-auto">
+  {% include 'dashboard/_table_rows.html' %}
+</div>

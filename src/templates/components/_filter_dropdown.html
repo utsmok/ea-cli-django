@@ -1,0 +1,19 @@
+{# UT Filter Dropdown Component #}
+<select name="{{ name }}"
+        class="select select-bordered select-sm"
+        hx-get="{% url 'dashboard:index' %}"
+        hx-target="#table-container"
+        {% if include %}hx-include='{{ include }}'{% endif %}>
+  <option value="">{{ label|default:"All" }}</option>
+  {% for opt in options %}
+    {% if opt is iterable and opt.0 %}{# tuple (value, label) #}
+      <option value="{{ opt.0 }}" {% if selected == opt.0 %}selected{% endif %}>
+        {{ opt.1 }}
+      </option>
+    {% else %}{# single object with value/label attributes #}
+      <option value="{{ opt.value|default:opt.abbreviation|default:opt }}" {% if selected == opt.value|default:opt.abbreviation|default:opt %}selected{% endif %}>
+        {{ opt.label|default:opt.name|default:opt }}
+      </option>
+    {% endif %}
+  {% endfor %}
+</select>

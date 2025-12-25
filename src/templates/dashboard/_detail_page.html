@@ -1,0 +1,253 @@
+{% extends "base.html" %}
+
+{% block title %}{{ item.filename|default:"Untitled" }} - Details{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto p-6">
+
+  <!-- Breadcrumb -->
+  <div class="text-sm text-base-content/60 mb-4">
+    <a href="{% url 'dashboard:index' %}" class="link">Dashboard</a>
+    <span class="mx-2">/</span>
+    <span>Item {{ item.material_id }}</span>
+  </div>
+
+  <!-- Header -->
+  <div class="flex justify-between items-start mb-6">
+    <div>
+      <h1 class="text-3xl font-bold uppercase tracking-wide">{{ item.filename|default:"Untitled" }}</h1>
+      <p class="text-base-content/60 mt-1">
+        {{ item.course_code|default:"—" }} - {{ item.course_name|default:"—" }}
+      </p>
+    </div>
+    <a href="{% url 'dashboard:index' %}" class="btn btn-ut btn-outline">
+      ← Back to Dashboard
+    </a>
+  </div>
+
+  <!-- Content Grid -->
+  <div class="grid grid-cols-3 gap-6">
+
+    <!-- Left: PDF & Main Info (2 cols) -->
+    <div class="col-span-2 space-y-6">
+
+      <!-- PDF Preview -->
+      {% if pdf_available and pdf_url %}
+      <div class="bg-base-200 rounded-lg p-4">
+        <h2 class="font-bold text-lg uppercase tracking-wide mb-4">PDF Preview</h2>
+        <div class="bg-white rounded-lg shadow overflow-hidden" style="height: 500px;">
+          <iframe src="{{ pdf_url }}"
+                  class="w-full h-full"
+                  type="application/pdf">
+            <p class="p-4 text-center text-base-content/50">
+              <a href="{{ pdf_url }}" target="_blank" class="link link-primary">Download PDF</a>
+            </p>
+          </iframe>
+        </div>
+      </div>
+      {% else %}
+      <div class="bg-base-200 rounded-lg p-12 flex items-center justify-center">
+        <div class="text-center">
+          <svg class="w-20 h-20 mx-auto text-base-content/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+          </svg>
+          <p class="text-base-content/50 mt-3 font-semibold">No PDF available</p>
+          {% if item.url %}
+          <a href="{{ item.url }}" target="_blank" class="link link-primary mt-2 inline-block">
+            View in Canvas →
+          </a>
+          {% endif %}
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Classification Section -->
+      <div class="grid grid-cols-2 gap-4">
+        <div class="bg-white rounded-lg border border-base-300 p-4">
+          <h2 class="font-bold text-base uppercase tracking-wide mb-3">V2 Classification</h2>
+          <div class="space-y-3">
+            <div class="flex justify-between items-center">
+              <span class="text-base-content/60">Manual</span>
+              <span class="badge badge-ut {% if item.v2_manual_classification == 'Onbekend' %}badge-error{% endif %}">
+                {{ item.get_v2_manual_classification_display }}
+              </span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-base-content/60">Overname Status</span>
+              <span>{{ item.get_v2_overnamestatus_display|default:"—" }}</span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-base-content/60">Length</span>
+              <span>{{ item.get_v2_lengte_display|default:"—" }}</span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-base-content/60">Workflow</span>
+              <span class="badge badge-ut">{{ item.get_workflow_status_display }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-lg border border-base-300 p-4">
+          <h2 class="font-bold text-base uppercase tracking-wide mb-3">Other Classifications</h2>
+          <div class="space-y-3">
+            <div class="flex justify-between items-center">
+              <span class="text-base-content/60">V1 Manual</span>
+              <span>{{ item.manual_classification|default:"—" }}</span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-base-content/60">ML Prediction</span>
+              <span class="{% if item.ml_classification == item.v2_manual_classification %}text-success{% endif %}">
+                {{ item.ml_classification|default:"—" }}
+              </span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-base-content/60">Classification</span>
+              <span>{{ item.get_classification_display|default:"—" }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Courses & Teachers -->
+      {% if course_teachers %}
+      <div class="bg-white rounded-lg border border-base-300 p-4">
+        <h2 class="font-bold text-base uppercase tracking-wide mb-4">Courses & Teachers</h2>
+        <div class="grid grid-cols-2 gap-4">
+          {% for course, teachers_list in course_teachers %}
+          <div class="border-l-4 border-primary pl-4 py-2">
+            <div class="font-medium">{{ course.name }}</div>
+            <div class="text-sm text-base-content/60">{{ course.cursuscode }}</div>
+            {% if teachers_list %}
+            <div class="text-sm text-base-content/60 mt-2">
+              <strong>Teachers:</strong>
+              {% for teacher in teachers_list %}{{ teacher.main_name }}{% if not forloop.last %}, {% endif %}{% endfor %}
+            </div>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+    </div>
+
+    <!-- Right: Metadata & History (1 col) -->
+    <div class="space-y-6">
+
+      <!-- Document Info -->
+      <div class="bg-white rounded-lg border border-base-300 p-4">
+        <h2 class="font-bold text-base uppercase tracking-wide mb-3">Document Info</h2>
+        <div class="space-y-3 text-sm">
+          <div class="flex justify-between">
+            <span class="text-base-content/60">File Type</span>
+            <span class="badge badge-ghost">{{ item.get_filetype_display }}</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-base-content/60">Pages</span>
+            <span>{{ item.pagecount|default:"—" }}</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-base-content/60">Words</span>
+            <span>{{ item.wordcount|default:"—" }}</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-base-content/60">File Exists</span>
+            <span>{% if item.file_exists %}✓ Yes{% else %}✗ No{% endif %}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Course Info -->
+      <div class="bg-white rounded-lg border border-base-300 p-4">
+        <h2 class="font-bold text-base uppercase tracking-wide mb-3">Course Info</h2>
+        <div class="space-y-3 text-sm">
+          <div class="flex justify-between">
+            <span class="text-base-content/60">Faculty</span>
+            <span class="font-medium">{{ item.faculty.abbreviation|default:"—" }}</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-base-content/60">Department</span>
+            <span>{{ item.department|default:"—" }}</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-base-content/60">Period</span>
+            <span>{{ item.period|default:"—" }}</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-base-content/60">Students</span>
+            <span>{{ item.count_students_registered|default:"—" }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Remarks -->
+      {% if item.remarks %}
+      <div class="bg-white rounded-lg border border-base-300 p-4">
+        <h2 class="font-bold text-base uppercase tracking-wide mb-2">Remarks</h2>
+        <p class="text-sm">{{ item.remarks }}</p>
+      </div>
+      {% endif %}
+
+      <!-- Audit Trail -->
+      <div class="bg-white rounded-lg border border-base-300 p-4">
+        <h2 class="font-bold text-base uppercase tracking-wide mb-3">Audit Trail</h2>
+        <div class="space-y-3 text-xs">
+          <div class="flex justify-between">
+            <span class="text-base-content/60">Created</span>
+            <span>{{ item.created_at|date:"Y-m-d H:i" }}</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-base-content/60">Modified</span>
+            <span>{{ item.modified_at|date:"Y-m-d H:i" }}</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-base-content/60">Last Enriched</span>
+            <span>{{ item.last_enrichment_attempt|date:"Y-m-d H:i"|default:"—" }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent Changes -->
+      {% if recent_changes %}
+      <div class="bg-white rounded-lg border border-base-300 p-4">
+        <h2 class="font-bold text-base uppercase tracking-wide mb-3">Recent Changes</h2>
+        <div class="space-y-3 max-h-64 overflow-y-auto">
+          {% for change in recent_changes %}
+          <div class="text-xs border-b border-base-200 pb-2 last:border-0">
+            <div class="flex justify-between mb-1">
+              <span class="font-medium">{{ change.changed_by.username|default:"System" }}</span>
+              <span class="text-base-content/60">{{ change.changed_at|date:"Y-m-d H:i" }}</span>
+            </div>
+            <div class="text-base-content/60">
+              {% for field, change_data in change.changes.items %}
+              <div>{{ field }}: {{ change_data.old }} → {{ change_data.new }}</div>
+              {% endfor %}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Related Items -->
+      {% if related_items %}
+      <div class="bg-white rounded-lg border border-base-300 p-4">
+        <h2 class="font-bold text-base uppercase tracking-wide mb-3">Related Items (Same Content)</h2>
+        <div class="space-y-2">
+          {% for related in related_items %}
+          <a href="{% url 'dashboard:detail_page' related.material_id %}"
+             class="block text-sm hover:text-primary transition-colors">
+            {{ related.filename }}
+            <span class="text-base-content/60">({{ related.faculty.abbreviation|default:"—" }})</span>
+          </a>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+    </div>
+
+  </div>
+
+</div>
+{% endblock %}

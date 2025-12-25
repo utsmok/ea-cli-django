@@ -13,3 +13,15 @@ def filename(value):
     if not value:
         return ""
     return Path(value).name
+
+
+@register.filter
+def get(dictionary, key):
+    """
+    Get a value from a dictionary using a variable key.
+
+    Usage: {{ mydict|get:key_variable }}
+    """
+    if dictionary is None:
+        return None
+    return dictionary.get(key)

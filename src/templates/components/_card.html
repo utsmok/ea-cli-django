@@ -1,17 +1,4 @@
-{# ============================================================================
-   UT Card Component
-   Usage:
-     {% include "components/_card.html" with title="Card Title" %}
-     {% include "components/_card.html" with title="Card Title" content="Custom content" %}
-     {% include "components/_card.html" with title="Card Title" accent="success" %}
-   Options:
-     title: Card title (required)
-     content: Custom content body (optional, default uses body block)
-     accent: Border accent color (default, primary, success, warning, error)
-     icon: SVG icon to display next to title (optional)
-     class: Additional CSS classes (optional)
-============================================================================ #}
-
+{# UT Card Component #}
 <div class="card bg-base-100 shadow-sm border border-base-300 {% if accent %}border-l-4 border-l-{{ accent }}{% else %}border-l-4 border-l-primary{% endif%} {{ class|default:'' }}">
   <div class="card-body p-4">
     {% if title %}
