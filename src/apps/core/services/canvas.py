@@ -15,6 +15,7 @@ from django.utils import timezone
 
 from apps.core.models import CopyrightItem
 from apps.core.services.cache_service import cache_async_result
+from apps.core.services.retry_logic import async_retry
 
 logger = logging.getLogger(__name__)
 
@@ -94,6 +95,7 @@ async def select_items_needing_check(
 
 
 @cache_async_result(timeout=86400, key_prefix="canvas_file_exists", cache_name="queries")
+@async_retry(max_retries=3, base_delay=1.0, max_delay=60.0)
 async def check_single_file_existence(
     item_data: Item,
     client: httpx.AsyncClient,
@@ -112,33 +114,12 @@ async def check_single_file_existence(
         Dictionary with material_id, file_exists, last_canvas_check, canvas_course_id
     """
     material_id = item_data.get("material_id")
-    url = item_data.get("url", "")
+    url = item_data.get("url")
 
     try:
         # Extract file_id from URL
-        if "/files/" in url:
-            file_id = url.split("/files/")[1].split("/")[0].split("?")[0]
-            api_url = f"{settings.CANVAS_API_URL}/files/{file_id}"
-
-            response = await client.get(api_url)
-            file_exists = response.status_code == 200
-
-            canvas_course_id = None
-            if file_exists:
-                file_data = response.json()
-                folder_id = file_data.get("folder_id")
-                if folder_id:
-                    canvas_course_id = await determine_course_id_from_folder(
-                        folder_id, client
-                    )
-
-            return FileExistenceResult(
-                material_id=material_id,
-                file_exists=file_exists,
-                last_canvas_check=timezone.now(),
-                canvas_course_id=canvas_course_id,
-            )
-        else:
+        # Handle None, empty string, or invalid URL format
+        if not url or "/files/" not in url:
             logger.warning(f"Invalid URL format for material_id {material_id}: {url}")
             return FileExistenceResult(
                 material_id=material_id,
@@ -146,6 +127,40 @@ async def check_single_file_existence(
                 last_canvas_check=timezone.now(),
                 canvas_course_id=None,
             )
+
+        file_id = url.split("/files/")[1].split("/")[0].split("?")[0]
+        api_url = f"{settings.CANVAS_API_URL}/files/{file_id}"
+
+        response = await client.get(api_url)
+        file_exists = response.status_code == 200
+
+        # Don't retry on 401/403 (auth failures) or 404 (file not found)
+        if response.status_code in (401, 403, 404):
+            return FileExistenceResult(
+                material_id=material_id,
+                file_exists=False,
+                last_canvas_check=timezone.now(),
+                canvas_course_id=None,
+            )
+
+        # Raise for other errors - retry logic will handle retryable ones
+        response.raise_for_status()
+
+        canvas_course_id = None
+        if file_exists:
+            file_data = response.json()
+            folder_id = file_data.get("folder_id")
+            if folder_id:
+                canvas_course_id = await determine_course_id_from_folder(
+                    folder_id, client
+                )
+
+        return FileExistenceResult(
+            material_id=material_id,
+            file_exists=file_exists,
+            last_canvas_check=timezone.now(),
+            canvas_course_id=canvas_course_id,
+        )
 
     except Exception as e:
         logger.error(

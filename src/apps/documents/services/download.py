@@ -11,11 +11,13 @@ import httpx
 from django.conf import settings
 
 from apps.core.models import CopyrightItem
+from apps.core.services.retry_logic import async_retry
 from apps.documents.models import Document, PDFCanvasMetadata
 
 logger = logging.getLogger(__name__)
 
 
+@async_retry(max_retries=3, base_delay=1.0, max_delay=60.0)
 async def download_pdf_from_canvas(
     url: str,
     filepath: Path,
@@ -127,13 +129,14 @@ async def download_pdf_from_canvas(
         return filepath, pdf_metadata_obj
 
     except httpx.HTTPStatusError as e:
-        if e.response.status_code == 404:
+        # Don't retry on 401/403 (auth failures) or 404 (file not found)
+        if e.response.status_code in (401, 403, 404):
             return None
-        logger.error(f"HTTP error downloading from {url}: {e.response.status_code}")
-        return None
+        # Let retry decorator handle other status errors (429, 502, 503, etc.)
+        raise
     except Exception as e:
-        logger.error(f"Error downloading from {url}: {e}")
-        return None
+        # Let retry decorator handle network/timeout errors
+        raise
 
 
 async def download_undownloaded_pdfs(limit: int = 0) -> dict:

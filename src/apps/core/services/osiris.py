@@ -9,6 +9,7 @@ from django.utils import timezone
 from apps.core.models import CopyrightItem, Course, MissingCourse, Person
 from apps.core.services.relations import link_persons_to_courses
 from apps.core.services.cache_service import cache_async_result
+from apps.core.services.retry_logic import async_retry
 from apps.core.utils.course_parser import determine_course_code
 from apps.core.utils.safecast import safe_int
 
@@ -121,6 +122,7 @@ async def fetch_and_parse_courses(
 
 
 @cache_async_result(timeout=86400, key_prefix="osiris_course", cache_name="queries")
+@async_retry(max_retries=3, base_delay=1.0, max_delay=60.0)
 async def fetch_course_data(course_code: int, client: httpx.AsyncClient) -> dict:
     """
     Fetch single course data from OSIRIS.
@@ -226,9 +228,8 @@ async def fetch_course_data(course_code: int, client: httpx.AsyncClient) -> dict
     try:
         resp = await client.post(OSIRIS_SEARCH_URL, headers=headers, content=body)
 
-        if resp.status_code != 200:
-            logger.error(f"OSIRIS API Error {resp.status_code}: {resp.text[:500]}")
-            return {}
+        # Raise exception for HTTP errors - retry logic will handle retryable ones
+        resp.raise_for_status()
 
         raw = resp.json()
         hits = raw.get("hits", {}).get("hits", [])
@@ -376,6 +377,7 @@ async def _fetch_course_details(course_data: dict, client: httpx.AsyncClient):
 
 
 @cache_async_result(timeout=604800, key_prefix="osiris_person", cache_name="queries")
+@async_retry(max_retries=3, base_delay=1.0, max_delay=60.0)
 async def fetch_person_data(name: str, client: httpx.AsyncClient) -> dict | None:
     """
     Fetch person data by scraping people.utwente.nl.
@@ -387,8 +389,10 @@ async def fetch_person_data(name: str, client: httpx.AsyncClient) -> dict | None
 
     try:
         resp = await client.get(url, follow_redirects=True)
-        if resp.status_code != 200:
+        # Raise for HTTP errors - but 404 is expected (person not found)
+        if resp.status_code == 404:
             return None
+        resp.raise_for_status()
 
         soup = bs4.BeautifulSoup(resp.text, "html.parser")
 
