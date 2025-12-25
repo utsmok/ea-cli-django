@@ -92,7 +92,7 @@
 /* Base typography */
 body {
   font-family: var(--font-ut-body);
-  color: var(--ut-black);
+  color: var(--ut-off-black);
   background-color: var(--ut-grey-05b);
 }
 
@@ -117,21 +117,211 @@ h6 { font-size: 1rem; }
    ============================================================================ */
 
 /* UT Light Theme (default) */
-[data-theme="ut-light"] {
+[data-theme="ut"] {
   --h: 188;                     /* UT Blue hue */
   --bc: var(--ut-grey-05b);     /* Background color */
   --pc: var(--ut-blue);         /* Primary color */
+  --pcf: var(--ut-blue-dark);   /* Primary focus (hover) */
   --s: var(--ut-pink);          /* Secondary color */
+  --sf: var(--ut-pink-dark);    /* Secondary focus (hover) */
   --ac: var(--ut-purple);       /* Accent color */
+  --acf: var(--ut-purple-dark); /* Accent focus (hover) */
   --nc: var(--ut-grey-02);      /* Neutral color */
+  --nfc: var(--ut-grey-02b);    /* Neutral focus (hover) */
   --b1: var(--ut-white);        /* Base 100 */
   --b2: var(--ut-grey-05b);     /* Base 200 */
   --b3: var(--ut-grey-05);      /* Base 300 */
   --bc: var(--ut-off-black);    /* Base content */
   --in: var(--ut-blue);         /* Info */
+  --inf: var(--ut-blue-dark);   /* Info focus */
   --su: var(--ut-darkgreen);    /* Success */
+  --suf: var(--ut-darkgreen-dark); /* Success focus */
   --wa: var(--ut-red);          /* Warning */
+  --waf: var(--ut-red-dark);    /* Warning focus */
   --er: var(--ut-darkred);      /* Error */
+  --erf: var(--ut-darkred-dark); /* Error focus */
+}
+
+/* ============================================================================
+   COLOR SYSTEM - UT BRAND CONSISTENCY
+   ============================================================================ */
+
+:root {
+  /* Primary actions - UT Blue (lighter, for better contrast) */
+  --color-action-primary: var(--ut-blue);           /* #007D9C */
+  --color-action-primary-hover: var(--ut-blue-dark); /* #005D7D */
+
+  /* Secondary actions - UT Pink */
+  --color-action-secondary: var(--ut-pink);         /* #CF0072 */
+  --color-action-secondary-hover: var(--ut-pink-dark); /* #B2014A */
+
+  /* Text - Use softer greys instead of pure black */
+  --color-text-primary: var(--ut-off-black);   /* #1E2328 */
+  --color-text-secondary: var(--ut-grey-02);   /* #686B6E */
+  --color-text-muted: var(--ut-grey-02b);      /* #8E9193 */
+
+  /* Backgrounds - Use warm tints */
+  --color-bg-primary: var(--ut-grey-05b);       /* #F7F8F8 */
+  --color-bg-secondary: var(--ut-white);        /* #FFFFFF */
+  --color-bg-tertiary: var(--ut-grey-05);       /* #F0F1F2 */
+
+  /* Borders - Use greys, not black */
+  --color-border: var(--ut-grey-04);            /* #DCDDDE */
+  --color-border-light: var(--ut-grey-05);      /* #F0F1F2 */
+  --color-border-focus: var(--ut-blue);         /* #007D9C */
+}
+
+/* ============================================================================
+   BUTTON STYLES (FIX DARK BLUE CONTRAST ISSUE)
+   ============================================================================ */
+
+/* UT Primary Button - UT Blue with WHITE text (fixed contrast) */
+.btn-ut,
+.btn-primary {
+  background-color: var(--ut-blue) !important;
+  color: white !important;
+  border-color: var(--ut-blue) !important;
+  transition: all 0.2s ease;
+}
+
+.btn-ut:hover,
+.btn-primary:hover {
+  background-color: var(--ut-blue-dark) !important;
+  color: white !important;
+  border-color: var(--ut-blue-dark) !important;
+  box-shadow: 0 4px 12px rgba(0, 125, 156, 0.25);
+}
+
+/* UT Secondary Button - UT Pink with WHITE text */
+.btn-secondary {
+  background-color: var(--ut-pink) !important;
+  color: white !important;
+  border-color: var(--ut-pink) !important;
+  transition: all 0.2s ease;
+}
+
+.btn-secondary:hover {
+  background-color: var(--ut-pink-dark) !important;
+  color: white !important;
+  border-color: var(--ut-pink-dark) !important;
+  box-shadow: 0 4px 12px rgba(207, 0, 114, 0.25);
+}
+
+/* UT Success Button - UT Green with WHITE text */
+.btn-success {
+  background-color: var(--ut-darkgreen) !important;
+  color: white !important;
+  border-color: var(--ut-darkgreen) !important;
+}
+
+.btn-success:hover {
+  background-color: var(--ut-darkgreen-dark) !important;
+  color: white !important;
+  border-color: var(--ut-darkgreen-dark) !important;
+}
+
+/* UT Warning Button - UT Red with WHITE text */
+.btn-warning {
+  background-color: var(--ut-red) !important;
+  color: white !important;
+  border-color: var(--ut-red) !important;
+}
+
+.btn-warning:hover {
+  background-color: var(--ut-red-dark) !important;
+  color: white !important;
+  border-color: var(--ut-red-dark) !important;
+}
+
+/* UT Error Button - UT Dark Red with WHITE text */
+.btn-error {
+  background-color: var(--ut-darkred) !important;
+  color: white !important;
+  border-color: var(--ut-darkred) !important;
+}
+
+.btn-error:hover {
+  background-color: var(--ut-darkred-dark) !important;
+  color: white !important;
+  border-color: var(--ut-darkred-dark) !important;
+}
+
+/* UT Info Button - UT Purple with WHITE text */
+.btn-info {
+  background-color: var(--ut-purple) !important;
+  color: white !important;
+  border-color: var(--ut-purple) !important;
+}
+
+.btn-info:hover {
+  background-color: var(--ut-purple-dark) !important;
+  color: white !important;
+  border-color: var(--ut-purple-dark) !important;
+}
+
+/* Ghost Button - Use softer grey instead of black */
+.btn-ghost {
+  color: var(--ut-off-black) !important;
+  background-color: transparent !important;
+  border-color: transparent !important;
+}
+
+.btn-ghost:hover {
+  background-color: var(--ut-grey-05) !important;
+  color: var(--ut-blue) !important;
+}
+
+/* Outline Button - Use UT colors instead of black */
+.btn-outline {
+  background-color: transparent !important;
+  color: var(--ut-blue) !important;
+  border-color: var(--ut-blue) !important;
+}
+
+.btn-outline:hover {
+  background-color: var(--ut-blue) !important;
+  color: white !important;
+  border-color: var(--ut-blue) !important;
+}
+
+/* ============================================================================
+   CARD STYLES (REDUCE BLACK/WHITE OVERUSE)
+   ============================================================================ */
+
+.card {
+  background-color: var(--ut-white) !important;
+  border-color: var(--ut-grey-04) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  transition: all 0.2s ease;
+}
+
+.card:hover {
+  box-shadow: 0 4px 12px rgba(0, 125, 156, 0.15);
+  border-color: var(--ut-blue) !important;
+}
+
+.card.border-t-4 {
+  border-top: 4px solid var(--ut-blue) !important;
+}
+
+.card.border-t-primary {
+  border-top: 4px solid var(--ut-blue) !important;
+}
+
+.card.border-t-success {
+  border-top: 4px solid var(--ut-darkgreen) !important;
+}
+
+.card.border-t-warning {
+  border-top: 4px solid var(--ut-red) !important;
+}
+
+.card.border-t-error {
+  border-top: 4px solid var(--ut-darkred) !important;
+}
+
+.card.border-t-info {
+  border-top: 4px solid var(--ut-purple) !important;
 }
 
 /* ============================================================================
@@ -166,7 +356,8 @@ h6 { font-size: 1rem; }
 }
 
 /* UT Badge styles */
-.ut-badge {
+.ut-badge,
+.badge {
   font-family: var(--font-ut-condensed);
   font-weight: 600;
   text-transform: uppercase;
@@ -176,15 +367,16 @@ h6 { font-size: 1rem; }
   border-radius: 4px;
 }
 
-/* UT Button with hover animation */
+/* UT Button with hover animation - combines with btn-ut styles above */
 .btn-ut {
   font-family: var(--font-ut-condensed);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  transition: all 0.2s ease;
   position: relative;
   overflow: hidden;
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
 }
 
 .btn-ut::before {
@@ -205,6 +397,165 @@ h6 { font-size: 1rem; }
 
 .btn-ut:hover::before {
   left: 100%;
+}
+
+/* ============================================================================
+   STATUS BADGES (UT SEMANTIC COLORS)
+   ============================================================================ */
+
+/* Success badge - UT Dark Green with light background */
+.badge-success {
+  background-color: var(--ut-darkgreen-light) !important;
+  color: var(--ut-darkgreen) !important;
+  border: 1px solid var(--ut-darkgreen) !important;
+}
+
+/* Warning badge - UT Red with light background */
+.badge-warning {
+  background-color: var(--ut-red-light) !important;
+  color: var(--ut-red) !important;
+  border: 1px solid var(--ut-red) !important;
+}
+
+/* Error badge - UT Dark Red with light background */
+.badge-error {
+  background-color: var(--ut-darkred-light) !important;
+  color: var(--ut-darkred) !important;
+  border: 1px solid var(--ut-darkred) !important;
+}
+
+/* Info badge - UT Blue with light background */
+.badge-info {
+  background-color: var(--ut-blue-light) !important;
+  color: var(--ut-blue) !important;
+  border: 1px solid var(--ut-blue) !important;
+}
+
+/* Workflow statuses */
+.badge-workflow-todo {
+  background-color: var(--ut-blue-light) !important;
+  color: var(--ut-blue) !important;
+  border: 1px solid var(--ut-blue) !important;
+}
+
+.badge-workflow-done {
+  background-color: var(--ut-darkgreen-light) !important;
+  color: var(--ut-darkgreen) !important;
+  border: 1px solid var(--ut-darkgreen) !important;
+}
+
+/* Pending badge */
+.badge-pending {
+  background-color: var(--ut-grey-05) !important;
+  color: var(--ut-grey-02) !important;
+  border: 1px solid var(--ut-grey-04) !important;
+}
+
+/* Running/Processing badge with animation */
+.badge-running {
+  background-color: var(--ut-blue-light) !important;
+  color: var(--ut-blue) !important;
+  border: 1px solid var(--ut-blue) !important;
+  animation: pulse-border 2s infinite;
+}
+
+@keyframes pulse-border {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(0, 125, 156, 0.4); }
+  50% { box-shadow: 0 0 0 4px rgba(0, 125, 156, 0); }
+}
+
+/* ============================================================================
+   TABLE STYLES (IMPROVED CONTRAST & VISUAL HIERARCHY)
+   ============================================================================ */
+
+.ut-table,
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.ut-table thead,
+.table thead {
+  background-color: var(--ut-grey-05b) !important;
+  border-bottom: 2px solid var(--ut-blue) !important;
+}
+
+.ut-table th,
+.table th {
+  font-family: var(--font-ut-condensed);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ut-off-black) !important;
+  background-color: var(--ut-grey-05b) !important;
+  padding: 0.75rem 1rem;
+  text-align: left;
+}
+
+.ut-table td,
+.table td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--ut-grey-04);
+  color: var(--ut-off-black);
+}
+
+.ut-table tbody tr:hover,
+.table tbody tr:hover {
+  background-color: var(--ut-blue-light) !important;
+}
+
+.ut-table tbody tr.active,
+.table tbody tr.active {
+  background-color: var(--ut-blue-light) !important;
+  border-left: 3px solid var(--ut-blue);
+}
+
+/* ============================================================================
+   VISUAL HIERARCHY IMPROVEMENTS
+   ============================================================================ */
+
+/* Better shadows (elevation) */
+.elevation-1 {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+}
+
+.elevation-2 {
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1) !important;
+}
+
+.elevation-3 {
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.12) !important;
+}
+
+/* Interactive states */
+.interactive {
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.interactive:hover {
+  box-shadow: 0 4px 12px rgba(0, 125, 156, 0.15);
+  transform: translateY(-1px);
+}
+
+/* ============================================================================
+   BORDER COLORS (REDUCE BLACK OVERUSE)
+   ============================================================================ */
+
+.border {
+  border-color: var(--ut-grey-04) !important;
+}
+
+.border-base-300 {
+  border-color: var(--ut-grey-04) !important;
+}
+
+.border-base-200 {
+  border-color: var(--ut-grey-05) !important;
+}
+
+.divide-y > * + * {
+  border-color: var(--ut-grey-04) !important;
 }
 
 /* UT Progress bar */
@@ -288,36 +639,6 @@ h6 { font-size: 1rem; }
 
 .ut-navbar .ut-logo {
   margin-right: auto;
-}
-
-/* UT Table */
-.ut-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.ut-table thead {
-  background-color: var(--ut-grey-05);
-  border-bottom: 2px solid var(--ut-primary);
-}
-
-.ut-table th {
-  font-family: var(--font-ut-condensed);
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--ut-off-black);
-  padding: 0.75rem 1rem;
-  text-align: left;
-}
-
-.ut-table td {
-  padding: 0.75rem 1rem;
-  border-bottom: 1px solid var(--ut-grey-04);
-}
-
-.ut-table tbody tr:hover {
-  background-color: var(--ut-blue-light);
 }
 
 /* UT Status indicators with animation */

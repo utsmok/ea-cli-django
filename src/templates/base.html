@@ -1,6 +1,6 @@
 {% load static %}
 <!doctype html>
-<html lang="en" data-theme="ut-light">
+<html lang="en" data-theme="ut">
 
 <head>
   <meta charset="utf-8" />
@@ -10,6 +10,73 @@
   <!-- Tailwind CSS & DaisyUI -->
   <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.min.css" rel="stylesheet" type="text/css" />
   <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Tailwind Configuration for UT Brand Theme -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#007D9C',     // UT Blue
+            'primary-focus': '#005D7D',
+            secondary: '#CF0072',   // UT Pink
+            'secondary-focus': '#B2014A',
+            accent: '#4F2D7F',      // UT Purple
+            'accent-focus': '#2F1957',
+            neutral: '#686B6E',     // UT Grey
+            'neutral-focus': '#8E9193',
+            'base-100': '#FFFFFF',
+            'base-200': '#F7F8F8',
+            'base-300': '#F0F1F2',
+            info: '#007D9C',
+            'info-focus': '#005D7D',
+            success: '#00675A',     // UT Dark Green
+            'success-focus': '#004B48',
+            warning: '#C60C30',     // UT Red
+            'warning-focus': '#B0061C',
+            error: '#822433',       // UT Dark Red
+            'error-focus': '#62141E',
+          },
+        },
+      },
+      daisyui: {
+        themes: [
+          {
+            ut: {
+              "primary": "#007D9C",
+              "primary-focus": "#005D7D",
+              "primary-content": "#FFFFFF",
+              "secondary": "#CF0072",
+              "secondary-focus": "#B2014A",
+              "secondary-content": "#FFFFFF",
+              "accent": "#4F2D7F",
+              "accent-focus": "#2F1957",
+              "accent-content": "#FFFFFF",
+              "neutral": "#686B6E",
+              "neutral-focus": "#8E9193",
+              "neutral-content": "#FFFFFF",
+              "base-100": "#FFFFFF",
+              "base-200": "#F7F8F8",
+              "base-300": "#F0F1F2",
+              "base-content": "#1E2328",
+              "info": "#007D9C",
+              "info-focus": "#005D7D",
+              "info-content": "#FFFFFF",
+              "success": "#00675A",
+              "success-focus": "#004B48",
+              "success-content": "#FFFFFF",
+              "warning": "#C60C30",
+              "warning-focus": "#B0061C",
+              "warning-content": "#FFFFFF",
+              "error": "#822433",
+              "error-focus": "#62141E",
+              "error-content": "#FFFFFF",
+            },
+          },
+        ],
+      },
+    };
+  </script>
 
   <!-- UT Brand Styles -->
   <link rel="stylesheet" href="{% static 'css/ut-brand.css' %}">
