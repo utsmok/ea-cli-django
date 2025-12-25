@@ -1,0 +1,17 @@
+{# UT Status Badge - Displays status with conditional styling #}
+{% with display_text=text|default:status|title %}
+<span class="ut-badge inline-flex items-center gap-2
+  {% if status == "pending" %}bg-base-200 text-base-content/70
+  {% elif status == "running" or status == "processing" or status == "staging" %}bg-info/10 text-info
+  {% elif status == "completed" %}bg-success/10 text-success
+  {% elif status == "failed" %}bg-error/10 text-error
+  {% elif status == "partial" %}bg-warning/10 text-warning
+  {% else %}bg-base-200 text-base-content/70{% endif %}">
+  {% if status == "running" or status == "processing" or status == "staging" %}
+  <span class="w-2 h-2 rounded-full bg-current animate-pulse"></span>
+  {% else %}
+  <span class="w-2 h-2 rounded-full bg-current"></span>
+  {% endif %}
+  {{ display_text }}
+</span>
+{% endwith %}

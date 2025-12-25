@@ -1,0 +1,39 @@
+{# UT Editable Cell - Generic inline-edit component for table cells with HTMX #}
+{% if input_type == "text" %}
+  {# Text input (for remarks) #}
+  <div @click.stop>
+    <input
+      type="text"
+      name="value"
+      value="{{ value|default:'' }}"
+      placeholder="Add remark..."
+      class="input input-ghost input-sm w-full text-left bg-transparent hover:bg-base-100 focus:bg-base-100 focus:input-bordered"
+      hx-post="{% url 'dashboard:update_field' item_id %}"
+      hx-vals='{"field": "{{ field_name }"}'
+      hx-trigger="change"
+      hx-target="closest tr"
+      hx-swap="outerHTML">
+  </div>
+
+{% else %}
+  {# Select dropdown (default) #}
+  <div @click.stop>
+    <select
+      name="value"
+      class="select select-ghost select-sm w-full
+        {% if badge %}inline-flex items-center gap-2 rounded-full px-3 badge{% endif %}
+        {% if field_name == "v2_manual_classification" and value == "Onbekend" %}text-error font-semibold{% endif %}
+        bg-transparent hover:bg-base-100 focus:bg-base-100"
+      hx-post="{% url 'dashboard:update_field' item_id %}"
+      hx-vals='{"field": "{{ field_name }}"}'
+      hx-target="closest tr"
+      hx-swap="outerHTML">
+      {% for choice_value, choice_label in choices %}
+        <option value="{{ choice_value }}" {% if value == choice_value %}selected{% endif %}>
+          {{ choice_label }}
+        </option>
+      {% endfor %}
+    </select>
+  </div>
+
+{% endif %}

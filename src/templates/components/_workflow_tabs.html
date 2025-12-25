@@ -1,0 +1,34 @@
+{# UT Workflow Tabs - Displays status filter tabs with counts #}
+{% load steps_filters %}
+
+{% with current_status=current_status|default:"ToDo" %}
+<div class="tabs tabs-boxed bg-base-200 p-1 rounded-lg">
+  {% for value, label in workflow_choices %}
+    {% with filter_counts|get:value as count %}
+    <button
+      class="tab tab-sm flex items-center gap-2
+        {% if current_status == value %}tab-active bg-white shadow text-primary{% endif %}
+        {% if current_status != value %}text-base-content/60 hover:text-base-content{% endif %}"
+      hx-get="{% url 'dashboard:index' %}?status={{ value }}{% if current_filters.faculty %}&faculty={{ current_filters.faculty }}{% endif %}{% if current_filters.search %}&search={{ current_filters.search|urlencode }}{% endif %}&per_page={{ current_filters.per_page|default:50 }}"
+      hx-target="#table-container"
+      hx-push-url="true">
+      {{ label }}
+      {% if count %}
+        <span class="badge badge-sm badge-neutral">{{ count }}</span>
+      {% endif %}
+    </button>
+    {% endwith %}
+  {% endfor %}
+
+  <button
+    class="tab tab-sm flex items-center gap-2
+      {% if current_status == 'All' %}tab-active bg-white shadow text-primary{% endif %}
+      {% if current_status != 'All' %}text-base-content/60 hover:text-base-content{% endif %}"
+    hx-get="{% url 'dashboard:index' %}?status=All{% if current_filters.faculty %}&faculty={{ current_filters.faculty }}{% endif %}{% if current_filters.search %}&search={{ current_filters.search|urlencode }}{% endif %}&per_page={{ current_filters.per_page|default:50 }}"
+    hx-target="#table-container"
+    hx-push-url="true">
+    All
+    <span class="badge badge-sm badge-neutral">{{ total_count|default:0 }}</span>
+  </button>
+</div>
+{% endwith %}

@@ -1,4 +1,4 @@
-{% include "components/partials.html" %}
+{% load steps_filters %}
 
 <!-- Filter Bar -->
 <div class="p-4 border-b border-base-300 bg-base-50">
@@ -6,7 +6,7 @@
 
     <!-- Workflow Tabs -->
     <div class="flex-1">
-      {% partial workflow_tabs workflow_choices=workflow_choices current_status=current_filters.status filter_counts=filter_counts current_filters=current_filters total_count=total_count %}
+      {% include "components/_workflow_tabs.html" %}
     </div>
 
     <!-- Filters -->
@@ -16,10 +16,10 @@
       <input type="hidden" name="status" value="{{ current_filters.status|default:'ToDo' }}">
 
       <!-- Faculty Dropdown -->
-      {% partial filter_dropdown name="faculty" options=faculties selected=current_filters.faculty include='[name="status"],[name="search"]' %}
+      {% include "components/_filter_dropdown.html" %}
 
       <!-- Search Input -->
-      {% partial filter_search value=current_filters.search include='[name="status"],[name="faculty"]' %}
+      {% include "components/_filter_search.html" %}
 
       <!-- Per Page Dropdown -->
       <select name="per_page"

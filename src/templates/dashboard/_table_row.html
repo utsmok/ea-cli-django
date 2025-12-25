@@ -1,5 +1,3 @@
-{% include "components/partials.html" %}
-
 <tr class="hover:bg-primary/5 transition-colors cursor-pointer group animate-fade-in"
     hx-get="{% url 'dashboard:detail_panel' item.material_id %}"
     hx-target="#detail-panel">
@@ -35,12 +33,12 @@
 
   <!-- Classification (editable) -->
   <td class="p-3">
-    {% partial editable_cell item_id=item.material_id field_name="v2_manual_classification" value=item.v2_manual_classification choices=classification_choices %}
+    {% include "components/_editable_cell.html" with item_id=item.material_id field_name="v2_manual_classification" value=item.v2_manual_classification choices=classification_choices %}
   </td>
 
   <!-- Workflow Status (editable) -->
   <td class="p-3">
-    {% partial editable_cell item_id=item.material_id field_name="workflow_status" value=item.workflow_status choices=workflow_choices badge=True %}
+    {% include "components/_editable_cell.html" with item_id=item.material_id field_name="workflow_status" value=item.workflow_status choices=workflow_choices badge=True %}
   </td>
 
   <!-- V1 Classification -->
@@ -59,7 +57,7 @@
 
   <!-- Remarks (editable) -->
   <td class="p-3 min-w-[150px]">
-    {% partial editable_cell item_id=item.material_id field_name="remarks" value=item.remarks input_type="text" %}
+    {% include "components/_editable_cell.html" with item_id=item.material_id field_name="remarks" value=item.remarks input_type="text" %}
   </td>
 
   <!-- File Status -->
