@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     "apps.enrichment",
     "apps.classification",
     "apps.steps",
+    "apps.settings",  # Settings management
     "django_tasks",
     "django_rq",
 ]
