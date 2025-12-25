@@ -17,7 +17,11 @@
       "Bash(uvx ty:*)",
       "Skill(frontend-design:frontend-design)",
       "mcp__plugin_serena_serena__list_dir",
-      "mcp__plugin_playwright_playwright__browser_navigate"
+      "mcp__plugin_playwright_playwright__browser_navigate",
+      "WebSearch",
+      "Bash(grep:*)",
+      "Bash(kill:*)",
+      "Bash(curl:*)"
     ]
   },
   "outputStyle": "default"

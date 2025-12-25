@@ -1,17 +1,4 @@
-{# ============================================================================
-   UT Stat Card Component
-   Usage:
-     {% include "components/_stat_card.html" with value="1,234" label="Total Items" %}
-     {% include "components/_stat_card.html" with value="456" label="Completed" color="success" %}
-     {% include "components/_stat_card.html" with value="12" label="Failed" color="error" %}
-   Options:
-     value: The stat value to display (required)
-     label: The stat label (required)
-     color: Color variant (default, primary, success, warning, error, info)
-     icon: SVG icon to display above the value (optional)
-     href: Optional link to make the card clickable (optional)
-============================================================================ #}
-
+{# UT Stat Card Component #}
 {% if href %}
 <a href="{{ href }}" class="group block">
 {% endif %}

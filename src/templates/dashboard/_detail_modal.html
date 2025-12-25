@@ -1,0 +1,273 @@
+<div id="modal-content">
+
+{% if item.enrichment_status == 'RUNNING' %}
+<!-- Polling: will stop when server returns HTTP 286 -->
+<div id="enrichment-poller"
+     hx-get="{% url 'dashboard:enrichment_status' item.material_id %}?status={{ current_filters.status }}&faculty={{ current_filters.faculty }}&search={{ current_filters.search }}"
+     hx-trigger="every 2s"
+     hx-target="#modal-content"
+     hx-swap="outerHTML">
+</div>
+{% endif %}
+
+<div class="flex justify-between items-start mb-6">
+  <div>
+    <h3 class="font-bold text-xl uppercase tracking-wide">{{ item.filename|default:"Untitled" }}</h3>
+    <p class="text-sm text-base-content/60 mt-1">
+      {{ item.course_code|default:"—" }} - {{ item.course_name|default:"—" }}
+    </p>
+  </div>
+  <div class="flex gap-2">
+    <!-- Close Button -->
+    <button @click="$dispatch('close-detail-modal')"
+            class="btn btn-ut btn-ghost btn-sm">
+      ✕
+    </button>
+  </div>
+</div>
+
+<div class="flex gap-6">
+  <!-- Navigation (Left) -->
+  <div class="flex flex-col gap-2 w-12">
+    {% if prev_id %}
+    <button hx-get="{% url 'dashboard:detail_modal' prev_id %}?status={{ current_filters.status }}&faculty={{ current_filters.faculty }}&search={{ current_filters.search }}"
+            hx-target="#modal-container"
+            class="btn btn-ut btn-ghost btn-sm btn-circle"
+            title="Previous item">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path>
+      </svg>
+    </button>
+    {% endif %}
+    {% if next_id %}
+    <button hx-get="{% url 'dashboard:detail_modal' next_id %}?status={{ current_filters.status }}&faculty={{ current_filters.faculty }}&search={{ current_filters.search }}"
+            hx-target="#modal-container"
+            class="btn btn-ut btn-ghost btn-sm btn-circle"
+            title="Next item">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+      </svg>
+    </button>
+    {% endif %}
+    <a href="{% url 'dashboard:detail_page' item.material_id %}"
+       target="_blank"
+       class="btn btn-ut btn-ghost btn-sm btn-circle"
+       title="Open in new tab">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+      </svg>
+    </a>
+  </div>
+
+  <!-- Content (Main) -->
+  <div class="flex-1 overflow-y-auto max-h-[70vh] space-y-4">
+
+    <!-- PDF Section -->
+    {% if pdf_available and pdf_url %}
+    <div class="bg-base-200 rounded-lg p-4">
+      <h4 class="font-bold text-xs uppercase text-base-content/60 mb-3">PDF Preview</h4>
+      <div class="bg-white rounded-lg shadow overflow-hidden" style="height: 400px;">
+        <iframe src="{{ pdf_url }}"
+                class="w-full h-full"
+                type="application/pdf">
+          <p class="p-4 text-center text-base-content/50">
+            <a href="{{ pdf_url }}" target="_blank" class="link link-primary">Download PDF</a>
+          </p>
+        </iframe>
+      </div>
+    </div>
+    {% elif item.enrichment_status == 'RUNNING' %}
+    <div class="bg-base-200 rounded-lg p-4">
+      <h4 class="font-bold text-xs uppercase text-base-content/60 mb-3">PDF Preview</h4>
+      <div class="flex flex-col items-center justify-center py-12 text-base-content/50">
+        <span class="loading loading-spinner loading-lg mb-4"></span>
+        <p class="text-sm">Retrieving PDF and course data...</p>
+      </div>
+    </div>
+    {% else %}
+    <div class="bg-base-200 rounded-lg p-4">
+      <h4 class="font-bold text-xs uppercase text-base-content/60 mb-3">PDF Preview</h4>
+      <div class="flex flex-col items-center justify-center py-8 text-base-content/50">
+        <svg class="w-16 h-16 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+        </svg>
+        <p class="text-sm font-medium">PDF Not Available</p>
+        <div class="text-center mt-3">
+          {% if item.file_exists is False %}
+          <p class="text-xs text-error">File does not exist on Canvas</p>
+          {% elif item.file_exists is True %}
+          <p class="text-xs text-warning">File exists but is not a PDF</p>
+          {% else %}
+          <p class="text-xs">File status unknown</p>
+          {% endif %}
+        </div>
+        {% if enrichment_result and enrichment_result.error_log %}
+        <div class="mt-4 p-3 bg-error/10 rounded-lg max-w-md">
+          <h5 class="text-xs font-bold text-error mb-2">Enrichment Errors:</h5>
+          <pre class="text-xs text-error/80 whitespace-pre-wrap break-words">{{ enrichment_result.error_log }}</pre>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Classification Section -->
+    <div class="grid grid-cols-2 gap-4">
+      <div class="bg-white rounded-lg border border-base-300 p-4">
+        <h4 class="font-bold text-xs uppercase text-base-content/60 mb-3">V2 Classification</h4>
+        <div class="space-y-2 text-sm">
+          <div class="flex justify-between">
+            <span class="text-base-content/60">Manual</span>
+            <span class="badge badge-ut badge-sm {% if item.v2_manual_classification == 'Onbekend' %}badge-error{% endif %}">
+              {{ item.get_v2_manual_classification_display }}
+            </span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-base-content/60">Overname</span>
+            <span>{{ item.get_v2_overnamestatus_display|default:"—" }}</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-base-content/60">Length</span>
+            <span>{{ item.get_v2_lengte_display|default:"—" }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-lg border border-base-300 p-4">
+        <h4 class="font-bold text-xs uppercase text-base-content/60 mb-3">Other Classifications</h4>
+        <div class="space-y-2 text-sm">
+          <div class="flex justify-between">
+            <span class="text-base-content/60">V1 Manual</span>
+            <span>{{ item.manual_classification|default:"—" }}</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-base-content/60">ML Prediction</span>
+            <span class="{% if item.ml_classification == item.v2_manual_classification %}text-success{% endif %}">
+              {{ item.ml_classification|default:"—" }}
+            </span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-base-content/60">Workflow</span>
+            <span class="badge badge-ut badge-sm">{{ item.get_workflow_status_display }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Course & Document Info -->
+    <div class="grid grid-cols-2 gap-4">
+      <div class="bg-white rounded-lg border border-base-300 p-4">
+        <h4 class="font-bold text-xs uppercase text-base-content/60 mb-3">Course Information</h4>
+        <div class="space-y-2 text-sm">
+          <div class="flex justify-between">
+            <span class="text-base-content/60">Faculty</span>
+            <span class="font-medium">{{ item.faculty.abbreviation|default:"—" }}</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-base-content/60">Department</span>
+            <span>{{ item.department|default:"—" }}</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-base-content/60">Period</span>
+            <span>{{ item.period|default:"—" }}</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-base-content/60">Students</span>
+            <span>{% if item.count_students_registered %}{{ item.count_students_registered }}{% else %}<span class="loading loading-spinner loading-xs"></span>{% endif %}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-lg border border-base-300 p-4">
+        <h4 class="font-bold text-xs uppercase text-base-content/60 mb-3">Document Info</h4>
+        <div class="space-y-2 text-sm">
+          <div class="flex justify-between">
+            <span class="text-base-content/60">File Type</span>
+            <span class="badge badge-ghost badge-sm">{{ item.get_filetype_display }}</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-base-content/60">Pages</span>
+            <span>{{ item.pagecount|default:"—" }}</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-base-content/60">Words</span>
+            <span>{{ item.wordcount|default:"—" }}</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-base-content/60">File Exists</span>
+            <span>{% if item.file_exists is True %}✓{% elif item.file_exists is False %}✗{% else %}<span class="loading loading-spinner loading-xs"></span>{% endif %}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Remarks -->
+    {% if item.remarks %}
+    <div class="bg-white rounded-lg border border-base-300 p-4">
+      <h4 class="font-bold text-xs uppercase text-base-content/60 mb-2">Remarks</h4>
+      <p class="text-sm">{{ item.remarks }}</p>
+    </div>
+    {% endif %}
+
+    <!-- Courses & Teachers -->
+    {% if course_teachers %}
+    <div class="bg-white rounded-lg border border-base-300 p-4">
+      <h4 class="font-bold text-xs uppercase text-base-content/60 mb-3">Courses & Teachers</h4>
+      <div class="space-y-3">
+        {% for course, teachers_list in course_teachers %}
+        <div class="border-l-2 border-primary pl-3">
+          <div class="font-medium text-sm">{{ course.name }}</div>
+          <div class="text-xs text-base-content/60">{{ course.cursuscode }}</div>
+          {% if teachers_list %}
+          <div class="text-xs text-base-content/60 mt-1">
+            Teachers: {% for teacher in teachers_list %}{{ teacher.main_name }}{% if not forloop.last %}, {% endif %}{% endfor %}
+          </div>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Recent Changes -->
+    {% if recent_changes %}
+    <div class="bg-white rounded-lg border border-base-300 p-4">
+      <h4 class="font-bold text-xs uppercase text-base-content/60 mb-3">Recent Changes</h4>
+      <div class="space-y-2">
+        {% for change in recent_changes %}
+        <div class="text-xs border-b border-base-200 pb-2 last:border-0">
+          <div class="flex justify-between">
+            <span class="font-medium">{{ change.changed_by.username|default:"System" }}</span>
+            <span class="text-base-content/60">{{ change.changed_at|date:"Y-m-d H:i" }}</span>
+          </div>
+          <div class="text-base-content/60 mt-1">
+            {% for field, change_data in change.changes.items %}
+            {{ field }}: {{ change_data.old }} → {{ change_data.new }}
+            {% endfor %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Related Items -->
+    {% if related_items %}
+    <div class="bg-white rounded-lg border border-base-300 p-4">
+      <h4 class="font-bold text-xs uppercase text-base-content/60 mb-3">Related Items (Same Content)</h4>
+      <div class="space-y-2">
+        {% for related in related_items %}
+        <a href="{% url 'dashboard:detail_modal' related.material_id %}"
+           hx-get="{% url 'dashboard:detail_modal' related.material_id %}"
+           hx-target="#modal-container"
+           class="block text-sm hover:text-primary transition-colors">
+          {{ related.filename }} ({{ related.faculty.abbreviation|default:"—" }})
+        </a>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+</div>
+</div>

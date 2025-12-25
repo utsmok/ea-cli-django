@@ -1,17 +1,4 @@
-{# ============================================================================
-   UT Progress Bar Component
-   Usage:
-     {% include "components/_progress.html" with value=45 max=100 %}
-     {% include "components/_progress.html" with value=75 label="Loading..." %}
-     {% include "components/_progress.html" with value=30 status="warning" %}
-   Options:
-     value: Current progress value (required)
-     max: Maximum value (default: 100)
-     label: Optional label text
-     status: Status variant (default, success, warning, error)
-     animated: Add shimmer animation (default: true)
-============================================================================ #}
-
+{# UT Progress Bar Component #}
 <div class="w-full">
   {% if label %}
   <div class="flex justify-between items-center mb-1 text-sm">

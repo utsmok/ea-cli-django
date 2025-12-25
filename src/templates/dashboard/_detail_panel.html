@@ -1,0 +1,137 @@
+<div class="h-full flex flex-col">
+  <!-- Header -->
+  <div class="p-4 border-b border-base-300 bg-white flex justify-between items-start">
+    <div class="flex-1 min-w-0">
+      <h2 class="font-bold text-lg truncate">{{ item.filename|default:"Untitled" }}</h2>
+      <p class="text-xs text-base-content/60 mt-1">
+        {{ item.course_code|default:"—" }} - {{ item.course_name|default:"—" }}
+      </p>
+    </div>
+    <button onclick="document.getElementById('detail-panel').innerHTML = ''"
+            class="btn btn-ghost btn-sm btn-circle">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+      </svg>
+    </button>
+  </div>
+
+  <!-- Content -->
+  <div class="flex-1 overflow-y-auto">
+
+    <!-- PDF Preview -->
+    {% if pdf_available and pdf_url %}
+    <div class="p-4 bg-base-200">
+      <div class="bg-white rounded-lg shadow overflow-hidden" style="height: 400px;">
+        <iframe src="{{ pdf_url }}"
+                class="w-full h-full"
+                type="application/pdf">
+          <p class="p-4 text-center text-base-content/50">
+            PDF preview not available.
+            <a href="{{ pdf_url }}" target="_blank" class="link link-primary">Download file</a>
+          </p>
+        </iframe>
+      </div>
+    </div>
+    {% else %}
+    <div class="p-8 bg-base-200 flex items-center justify-center">
+      <div class="text-center">
+        <svg class="w-16 h-16 mx-auto text-base-content/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+        </svg>
+        <p class="text-base-content/50 mt-2 font-semibold">No PDF available</p>
+        {% if item.url %}
+        <a href="{{ item.url }}" target="_blank" class="link link-primary text-sm mt-2 inline-block">
+          View in Canvas →
+        </a>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Classification Section -->
+    <div class="p-4 space-y-4">
+
+      <!-- V2 Classification -->
+      <div class="bg-white rounded-lg border border-base-300 p-4">
+        <h3 class="font-bold text-xs uppercase text-base-content/60 mb-3">V2 Classification</h3>
+        <div class="grid grid-cols-2 gap-3 text-sm">
+          <div>
+            <span class="text-base-content/60 text-xs block">Manual</span>
+            <span class="badge badge-ut badge-sm {% if item.v2_manual_classification == 'Onbekend' %}badge-error{% endif %}">
+              {{ item.get_v2_manual_classification_display }}
+            </span>
+          </div>
+          <div>
+            <span class="text-base-content/60 text-xs block">Overname Status</span>
+            <span class="text-sm">{{ item.get_v2_overnamestatus_display|default:"—" }}</span>
+          </div>
+          <div>
+            <span class="text-base-content/60 text-xs block">Length</span>
+            <span class="text-sm">{{ item.get_v2_lengte_display|default:"—" }}</span>
+          </div>
+          <div>
+            <span class="text-base-content/60 text-xs block">Workflow</span>
+            <span class="badge badge-ut badge-sm">{{ item.get_workflow_status_display }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Course Info -->
+      <div class="bg-white rounded-lg border border-base-300 p-4">
+        <h3 class="font-bold text-xs uppercase text-base-content/60 mb-3">Course Information</h3>
+        <div class="grid grid-cols-2 gap-3 text-sm">
+          <div>
+            <span class="text-base-content/60 text-xs block">Faculty</span>
+            <span class="font-medium">{{ item.faculty.abbreviation|default:"—" }}</span>
+          </div>
+          <div>
+            <span class="text-base-content/60 text-xs block">Department</span>
+            <span class="text-sm">{{ item.department|default:"—" }}</span>
+          </div>
+          <div>
+            <span class="text-base-content/60 text-xs block">Period</span>
+            <span class="text-sm">{{ item.period|default:"—" }}</span>
+          </div>
+          <div>
+            <span class="text-base-content/60 text-xs block">Students</span>
+            <span class="text-sm">{{ item.count_students_registered|default:"—" }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Remarks -->
+      {% if item.remarks %}
+      <div class="bg-white rounded-lg border border-base-300 p-4">
+        <h3 class="font-bold text-xs uppercase text-base-content/60 mb-2">Remarks</h3>
+        <p class="text-sm">{{ item.remarks }}</p>
+      </div>
+      {% endif %}
+
+      <!-- Audit Trail -->
+      <div class="bg-white rounded-lg border border-base-300 p-4">
+        <h3 class="font-bold text-xs uppercase text-base-content/60 mb-3">Audit Trail</h3>
+        <div class="grid grid-cols-2 gap-3 text-xs text-base-content/60">
+          <div>
+            <span class="block">Created</span>
+            <span class="text-sm text-base-content/80">{{ item.created_at|date:"Y-m-d H:i" }}</span>
+          </div>
+          <div>
+            <span class="block">Modified</span>
+            <span class="text-sm text-base-content/80">{{ item.modified_at|date:"Y-m-d H:i" }}</span>
+          </div>
+          <div>
+            <span class="block">Last Enriched</span>
+            <span class="text-sm text-base-content/80">{{ item.last_enrichment_attempt|date:"Y-m-d H:i"|default:"—" }}</span>
+          </div>
+          <div>
+            <span class="block">File Exists</span>
+            <span class="text-sm text-base-content/80">
+              {% if item.file_exists is None %}Unknown{% elif item.file_exists %}Yes{% else %}No{% endif %}
+            </span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
