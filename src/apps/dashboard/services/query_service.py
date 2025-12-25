@@ -26,6 +26,7 @@ from apps.core.models import (
     OvernameStatus,
     Lengte,
 )
+from apps.core.services.cache_service import cache_query_result
 
 
 class ItemQueryFilter:
@@ -152,10 +153,13 @@ class ItemQueryService:
             filter_counts=self._get_filter_counts(qs),
         )
 
+    @cache_query_result(timeout=600, key_prefix="faculties", cache_name="default")
     def get_faculties(self) -> QuerySet[Faculty]:
         """
         Get all faculties for filter dropdown.
         Ordered by abbreviation for consistent UI.
+
+        Cached for 10 minutes since faculty data rarely changes.
         """
         return Faculty.objects.all().order_by("abbreviation")
 
@@ -175,12 +179,15 @@ class ItemQueryService:
         """Get lengte choices for dropdowns."""
         return Lengte.choices
 
+    @cache_query_result(timeout=900, key_prefix="filter_counts", cache_name="queries")
     def _get_filter_counts(self, base_qs: QuerySet) -> dict[str, int]:
         """
         Get count of items per workflow status for tab badges.
 
         This is a single optimized query using aggregation,
         avoiding N+1 queries for tab counts.
+
+        Cached for 15 minutes since counts change slowly during classification.
         """
         counts = (
             base_qs.values("workflow_status")

@@ -108,6 +108,52 @@ _redis_url = env(
     default="redis://redis:6379/0" if RUNNING_IN_DOCKER else "redis://localhost:6379/0",
 )
 
+# =============================================================================
+# REDIS CACHING Configuration
+# =============================================================================
+# Multi-backend caching strategy:
+# - 'default': General caching (sessions, flash messages, temporary data)
+# - 'queries': Expensive database query results (filter counts, aggregations)
+#
+# Both backends use django-redis with compression to minimize memory usage.
+# Cache failures are ignored gracefully (app continues working, just slower).
+# =============================================================================
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": _redis_url,
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            # Use environment-specific key prefix to avoid conflicts
+            "KEY_PREFIX": f"ea_platform_default_{env('ENV', default='dev')}",
+            # Compress large values to save memory (~60% reduction)
+            "COMPRESSOR": "django_redis.compressors.zlib.ZlibCompressor",
+            # Ignore connection errors gracefully (fallback to no cache)
+            "IGNORE_EXCEPTIONS": True,
+        },
+        "TIMEOUT": 300,  # 5 minutes default
+    },
+    # Separate cache for expensive query results
+    "queries": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": _redis_url,
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            "KEY_PREFIX": f"ea_platform_queries_{env('ENV', default='dev')}",
+            "COMPRESSOR": "django_redis.compressors.zlib.ZlibCompressor",
+            "IGNORE_EXCEPTIONS": True,
+        },
+        # Query results can be cached longer (15 minutes)
+        "TIMEOUT": 900,
+    },
+}
+
+# Cache key prefix for easy identification in Redis CLI
+CACHE_KEY_PREFIX = "ea_platform"
+
+# Cache statistics flag (enable for development debugging)
+REDIS_CACHE_STATS = env.bool("REDIS_CACHE_STATS", default=True)
+
 DATABASES = {"default": env.db_url_config(_db_url)}
 DATABASES["default"]["TEST"] = {
     "NAME": "test_copyright_db_isolated",

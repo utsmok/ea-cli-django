@@ -21,7 +21,12 @@
       "WebSearch",
       "Bash(grep:*)",
       "Bash(kill:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(git branch:*)",
+      "Bash(find:*)",
+      "Bash(git checkout:*)",
+      "Bash(git pull:*)",
+      "Bash(git merge:*)"
     ]
   },
   "outputStyle": "default"

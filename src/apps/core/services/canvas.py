@@ -14,6 +14,7 @@ from django.conf import settings
 from django.utils import timezone
 
 from apps.core.models import CopyrightItem
+from apps.core.services.cache_service import cache_async_result
 
 logger = logging.getLogger(__name__)
 
@@ -92,12 +93,16 @@ async def select_items_needing_check(
     return items
 
 
+@cache_async_result(timeout=86400, key_prefix="canvas_file_exists", cache_name="queries")
 async def check_single_file_existence(
     item_data: Item,
     client: httpx.AsyncClient,
 ) -> FileExistenceResult:
     """
     Check file existence for a single item.
+
+    Cached for 24 hours because file existence in Canvas LMS
+    is stable (files are rarely deleted).
 
     Args:
         item_data: Dictionary with material_id and url

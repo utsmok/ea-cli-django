@@ -8,6 +8,7 @@ from django.utils import timezone
 
 from apps.core.models import CopyrightItem, Course, MissingCourse, Person
 from apps.core.services.relations import link_persons_to_courses
+from apps.core.services.cache_service import cache_async_result
 from apps.core.utils.course_parser import determine_course_code
 from apps.core.utils.safecast import safe_int
 
@@ -119,8 +120,14 @@ async def fetch_and_parse_courses(
     return results
 
 
+@cache_async_result(timeout=86400, key_prefix="osiris_course", cache_name="queries")
 async def fetch_course_data(course_code: int, client: httpx.AsyncClient) -> dict:
-    """Fetch single course data from OSIRIS."""
+    """
+    Fetch single course data from OSIRIS.
+
+    Cached for 24 hours because course data changes very rarely
+    (typically once per semester during course catalog updates).
+    """
 
     def _process_teacher_items(items) -> set[str]:
         """Helper function to process teacher items into a consistent set format"""
@@ -368,8 +375,14 @@ async def _fetch_course_details(course_data: dict, client: httpx.AsyncClient):
 # --- Person Fetching Logic (Simplified Port) ---
 
 
+@cache_async_result(timeout=604800, key_prefix="osiris_person", cache_name="queries")
 async def fetch_person_data(name: str, client: httpx.AsyncClient) -> dict | None:
-    """Fetch person data by scraping people.utwente.nl."""
+    """
+    Fetch person data by scraping people.utwente.nl.
+
+    Cached for 7 days because person information (email, faculty)
+    changes very rarely.
+    """
     url = f"{PEOPLE_SEARCH_URL}{_u.quote(name)}"
 
     try:
