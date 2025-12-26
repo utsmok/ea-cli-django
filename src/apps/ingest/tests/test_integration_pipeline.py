@@ -62,7 +62,7 @@ class TestQlikIngestion:
             )
 
         # Stage the data
-        stage_result = stage_batch(batch.id)
+        stage_result = stage_batch.call(batch.id)
         assert stage_result["success"], f"Staging failed: {stage_result}"
 
         # Verify batch was staged
@@ -70,7 +70,7 @@ class TestQlikIngestion:
         assert batch.status == IngestionBatch.Status.STAGED
 
         # Process the data
-        process_result = process_batch(batch.id)
+        process_result = process_batch.call(batch.id)
         assert process_result["success"], f"Processing failed: {process_result}"
 
         # Verify batch statistics
@@ -111,8 +111,8 @@ class TestFacultyIngestion:
                 source_file=File(f, name="qlik_data.xlsx"),
             )
 
-        stage_batch(qlik_batch.id)
-        process_batch(qlik_batch.id)
+        stage_batch.call(qlik_batch.id)
+        process_batch.call(qlik_batch.id)
 
         initial_count = CopyrightItem.objects.count()
         assert initial_count > 0, "No items created from Qlik import"
@@ -131,10 +131,10 @@ class TestFacultyIngestion:
             )
 
         # Stage and process
-        stage_result = stage_batch(faculty_batch.id)
+        stage_result = stage_batch.call(faculty_batch.id)
         assert stage_result["success"], f"Faculty staging failed: {stage_result}"
 
-        process_result = process_batch(faculty_batch.id)
+        process_result = process_batch.call(faculty_batch.id)
         assert process_result["success"], f"Faculty processing failed: {process_result}"
 
         # Verify updates were applied
@@ -162,8 +162,8 @@ class TestExportFunctionality:
                 source_file=File(f, name="qlik_data.xlsx"),
             )
 
-        stage_batch(batch.id)
-        process_batch(batch.id)
+        stage_batch.call(batch.id)
+        process_batch.call(batch.id)
 
         # Ensure we have faculties in the database
         # Create test faculties if they don't exist
@@ -215,8 +215,8 @@ class TestRoundTripIngestion:
                 source_file=File(f, name="qlik_data.xlsx"),
             )
 
-        stage_batch(batch1.id)
-        process_batch(batch1.id)
+        stage_batch.call(batch1.id)
+        process_batch.call(batch1.id)
 
         initial_count = CopyrightItem.objects.count()
         CopyrightItem.objects.first()
@@ -249,8 +249,8 @@ class TestRoundTripIngestion:
                 source_file=File(f, name=reimport_file.name),
             )
 
-        stage_batch(batch2.id)
-        process_batch(batch2.id)
+        stage_batch.call(batch2.id)
+        process_batch.call(batch2.id)
 
         # Verify no new items created
         final_count = CopyrightItem.objects.count()
@@ -268,8 +268,8 @@ def test_complete_pipeline(test_user, qlik_file, tmp_path):
             source_file=File(f, name="qlik_data.xlsx"),
         )
 
-    stage_batch(qlik_batch.id)
-    process_batch(qlik_batch.id)
+    stage_batch.call(qlik_batch.id)
+    process_batch.call(qlik_batch.id)
 
     # 2. Verify items created
     assert CopyrightItem.objects.count() > 0

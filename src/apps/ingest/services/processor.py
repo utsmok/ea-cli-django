@@ -169,26 +169,59 @@ class BatchProcessor:
         """
         Process a single Qlik entry.
 
-        Can CREATE new items or UPDATE existing items.
-        - On CREATE, it populates all available fields.
-        - On UPDATE, it only updates Qlik-owned system fields.
+        Two-step process:
+        1. Create/update QlikItem (exact mirror of Qlik data)
+        2. Merge to CopyrightItem (preserving existing data when Qlik has nulls)
         """
-        # A list of all fields on the QlikEntry model that can be transferred to a CopyrightItem
-        ALL_QLIK_STAGED_FIELDS = [
-            f.name
-            for f in QlikEntry._meta.get_fields()
-            if not f.is_relation
-            and f.name
-            not in [
-                "id",
-                "batch",
-                "processed",
-                "processed_at",
-                "row_number",
-                "created_at",
-            ]
+        from apps.core.models import QlikItem
+
+        # Fields that exist on both QlikItem and CopyrightItem
+        QLIK_MIRROR_FIELDS = [
+            "filename",
+            "filehash",
+            "filetype",
+            "url",
+            "title",
+            "author",
+            "publisher",
+            "period",
+            "department",
+            "course_code",
+            "course_name",
+            "status",
+            "classification",
+            "ml_classification",
+            "isbn",
+            "doi",
+            "owner",
+            "in_collection",
+            "picturecount",
+            "reliability",
+            "pages_x_students",
+            "count_students_registered",
+            "pagecount",
+            "wordcount",
+            "canvas_course_id",
+            "retrieved_from_copyright_on",
         ]
 
+        # Step 1: Create/update QlikItem (exact mirror of Qlik data)
+        try:
+            qlik_item = QlikItem.objects.get(material_id=entry.material_id)
+        except QlikItem.DoesNotExist:
+            qlik_item = QlikItem(material_id=entry.material_id)
+
+        # Update QlikItem with all values from entry (even nulls - this is the mirror)
+        for field_name in QLIK_MIRROR_FIELDS:
+            value = getattr(entry, field_name, None)
+            if field_name == "retrieved_from_copyright_on":
+                value = safe_datetime(value)
+            setattr(qlik_item, field_name, value)
+
+        qlik_item.qlik_source_file = self.batch.source_file
+        qlik_item.save()
+
+        # Step 2: Get or create CopyrightItem (working copy that preserves data)
         try:
             item = CopyrightItem.objects.get(material_id=entry.material_id)
             created = False
@@ -199,33 +232,35 @@ class BatchProcessor:
         changes = {}
         faculty_obj = self._resolve_faculty(entry.department)
 
-        if created:
-            # For new items, populate with all available data from the Qlik entry
-            for field_name in ALL_QLIK_STAGED_FIELDS:
-                new_value = getattr(entry, field_name, None)
-                if new_value is not None:
-                    # Special handling for date fields
-                    if field_name == "last_change":
-                        new_value = safe_datetime(new_value)
+        # Merge Qlik data to CopyrightItem
+        # Key rule: only update if new value is not null/empty
+        # This preserves existing data when Qlik loses values
+        for field_name in QLIK_MIRROR_FIELDS:
+            new_value = getattr(entry, field_name, None)
 
-                    setattr(item, field_name, new_value)
-                    changes[field_name] = {"old": None, "new": new_value}
-        else:
-            # For existing items, only update Qlik-owned fields
-            for field_name in QLIK_CREATEABLE_FIELDS:
-                new_value = getattr(entry, field_name, None)
-                old_value = getattr(item, field_name, None)
-                strategy = get_qlik_strategy(field_name)
+            # Special handling for date fields
+            if field_name == "retrieved_from_copyright_on":
+                new_value = safe_datetime(new_value)
 
-                # Special handling for date fields
-                if field_name == "last_change":
-                    new_value = safe_datetime(new_value)
+            # Skip null/empty values - preserve existing data in CopyrightItem
+            if new_value is None or new_value == "":
+                continue
 
-                if strategy and strategy.should_update(old_value, new_value):
-                    setattr(item, field_name, new_value)
-                    changes[field_name] = {"old": old_value, "new": new_value}
+            old_value = getattr(item, field_name, None)
 
-        # Save item
+            # For new items: set all non-null values
+            # For existing items: only update if value actually changed
+            if created or old_value != new_value:
+                # Use merge strategy if available, otherwise just update
+                if not created:
+                    strategy = get_qlik_strategy(field_name)
+                    if strategy and not strategy.should_update(old_value, new_value):
+                        continue
+
+                setattr(item, field_name, new_value)
+                changes[field_name] = {"old": old_value, "new": new_value}
+
+        # Handle faculty assignment
         if faculty_obj and (item.faculty_id != faculty_obj.id):
             old_faculty = item.faculty.abbreviation if item.faculty else None
             item.faculty = faculty_obj
@@ -234,7 +269,7 @@ class BatchProcessor:
                 "new": faculty_obj.abbreviation,
             }
 
-        if changes:
+        if changes or created:
             item.save()
 
             # Create ChangeLog entry

@@ -221,6 +221,104 @@ class CourseEmployee(TimestampedModel):
 # -----------------------------------------------------------------------------
 
 
+class QlikItem(TimestampedModel):
+    """
+    Mirror table for Qlik data.
+
+    This table stores the exact state of items as received from Qlik exports.
+    It acts as a snapshot/audit trail of the source data at ingestion time.
+
+    Key differences from CopyrightItem:
+    - This is read-only after ingestion (represents source data exactly)
+    - CopyrightItem may have values that Qlik has lost (preserved by merge logic)
+    - Multiple ingestions update this table, showing latest Qlik state
+    """
+
+    material_id = models.BigIntegerField(primary_key=True)
+
+    # File information
+    filename = models.CharField(max_length=2048, null=True, blank=True, db_index=True)
+    filehash = models.CharField(max_length=255, null=True, blank=True, db_index=True)
+    filetype = models.CharField(
+        max_length=50,
+        choices=Filetype.choices,
+        default=Filetype.UNKNOWN,
+        null=True,
+        blank=True,
+    )
+    url = models.URLField(max_length=2048, null=True, blank=True)
+
+    # Content metadata
+    title = models.CharField(max_length=2048, null=True, blank=True)
+    author = models.CharField(max_length=2048, null=True, blank=True)
+    publisher = models.CharField(max_length=2048, null=True, blank=True)
+
+    # Course/Department info
+    period = models.CharField(max_length=50, null=True, blank=True)
+    department = models.CharField(max_length=2048, null=True, blank=True, db_index=True)
+    course_code = models.CharField(
+        max_length=2048, null=True, blank=True, db_index=True
+    )
+    course_name = models.CharField(max_length=2048, null=True, blank=True)
+    canvas_course_id = models.BigIntegerField(null=True, blank=True, db_index=True)
+
+    # Status and classification from Qlik/CRC
+    status = models.CharField(
+        max_length=50,
+        choices=Status.choices,
+        default=Status.PUBLISHED,
+        null=True,
+        blank=True,
+    )
+    classification = models.CharField(
+        max_length=100,
+        choices=Classification.choices,
+        default=Classification.NIET_GEANALYSEERD,
+        null=True,
+        blank=True,
+    )
+    ml_classification = models.CharField(
+        max_length=100,
+        choices=Classification.choices,
+        default=Classification.NIET_GEANALYSEERD,
+        null=True,
+        blank=True,
+    )
+
+    # Identifiers
+    isbn = models.CharField(max_length=255, null=True, blank=True)
+    doi = models.CharField(max_length=255, null=True, blank=True)
+    owner = models.CharField(max_length=2048, null=True, blank=True)
+    in_collection = models.BooleanField(null=True, blank=True)
+
+    # Metrics
+    picturecount = models.IntegerField(default=0)
+    reliability = models.IntegerField(default=0)
+    pages_x_students = models.IntegerField(default=0)
+    count_students_registered = models.IntegerField(default=0)
+    pagecount = models.IntegerField(default=0)
+    wordcount = models.IntegerField(default=0)
+
+    # Ingestion tracking
+    retrieved_from_copyright_on = models.DateTimeField(null=True, blank=True)
+    last_qlik_update = models.DateTimeField(auto_now=True)
+    qlik_source_file = models.CharField(max_length=512, null=True, blank=True)
+
+    class Meta:
+        db_table = "qlik_items"
+        verbose_name = "Qlik Item (Mirror)"
+        verbose_name_plural = "Qlik Items (Mirror)"
+        indexes = [
+            models.Index(fields=["material_id", "last_qlik_update"]),
+            models.Index(fields=["filehash"]),
+            models.Index(fields=["canvas_course_id"]),
+            models.Index(fields=["course_code"]),
+        ]
+
+    def __str__(self):
+        return f"QlikItem {self.material_id}: {self.filename or self.title or 'Untitled'}"
+
+
 class CopyrightItem(TimestampedModel):
     # Core data
     material_id = models.BigIntegerField(primary_key=True)
