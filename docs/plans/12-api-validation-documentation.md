@@ -2,9 +2,9 @@
 
 ## Overview
 
-Improve API input validation and implement Django Shinobi schemas for request/response validation.
+Improve API input validation and implement Django Ninja (Pydantic) schemas for request/response validation.
 
-**Current Status:** ❌ **NOT STARTED**
+**Current Status:** ✅ **COMPLETE**
 **Priority:** **HIGH** (Fix Soon)
 
 ## Issues Addressed
