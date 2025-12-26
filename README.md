@@ -133,7 +133,9 @@ CANVAS_API_TOKEN=your-token
 - **Database:** PostgreSQL 17
 - **Task Queue:** Redis with django-tasks and django-rq
 - **Data Processing:** Polars for Excel/CSV handling
-- **API:** Django Shinobi (Pydantic-based schemas)
+- **API:** Django Ninja (v1 versioning, automatic OpenAPI docs)
+- **Monitoring:** Health & Readiness endpoints (/api/v1/health/, /api/v1/readiness/)
+- **Security:** IP-based Rate Limiting via Redis
 
 ### App Structure (`src/apps/`)
 
@@ -145,9 +147,10 @@ CANVAS_API_TOKEN=your-token
 | `documents/` | PDF handling, text extraction, OCR |
 | `classification/` | ML classification logic |
 | `dashboard/` | Main UI views |
-| `api/` | API endpoints |
+| `api/` | versioned API endpoints (v1) |
 | `steps/` | Step-based UI interfaces for each processing stage |
 | `users/` | User authentication |
+| `settings/` | Platform configuration management |
 
 ---
 
