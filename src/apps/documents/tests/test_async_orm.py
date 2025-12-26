@@ -184,11 +184,12 @@ async def test_async_asave_updates_item_fields():
 @pytest.mark.asyncio
 async def test_async_acount_counts_documents():
     """Test that acount correctly counts documents."""
-    metadata = await PDFCanvasMetadata.objects.acreate(
+    # Create 3 different metadata objects (OneToOneField requires unique metadata per document)
+    metadata1 = await PDFCanvasMetadata.objects.acreate(
         id=104,
         uuid="uuid104",
-        display_name="test.pdf",
-        filename="test.pdf",
+        display_name="test1.pdf",
+        filename="test1.pdf",
         size=100,
         canvas_created_at="2024-01-01T00:00:00Z",
         canvas_updated_at="2024-01-01T00:00:00Z",
@@ -196,19 +197,44 @@ async def test_async_acount_counts_documents():
         hidden=False,
         visibility_level="public",
     )
+    metadata2 = await PDFCanvasMetadata.objects.acreate(
+        id=105,
+        uuid="uuid105",
+        display_name="test2.pdf",
+        filename="test2.pdf",
+        size=200,
+        canvas_created_at="2024-01-01T00:00:00Z",
+        canvas_updated_at="2024-01-01T00:00:00Z",
+        locked=False,
+        hidden=False,
+        visibility_level="public",
+    )
+    metadata3 = await PDFCanvasMetadata.objects.acreate(
+        id=106,
+        uuid="uuid106",
+        display_name="test3.pdf",
+        filename="test3.pdf",
+        size=300,
+        canvas_created_at="2024-01-01T00:00:00Z",
+        canvas_updated_at="2024-01-01T00:00:00Z",
+        locked=False,
+        hidden=False,
+        visibility_level="public",
+    )
 
-    # Create multiple documents
+    # Create multiple documents with different metadata
     await Document.objects.acreate(
-        filehash="hash1", canvas_metadata=metadata, filename="file1.pdf"
+        filehash="hash1", canvas_metadata=metadata1, filename="file1.pdf"
     )
     await Document.objects.acreate(
-        filehash="hash2", canvas_metadata=metadata, filename="file2.pdf"
+        filehash="hash2", canvas_metadata=metadata2, filename="file2.pdf"
     )
     await Document.objects.acreate(
-        filehash="hash3", canvas_metadata=metadata, filename="file3.pdf"
+        filehash="hash3", canvas_metadata=metadata3, filename="file3.pdf"
     )
 
-    count = await Document.objects.acount()
+    # Count only the documents created in this test (by filtering on filehash)
+    count = await Document.objects.filter(filehash__in=["hash1", "hash2", "hash3"]).acount()
     assert count == 3
 
     # Test with filter
@@ -226,8 +252,8 @@ async def test_async_afilter_with_related():
     )
 
     metadata = await PDFCanvasMetadata.objects.acreate(
-        id=105,
-        uuid="uuid105",
+        id=107,
+        uuid="uuid107",
         display_name="test.pdf",
         filename="test.pdf",
         size=100,
@@ -246,8 +272,8 @@ async def test_async_afilter_with_related():
 
     # Create item with document
     _item_with_doc = await CopyrightItem.objects.acreate(
-        material_id=104,
-        url="http://canvas/files/104",
+        material_id=107,
+        url="http://canvas/files/107",
         file_exists=True,
         faculty=faculty,
         document=doc,
@@ -255,7 +281,7 @@ async def test_async_afilter_with_related():
 
     # Create item without document
     _item_without_doc = await CopyrightItem.objects.acreate(
-        material_id=105,
+        material_id=108,
         url="http://canvas/files/105",
         file_exists=True,
         faculty=faculty,
@@ -311,8 +337,8 @@ async def test_async_adelete_removes_records():
     )
 
     metadata = await PDFCanvasMetadata.objects.acreate(
-        id=106,
-        uuid="uuid106",
+        id=109,
+        uuid="uuid109",
         display_name="test.pdf",
         filename="test.pdf",
         size=100,
@@ -408,8 +434,8 @@ async def test_async_select_related_works():
     )
 
     metadata = await PDFCanvasMetadata.objects.acreate(
-        id=107,
-        uuid="uuid107",
+        id=110,
+        uuid="uuid110",
         display_name="test.pdf",
         filename="test.pdf",
         size=100,
