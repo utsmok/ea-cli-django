@@ -238,14 +238,11 @@ def item_detail_modal(request, material_id: int):
     data = detail_service.get_detail_data(material_id)
     prev_id, next_id = detail_service.get_navigation_ids(material_id, filters)
 
-    # Get latest enrichment result to check for errors
-    from apps.enrichment.models import EnrichmentResult
+    # Get latest enrichment result via service
+    from .services.enrichment_service import DashboardEnrichmentService
 
-    latest_result = (
-        EnrichmentResult.objects.filter(item__material_id=material_id)
-        .order_by("-created_at")
-        .first()
-    )
+    enrichment_service = DashboardEnrichmentService()
+    latest_result = enrichment_service.get_latest_result(material_id)
 
     context = {
         "item": data.item,
@@ -269,54 +266,13 @@ def item_detail_modal(request, material_id: int):
     response = TemplateResponse(request, "dashboard/_detail_modal.html", context)
 
     # Trigger enrichment if data is missing
-    from apps.core.models import EnrichmentStatus
-    from apps.enrichment.tasks import enrich_item
-
-    needs_enrichment = (
-        not data.pdf_available
-        or not data.item.course_code
-        or not data.item.count_students_registered
-        or data.item.file_exists is None
-    )
-
-    # Check if enrichment is already running
-    is_enriching = data.item.enrichment_status == EnrichmentStatus.RUNNING
-
-    if needs_enrichment and not is_enriching:
-        # Create EnrichmentResult to track errors first
-        from django.utils import timezone
-
-        from apps.enrichment.models import EnrichmentBatch, EnrichmentResult
-
-        batch = EnrichmentBatch.objects.create(
-            source=EnrichmentBatch.Source.MANUAL_SINGLE,
-            total_items=1,
-            status=EnrichmentBatch.Status.RUNNING,
-            started_at=timezone.now(),
+    if enrichment_service.trigger_enrichment_if_needed(data.item):
+        # Re-render modal with enrichment_status = RUNNING (includes poller)
+        # item status was updated in service
+        context["item"] = data.item
+        response = TemplateResponse(
+            request, "dashboard/_detail_modal.html", context
         )
-        result = EnrichmentResult.objects.create(
-            item=data.item, batch=batch, status=EnrichmentResult.Status.PENDING
-        )
-
-        # Enqueue enrichment task with result tracking
-        try:
-            enrich_item.enqueue(material_id, batch_id=batch.id, result_id=result.id)
-            logger.info(
-                f"Enqueued enrichment for item {material_id} (batch={batch.id}, result={result.id})"
-            )
-
-            # Only set status to RUNNING after successful enqueue (prevents race condition)
-            data.item.enrichment_status = EnrichmentStatus.RUNNING
-            data.item.save(update_fields=["enrichment_status"])
-
-            # Re-render modal with enrichment_status = RUNNING (includes poller)
-            context["item"] = data.item
-            response = TemplateResponse(
-                request, "dashboard/_detail_modal.html", context
-            )
-        except Exception as e:
-            logger.error(f"Failed to enqueue enrichment for {material_id}: {e}")
-            # If enqueue fails, do not set RUNNING status - keep as NOT_STARTED
 
     return response
 
@@ -371,14 +327,11 @@ def item_enrichment_status(request, material_id: int):
     data = detail_service.get_detail_data(material_id)
     prev_id, next_id = detail_service.get_navigation_ids(material_id, filters)
 
-    # Get latest enrichment result to check for errors
-    from apps.enrichment.models import EnrichmentResult
+    # Get latest enrichment result via service
+    from .services.enrichment_service import DashboardEnrichmentService
 
-    latest_result = (
-        EnrichmentResult.objects.filter(item__material_id=material_id)
-        .order_by("-created_at")
-        .first()
-    )
+    enrichment_service = DashboardEnrichmentService()
+    latest_result = enrichment_service.get_latest_result(material_id)
 
     context = {
         "item": data.item,

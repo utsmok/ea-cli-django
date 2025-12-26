@@ -16,5 +16,5 @@ urlpatterns = [
         views.download_faculty_sheets,
         name="download_faculty_sheets",
     ),
-    path("api/", api.urls),
+    path("api/v1/", api.urls),
 ]
