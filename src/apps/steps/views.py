@@ -14,6 +14,7 @@ from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_GET, require_POST
+from loguru import logger
 
 from apps.core.models import CopyrightItem
 
@@ -403,6 +404,7 @@ def pdf_canvas_status_step(request):
     - Configure Canvas API settings
     - Check PDF availability and metadata
     """
+    logger.debug("Rendering PDF Canvas status step...")
     # Get items with Canvas URLs
     items = CopyrightItem.objects.filter(url__contains="/files/").order_by(
         "-created_at"
@@ -429,12 +431,15 @@ def pdf_canvas_status_step(request):
     return render(request, "steps/pdf_canvas_status.html", context)
 
 
-@login_required
 @require_POST
-def run_pdf_canvas_status(request):
+async def run_pdf_canvas_status(request):
+    if not (await request.auser()).is_authenticated:
+        return JsonResponse({"error": "Authentication required"}, status=403)
+
     """Check Canvas PDF status for selected items."""
     from apps.documents.tasks import check_and_download_pdfs
 
+    logger.debug(f"received POST data for run_pdf_canvas_status: {request.POST}")
     # Get selected items
     item_ids = request.POST.getlist("item_ids")
     check_all = request.POST.get("check_all") == "true"
@@ -443,7 +448,8 @@ def run_pdf_canvas_status(request):
         items = CopyrightItem.objects.filter(
             url__contains="/files/", document__isnull=True
         )
-        item_ids = list(items.values_list("material_id", flat=True))
+        item_ids = [i async for i in items.values_list("material_id", flat=True)]
+
     elif not item_ids:
         return JsonResponse({"error": "No items selected"}, status=400)
     else:
@@ -453,7 +459,10 @@ def run_pdf_canvas_status(request):
         item_ids = parsed_ids
 
     # Trigger async Canvas check and download task
-    check_and_download_pdfs.enqueue(item_ids)
+    logger.debug(
+        f"Queueing Canvas file check and PDF download for {len(item_ids)} items"
+    )
+    await check_and_download_pdfs.aenqueue(item_ids)
 
     return JsonResponse(
         {
@@ -469,6 +478,7 @@ def run_pdf_canvas_status(request):
 def pdf_canvas_status_status(request):
     """Get status of PDF Canvas check."""
     # Check extraction status of items
+    logger.debug("Checking PDF Canvas status...")
 
     total_pending = CopyrightItem.objects.filter(
         extraction_status__in=["download_pending", "extraction_pending"]

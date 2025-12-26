@@ -238,6 +238,7 @@ async def refresh_file_existence_async(
     max_concurrent: int = 50,
     force: bool = False,
     rate_limit_delay: float = 0.05,
+    item_ids: list[int] | None = None,
 ) -> dict[str, Any]:
     """
     Refresh file existence status for copyright items based on TTL policy.
@@ -260,8 +261,22 @@ async def refresh_file_existence_async(
         return {"error": "No API token", "checked": 0, "exists": 0, "not_exists": 0}
 
     # Select items needing verification
-    items_to_check = await select_items_needing_check(ttl_days, batch_size, force)
-
+    if not item_ids:
+        items_to_check = await select_items_needing_check(ttl_days, batch_size, force)
+    else:
+        retrieved_items = [
+            x
+            async for x in CopyrightItem.objects.filter(
+                material_id__in=item_ids,
+            )
+            .only("material_id", "url")
+            .values("material_id", "url")
+        ]
+        # make async w/ async for loop
+        items_to_check = [
+            Item(material_id=i.get("material_id", ""), url=i.get("url", ""))
+            for i in retrieved_items
+        ]
     if not items_to_check:
         logger.info("No items need file existence verification")
         return {"checked": 0, "exists": 0, "not_exists": 0}

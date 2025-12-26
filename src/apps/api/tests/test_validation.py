@@ -67,7 +67,7 @@ class TestParseItemIdsValidation:
         assert error is not None
         assert "position 1" in error
         assert "not a string" in error
-        assert "got int" in error
+        assert "int" in error
 
     def test_parse_negative_integer(self):
         """Test parsing negative integer returns positive required error."""

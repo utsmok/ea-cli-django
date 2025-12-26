@@ -38,13 +38,24 @@ async def check_and_download_pdfs(item_ids: list[int]) -> dict:
 
         items_to_check = CopyrightItem.objects.filter(
             material_id__in=item_ids,
-            file_exists__isnull=True,  # Only check unchecked items
         )
-        unchecked_ids = list(items_to_check.values_list("material_id", flat=True))
+        # make async w/ async for loop
+
+        unchecked_ids = [
+            i async for i in items_to_check.values_list("material_id", flat=True)
+        ]
 
         if unchecked_ids:
             # Limit batch size to avoid overwhelming the Canvas API
             batch_size = min(len(unchecked_ids), 100)
+            for i in range(0, len(unchecked_ids), batch_size):
+                batch_ids = unchecked_ids[i : i + batch_size]
+                existence_result = await refresh_file_existence_async(
+                    item_ids=batch_ids, force=False
+                )
+                logger.info(
+                    f"Canvas file existence check (batch {i // batch_size + 1}): {existence_result}"
+                )
             existence_result = await refresh_file_existence_async(
                 batch_size=batch_size, force=False
             )
@@ -52,7 +63,7 @@ async def check_and_download_pdfs(item_ids: list[int]) -> dict:
 
         # Step 2: Download PDFs for items with file_exists=True
         logger.info(f"Downloading PDFs for {len(item_ids)} items...")
-        download_result = await download_pdfs_for_items(item_ids)
+        download_result = await download_pdfs_for_items.aenqueue(item_ids)
 
         return {
             "existence_check": existence_result if unchecked_ids else {"checked": 0},
@@ -62,6 +73,7 @@ async def check_and_download_pdfs(item_ids: list[int]) -> dict:
 
     except Exception as e:
         logger.error(f"Error in check_and_download_pdfs: {e}")
+        logger.exception(e)
         return {"error": str(e), "downloaded": 0, "failed": len(item_ids)}
 
 
@@ -98,7 +110,7 @@ async def download_pdfs_for_items(item_ids: list[int]) -> dict:
                 item.extraction_status = "downloaded"
             else:
                 item.extraction_status = "download_failed"
-            item.save(update_fields=["extraction_status"])
+            await item.asave(update_fields=["extraction_status"])
 
         logger.info(f"Download task completed for {count} items: {result}")
         return result
