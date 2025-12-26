@@ -6,9 +6,9 @@ import bs4
 import httpx
 from django.utils import timezone
 
-from apps.core.models import CopyrightItem, Course, MissingCourse, Person
-from apps.core.services.relations import link_persons_to_courses
+from apps.core.models import CopyrightItem, Course, Faculty, MissingCourse, Person
 from apps.core.services.cache_service import cache_async_result
+from apps.core.services.relations import link_persons_to_courses
 from apps.core.services.retry_logic import async_retry
 from apps.core.utils.course_parser import determine_course_code
 from apps.core.utils.safecast import safe_int
@@ -20,6 +20,9 @@ OSIRIS_SEARCH_URL = (
     "https://utwente.osiris-student.nl/student/osiris/student/cursussen/zoeken"
 )
 PEOPLE_SEARCH_URL = "https://people.utwente.nl/overview?query="
+
+# Faculty abbreviations at University of Twente
+FACULTY_ABBREVS = ["BMS", "ET", "EEMCS", "ITC", "TNW"]
 
 
 async def gather_target_course_codes() -> set[int]:
@@ -431,12 +434,25 @@ async def fetch_person_data(name: str, client: httpx.AsyncClient) -> dict | None
 
 
 def _parse_person_page(soup: bs4.BeautifulSoup, url: str, input_name: str) -> dict:
+    """
+    Parse a person's profile page from people.utwente.nl.
+
+    Extracts:
+    - main_name (from H1 header)
+    - email (from mailto link)
+    - faculty_abbrev (from organization links)
+
+    Faculty extraction follows legacy pattern from ea-cli:
+    Looks for widget-linklist with org abbreviations in format "Name (ABBR)"
+    and identifies faculty by checking if abbreviation matches FACULTY_ABBREVS.
+    """
     data = {
         "input_name": input_name,
         "people_page_url": url,
         "main_name": None,
         "email": None,
-        "faculty_abbrev": None,  # to be extracted
+        "faculty_abbrev": None,
+        "faculty_name": None,
     }
 
     # Name (H1)
@@ -447,11 +463,32 @@ def _parse_person_page(soup: bs4.BeautifulSoup, url: str, input_name: str) -> di
     if email_link := soup.select_one("a[href^='mailto:']"):
         data["email"] = email_link.get_text(strip=True)
 
-    # Org / Faculty info
-    # Usually in sidebar or header. Legacy extracted 'organization'
-    # Let's try to find organization info.
-    # .org-unit-link or similar?
-    # Simple heuristic to extract faculty from organization hierarchy if present
+    # Org / Faculty parsing
+    # Look for organization links in the sidebar/widget
+    # Format: "Organization Name (ABBR)"
+    org_containers = soup.find_all(class_="widget-linklist--smallicons")
+    if org_containers:
+        container = org_containers[0]
+        if isinstance(container, bs4.Tag):
+            for org_tag in container.find_all(class_="widget-linklist__text"):
+                if not isinstance(org_tag, bs4.Tag):
+                    continue
+                text_content = org_tag.string
+                if not text_content or "(" not in text_content:
+                    continue
+                try:
+                    org_name = text_content.split("(")[0].strip()
+                    org_abbr = text_content.split("(")[1].split(")")[0].strip()
+                    # Check if this is a faculty
+                    if org_abbr in FACULTY_ABBREVS:
+                        data["faculty_name"] = org_name
+                        data["faculty_abbrev"] = org_abbr
+                        logger.debug(
+                            f"Found faculty {org_abbr} ({org_name}) for {input_name}"
+                        )
+                        break  # Use first faculty found
+                except Exception as exc:
+                    logger.debug(f"Org parse error for '{text_content}': {exc}")
 
     return data
 
@@ -563,14 +600,42 @@ async def enrich_async(course_ttl_days: int = 30):
             logger.info(f"Fetching {len(missing_persons)} new persons...")
             persons_data = await fetch_and_parse_persons(missing_persons)
 
-            # Persist Persons
+            # Persist Persons with faculty information
             for name, p_data in persons_data.items():
+                faculty = None
+                faculty_abbrev = p_data.get("faculty_abbrev")
+
+                # Try to get or create Faculty object if abbreviation is available
+                if faculty_abbrev:
+                    try:
+                        faculty, _ = await Faculty.objects.aget_or_create(
+                            abbreviation=faculty_abbrev,
+                            defaults={
+                                "name": p_data.get("faculty_name", faculty_abbrev),
+                                "full_abbreviation": faculty_abbrev,
+                                "hierarchy_level": 1,  # Faculty level
+                            },
+                        )
+                        logger.debug(f"Linked {name} to faculty {faculty_abbrev}")
+                    except Exception as e:
+                        logger.warning(
+                            f"Could not link {name} to faculty {faculty_abbrev}: {e}"
+                        )
+
+                # Prepare metadata including faculty_abbrev
+                metadata = {
+                    "faculty_abbrev": faculty_abbrev,
+                    "faculty_name": p_data.get("faculty_name"),
+                }
+
                 await Person.objects.aupdate_or_create(
                     input_name=name,
                     defaults={
                         "main_name": p_data.get("main_name"),
                         "email": p_data.get("email"),
                         "people_page_url": p_data.get("people_page_url"),
+                        "faculty": faculty,
+                        "metadata": metadata,
                     },
                 )
         else:

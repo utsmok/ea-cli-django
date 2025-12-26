@@ -12,6 +12,7 @@ from django.conf import settings
 
 from apps.core.models import CopyrightItem
 from apps.core.services.retry_logic import async_retry
+from apps.core.services.transactions import atomic_async
 from apps.documents.models import Document, PDFCanvasMetadata
 
 logger = logging.getLogger(__name__)
@@ -52,7 +53,7 @@ async def download_pdf_from_canvas(
 
         metadata = response.json()
 
-        # Create or update PDFCanvasMetadata
+        # Create or update PDFCanvasMetadata using native async ORM
         meta_defaults = {
             "uuid": metadata.get("uuid", ""),
             "folder_id": int(metadata.get("folder_id"))
@@ -90,18 +91,11 @@ async def download_pdf_from_canvas(
                 }
             )
 
-        # Use sync ORM for now (will be wrapped in sync_to_async if needed)
-        from asgiref.sync import sync_to_async
-
-        @sync_to_async
-        def create_metadata():
-            obj, _ = PDFCanvasMetadata.objects.update_or_create(
-                id=int(metadata.get("id")),
-                defaults=meta_defaults,
-            )
-            return obj
-
-        pdf_metadata_obj = await create_metadata()
+        # Use native async ORM - aupdate_or_create
+        pdf_metadata_obj, _ = await PDFCanvasMetadata.objects.aupdate_or_create(
+            id=int(metadata.get("id")),
+            defaults=meta_defaults,
+        )
 
         # Download the file
         download_link = metadata.get("url")
@@ -122,7 +116,7 @@ async def download_pdf_from_canvas(
                 )
                 await asyncio.sleep(10)
 
-            with Path.open(filepath, "wb") as f:
+            with filepath.open("wb") as f:
                 async for chunk in file_response.aiter_bytes():
                     f.write(chunk)
 
@@ -134,9 +128,63 @@ async def download_pdf_from_canvas(
             return None
         # Let retry decorator handle other status errors (429, 502, 503, etc.)
         raise
-    except Exception as e:
+    except Exception:
         # Let retry decorator handle network/timeout errors
         raise
+
+
+@atomic_async()
+async def create_or_link_document(
+    item: CopyrightItem,
+    file_path: Path,
+    pdf_metadata_obj: PDFCanvasMetadata,
+) -> Document:
+    """
+    Create a new Document or link to an existing one based on file hash.
+
+    This function runs within an atomic transaction - if any part fails,
+    all database changes will be rolled back.
+
+    Args:
+        item: The CopyrightItem to link the document to
+        file_path: Path to the downloaded PDF file
+        pdf_metadata_obj: Canvas metadata for the PDF
+
+    Returns:
+        The Document (created or existing)
+
+    Raises:
+        Exception: If database operations fail (triggers rollback)
+    """
+    import xxhash
+
+    file_bytes = file_path.read_bytes()
+    fhash = xxhash.xxh3_64_hexdigest(file_bytes)
+
+    # Use native async ORM - aget_or_create
+    doc, created = await Document.objects.aget_or_create(
+        filehash=fhash,
+        defaults={
+            "canvas_metadata": pdf_metadata_obj,
+            "filename": pdf_metadata_obj.filename,
+            "original_url": item.url,
+        },
+    )
+
+    if created:
+        from django.core.files.base import ContentFile
+
+        # Save the file to the Document
+        doc.file.save(file_path.name, ContentFile(file_bytes), save=True)
+        # Remove the temporary file
+        file_path.unlink(missing_ok=True)
+
+    # Link the document to the item
+    item.document = doc
+    item.filehash = fhash
+    await item.asave(update_fields=["document", "filehash"])
+
+    return doc
 
 
 async def download_undownloaded_pdfs(limit: int = 0) -> dict:
@@ -156,27 +204,17 @@ async def download_undownloaded_pdfs(limit: int = 0) -> dict:
 
     download_dir = settings.PDF_DOWNLOAD_DIR
 
-    # Find items that need downloading
+    # Find items that need downloading using native async ORM
     # Items where file_exists=True but no PDF record
-    from asgiref.sync import sync_to_async
-
-    @sync_to_async
-    def get_items_to_download():
-        queryset = (
-            CopyrightItem.objects.filter(
-                file_exists=True,
-                document__isnull=True,
-            )
-            .exclude(url__isnull=True)
-            .exclude(url="")
+    items = [
+        item
+        async for item in CopyrightItem.objects.filter(
+            file_exists=True,
+            document__isnull=True,
         )
-
-        if limit > 0:
-            queryset = queryset[:limit]
-
-        return list(queryset)
-
-    items = await get_items_to_download()
+        .exclude(url__isnull=True)
+        .exclude(url="")[: limit if limit > 0 else 400000]
+    ]
 
     if not items:
         logger.info("No undownloaded PDFs to download")
@@ -216,43 +254,17 @@ async def download_undownloaded_pdfs(limit: int = 0) -> dict:
                     if result:
                         file_path, pdf_metadata_obj = result
 
-                        @sync_to_async
-                        def create_or_link_document():
-                            import xxhash
-
-                            file_bytes = file_path.read_bytes()
-                            fhash = xxhash.xxh3_64_hexdigest(file_bytes)
-
-                            doc, created = Document.objects.get_or_create(
-                                filehash=fhash,
-                                defaults={
-                                    "canvas_metadata": pdf_metadata_obj,
-                                    "filename": pdf_metadata_obj.filename,
-                                    "original_url": item.url,
-                                },
-                            )
-                            if created:
-                                from django.core.files.base import ContentFile
-
-                                doc.file.save(
-                                    file_path.name, ContentFile(file_bytes), save=True
-                                )
-                                # Remove the temporary file
-                                file_path.unlink(missing_ok=True)
-
-                            item.document = doc
-                            item.filehash = fhash
-                            item.save()
-
-                        await create_or_link_document()
+                        # Create or link document with atomic transaction
+                        # Each item is processed in its own transaction
+                        await create_or_link_document(item, file_path, pdf_metadata_obj)
                         downloaded += 1
                         return True
                     else:
                         failed += 1
                         return False
 
-            except Exception as e:
-                logger.error(f"Error downloading material_id {item.material_id}: {e}")
+            except Exception:
+                logger.exception(f"Error downloading material_id {item.material_id}")
                 failed += 1
                 return False
 

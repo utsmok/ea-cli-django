@@ -26,7 +26,11 @@
       "Bash(find:*)",
       "Bash(git checkout:*)",
       "Bash(git pull:*)",
-      "Bash(git merge:*)"
+      "Bash(git merge:*)",
+      "Bash(echo:*)",
+      "Bash(uv add:*)",
+      "Bash(uv sync:*)",
+      "Bash(uv pip list:*)"
     ]
   },
   "outputStyle": "default"

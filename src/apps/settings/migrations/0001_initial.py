@@ -6,7 +6,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
     dependencies = [
@@ -15,27 +14,84 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.CreateModel(
-            name='Setting',
+            name="Setting",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('key', models.CharField(db_index=True, max_length=200, unique=True)),
-                ('name', models.CharField(max_length=200)),
-                ('description', models.TextField(blank=True)),
-                ('value_type', models.CharField(choices=[('string', 'String'), ('integer', 'Integer'), ('float', 'Float'), ('boolean', 'Boolean'), ('json', 'JSON (Array/Object)')], default='string', max_length=20)),
-                ('value', models.JSONField(default=dict)),
-                ('default_value', models.JSONField(default=dict)),
-                ('category', models.CharField(db_index=True, default='general', help_text='Category for grouping related settings', max_length=100)),
-                ('is_sensitive', models.BooleanField(default=False, help_text='Sensitive values are masked in the admin UI')),
-                ('is_required', models.BooleanField(default=False, help_text='Required settings must have a non-empty value')),
-                ('choices', models.JSONField(blank=True, help_text='List of allowed values (null = any value allowed)', null=True)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('updated_by', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='updated_settings', to=settings.AUTH_USER_MODEL)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("key", models.CharField(db_index=True, max_length=200, unique=True)),
+                ("name", models.CharField(max_length=200)),
+                ("description", models.TextField(blank=True)),
+                (
+                    "value_type",
+                    models.CharField(
+                        choices=[
+                            ("string", "String"),
+                            ("integer", "Integer"),
+                            ("float", "Float"),
+                            ("boolean", "Boolean"),
+                            ("json", "JSON (Array/Object)"),
+                        ],
+                        default="string",
+                        max_length=20,
+                    ),
+                ),
+                ("value", models.JSONField(default=dict)),
+                ("default_value", models.JSONField(default=dict)),
+                (
+                    "category",
+                    models.CharField(
+                        db_index=True,
+                        default="general",
+                        help_text="Category for grouping related settings",
+                        max_length=100,
+                    ),
+                ),
+                (
+                    "is_sensitive",
+                    models.BooleanField(
+                        default=False,
+                        help_text="Sensitive values are masked in the admin UI",
+                    ),
+                ),
+                (
+                    "is_required",
+                    models.BooleanField(
+                        default=False,
+                        help_text="Required settings must have a non-empty value",
+                    ),
+                ),
+                (
+                    "choices",
+                    models.JSONField(
+                        blank=True,
+                        help_text="List of allowed values (null = any value allowed)",
+                        null=True,
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                (
+                    "updated_by",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="updated_settings",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'Setting',
-                'verbose_name_plural': 'Settings',
-                'ordering': ['category', 'key'],
+                "verbose_name": "Setting",
+                "verbose_name_plural": "Settings",
+                "ordering": ["category", "key"],
             },
         ),
     ]

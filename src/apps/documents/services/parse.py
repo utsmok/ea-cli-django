@@ -249,9 +249,7 @@ async def parse_pdfs(
                             extracted_text=result["content"],
                             num_pages=result.get("num_pages"),
                             text_quality=result.get("quality_score", 0.0),
-                            detected_language=result.get(
-                                "detected_language"
-                            ),
+                            detected_language=result.get("detected_language"),
                             extracted_keywords=result.get("keywords"),
                             chunks_with_embeddings={
                                 "chunks": chunks,

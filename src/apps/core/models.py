@@ -158,7 +158,7 @@ class Faculty(Organization):
 
 class Person(TimestampedModel):
     input_name = models.CharField(max_length=2048, unique=True, db_index=True)
-    main_name = models.CharField(max_length=2048, null=True, blank=True)
+    main_name = models.CharField(max_length=2048, null=True, blank=True, db_index=True)
     match_confidence = models.FloatField(null=True, blank=True)
     email = models.EmailField(max_length=2048, null=True, blank=True)
     people_page_url = models.URLField(max_length=2048, null=True, blank=True)
@@ -238,8 +238,10 @@ class CopyrightItem(TimestampedModel):
     remarks = models.TextField(null=True, blank=True)
 
     period = models.CharField(max_length=50, null=True, blank=True)
-    department = models.CharField(max_length=2048, null=True, blank=True)
-    course_code = models.CharField(max_length=2048, null=True, blank=True)
+    department = models.CharField(max_length=2048, null=True, blank=True, db_index=True)
+    course_code = models.CharField(
+        max_length=2048, null=True, blank=True, db_index=True
+    )
     course_name = models.CharField(max_length=2048, null=True, blank=True)
 
     status = models.CharField(
@@ -322,6 +324,7 @@ class CopyrightItem(TimestampedModel):
         max_length=20,
         choices=EnrichmentStatus.choices,
         default=EnrichmentStatus.PENDING,
+        db_index=True,
     )
     last_enrichment_attempt = models.DateTimeField(null=True, blank=True)
     extraction_status = models.CharField(
@@ -351,7 +354,9 @@ class CopyrightItem(TimestampedModel):
                     "v2_manual_classification",
                     "manual_classification",
                 ]
-            )
+            ),
+            # Composite index for url + file_exists (common query pattern)
+            models.Index(fields=["url", "file_exists"]),
         ]
 
 

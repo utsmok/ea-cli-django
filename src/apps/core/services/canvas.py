@@ -94,7 +94,9 @@ async def select_items_needing_check(
     return items
 
 
-@cache_async_result(timeout=86400, key_prefix="canvas_file_exists", cache_name="queries")
+@cache_async_result(
+    timeout=86400, key_prefix="canvas_file_exists", cache_name="queries"
+)
 @async_retry(max_retries=3, base_delay=1.0, max_delay=60.0)
 async def check_single_file_existence(
     item_data: Item,

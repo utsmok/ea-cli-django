@@ -104,20 +104,25 @@ class BatchProcessor:
             raise
 
     def _process_qlik_batch(self):
-        """Process Qlik entries (can create + update)."""
+        """Process Qlik entries (can create + update).
+
+        Each entry is processed in its own transaction - if one fails,
+        it rolls back independently without affecting other entries.
+        """
         entries = self.batch.qlik_entries.filter(processed=False).order_by("row_number")
 
         for entry in entries:
             try:
-                with transaction.atomic():
+                # Each item is processed in its own transaction
+                with transaction.atomic(savepoint=True):
                     self._process_qlik_entry(entry)
                     entry.processed = True
                     entry.processed_at = timezone.now()
                     entry.save(update_fields=["processed", "processed_at"])
             except Exception as e:
-                logger.error(
+                logger.exception(
                     f"Failed to process Qlik entry {entry.material_id} "
-                    f"(row {entry.row_number}): {e}"
+                    f"(row {entry.row_number})"
                 )
                 self._record_failure(
                     entry.material_id,
@@ -129,22 +134,27 @@ class BatchProcessor:
                 self.stats["failed"] += 1
 
     def _process_faculty_batch(self):
-        """Process Faculty entries (update-only)."""
+        """Process Faculty entries (update-only).
+
+        Each entry is processed in its own transaction - if one fails,
+        it rolls back independently without affecting other entries.
+        """
         entries = self.batch.faculty_entries.filter(processed=False).order_by(
             "row_number"
         )
 
         for entry in entries:
             try:
-                with transaction.atomic():
+                # Each item is processed in its own transaction
+                with transaction.atomic(savepoint=True):
                     self._process_faculty_entry(entry)
                     entry.processed = True
                     entry.processed_at = timezone.now()
                     entry.save(update_fields=["processed", "processed_at"])
             except Exception as e:
-                logger.error(
+                logger.exception(
                     f"Failed to process Faculty entry {entry.material_id} "
-                    f"(row {entry.row_number}): {e}"
+                    f"(row {entry.row_number})"
                 )
                 self._record_failure(
                     entry.material_id,

@@ -18,10 +18,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from django.db.models import QuerySet, Prefetch
-from django.db.models import Q
+from django.db.models import Prefetch
 
-from apps.core.models import CopyrightItem, Course, Person, ChangeLog
+from apps.core.models import ChangeLog, CopyrightItem, Course, Person
 
 if TYPE_CHECKING:
     from .query_service import ItemQueryFilter
@@ -38,7 +37,9 @@ class ItemDetailData:
 
     item: CopyrightItem
     courses: list[Course]
-    course_teachers: list[tuple[Course, list[Person]]]  # List of (course, teachers) for templates
+    course_teachers: list[
+        tuple[Course, list[Person]]
+    ]  # List of (course, teachers) for templates
     pdf_available: bool
     pdf_url: str | None
     enrichment_history: list[ChangeLog]
@@ -85,14 +86,16 @@ class ItemDetailService:
 
         # Get enrichment history (ENRICHMENT source changes)
         enrichment_history = list(
-            item.change_logs.filter(change_source=ChangeLog.ChangeSource.ENRICHMENT)
-            .order_by("-changed_at")[:10]
+            item.change_logs.filter(
+                change_source=ChangeLog.ChangeSource.ENRICHMENT
+            ).order_by("-changed_at")[:10]
         )
 
         # Get recent manual changes (MANUAL_EDIT source changes)
         recent_changes = list(
-            item.change_logs.filter(change_source=ChangeLog.ChangeSource.MANUAL_EDIT)
-            .order_by("-changed_at")[:10]
+            item.change_logs.filter(
+                change_source=ChangeLog.ChangeSource.MANUAL_EDIT
+            ).order_by("-changed_at")[:10]
         )
 
         # Find related items (same filehash = potential duplicates)
@@ -155,7 +158,9 @@ class ItemDetailService:
             qs = CopyrightItem.objects.all()
 
         # Get list of IDs (more efficient than fetching full objects)
-        item_ids = list(qs.values_list("material_id", flat=True).order_by("-modified_at"))
+        item_ids = list(
+            qs.values_list("material_id", flat=True).order_by("-modified_at")
+        )
 
         try:
             current_idx = item_ids.index(material_id)

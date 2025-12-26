@@ -11,14 +11,10 @@ Forms are kept simple - complex business logic lives in services.
 """
 
 from django import forms
-from django.core.exceptions import ValidationError
 
 from apps.core.models import (
     CopyrightItem,
     WorkflowStatus,
-    ClassificationV2,
-    OvernameStatus,
-    Lengte,
 )
 
 

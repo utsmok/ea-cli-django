@@ -7,8 +7,9 @@ Does NOT retry on authentication/authorization failures (401, 403).
 
 import asyncio
 import logging
+from collections.abc import Callable
 from functools import wraps
-from typing import Callable, TypeVar
+from typing import TypeVar
 
 import httpx
 
@@ -99,7 +100,9 @@ async def retry_with_exponential_backoff(
                     )
             else:
                 # Not retryable - raise immediately
-                logger.debug(f"Non-retryable error {e.response.status_code} - failing immediately")
+                logger.debug(
+                    f"Non-retryable error {e.response.status_code} - failing immediately"
+                )
                 raise
 
         except (httpx.TimeoutException, httpx.NetworkError) as e:

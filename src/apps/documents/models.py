@@ -109,8 +109,6 @@ class Document(TimestampedModel):
     summary = models.TextField(null=True, blank=True)
     description = models.TextField(null=True, blank=True)
 
-    filehash = models.CharField(max_length=255, null=True, blank=True, db_index=True)
-
     extraction_attempted = models.BooleanField(default=False)
     extraction_successful = models.BooleanField(default=False)
 

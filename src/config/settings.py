@@ -1,4 +1,6 @@
 import os
+import sys
+import warnings
 from pathlib import Path
 
 import environ
@@ -11,19 +13,47 @@ PROJECT_ROOT = BASE_DIR.parent  # c:\dev\ea-cli-django (root of project)
 # Load .env using python-dotenv (handles spaces around = better)
 load_dotenv(PROJECT_ROOT / ".env")
 
-# Default DEBUG to True for development convenience if .env is missing
-env = environ.Env(DEBUG=(bool, True))
-# Note: we intentionally do not call django-environ's `read_env()` here because
+# Create env instance first (before using it)
+env = environ.Env(DEBUG=(bool, False))
+
+# Environment: 'production', 'staging', 'development', or 'test'
+ENV = env("ENV", default="development")
+IS_PRODUCTION = ENV == "production"
+IS_TESTING = "pytest" in sys.modules
+
+# Note: We intentionally do not call django-environ's `read_env()` here because
 # it is stricter about whitespace around '=' than python-dotenv, and can emit
 # noisy warnings. Values from `.env` are already loaded into `os.environ`.
 
-SECRET_KEY = env("SECRET_KEY", default="dev-secret-key")
+# SECRET_KEY handling - required in production with secure fallback
+_secret_key = os.environ.get("SECRET_KEY")
+if not _secret_key:
+    if IS_PRODUCTION:
+        raise ValueError(
+            "SECRET_KEY environment variable must be set in production. "
+            "Generate a secure key with: python -c 'from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())'"
+        )
+    # Development fallback with a warning
+    _secret_key = "dev-secret-key-change-in-production"
+    warnings.warn(
+        "Using insecure development SECRET_KEY. Set SECRET_KEY environment variable.",
+        stacklevel=1,
+    )
+
+SECRET_KEY = _secret_key
 DEBUG = env("DEBUG")
 
 # Redirects
 LOGIN_REDIRECT_URL = "/"
 LOGOUT_REDIRECT_URL = "/"
-ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["*"])
+
+# ALLOWED_HOSTS - secure defaults
+# In production, explicit hosts required. In development, allow localhost.
+if IS_PRODUCTION:
+    _default_hosts = []
+else:
+    _default_hosts = ["localhost", "127.0.0.1", "::1"]
+ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=_default_hosts)
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -82,6 +112,12 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = "config.wsgi.application"
+
+# =============================================================================
+# File Upload Limits
+# =============================================================================
+FILE_UPLOAD_MAX_MEMORY_SIZE = 104857600  # 100MB
+DATA_UPLOAD_MAX_MEMORY_SIZE = 104857600  # 100MB
 
 
 # =============================================================================
@@ -160,7 +196,72 @@ DATABASES["default"]["TEST"] = {
     "NAME": "test_copyright_db_isolated",
 }
 
-AUTH_PASSWORD_VALIDATORS = []
+# =============================================================================
+# Security Settings
+# =============================================================================
+
+# Password validation
+AUTH_PASSWORD_VALIDATORS = [
+    {
+        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
+    },
+    {
+        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
+        "OPTIONS": {
+            "min_length": 12,
+        },
+    },
+    {
+        "NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",
+    },
+    {
+        "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
+    },
+]
+
+# Rate limiting (disabled by default, enable in production)
+RATE_LIMIT_ENABLED = env.bool("RATE_LIMIT_ENABLED", default=False)
+RATE_LIMIT_REQUESTS = env.int("RATE_LIMIT_REQUESTS", default=100)  # requests per window
+RATE_LIMIT_WINDOW = env.int("RATE_LIMIT_WINDOW", default=60)  # seconds
+RATE_LIMIT_CACHE_PREFIX = "ratelimit"
+RATE_LIMIT_EXEMPT_PATHS = ["/health/", "/api/health/", "/readiness/", "/api/readiness/"]
+
+# Secure cookie and SSL settings (applied in production)
+if IS_PRODUCTION:
+    # HTTPS and SSL
+    SECURE_SSL_REDIRECT = True
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+    # Cookie security
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SESSION_COOKIE_HTTPONLY = True
+    CSRF_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = "Lax"
+    CSRF_COOKIE_SAMESITE = "Lax"
+
+    # HSTS (HTTP Strict Transport Security)
+    SECURE_HSTS_SECONDS = 31536000  # 1 year
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+
+    # Other security headers
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    SECURE_BROWSER_XSS_FILTER = True
+    X_FRAME_OPTIONS = "DENY"
+
+# =============================================================================
+# Connection Pooling
+# =============================================================================
+
+# Database connection pooling for production
+# Reuse database connections to reduce overhead
+if IS_PRODUCTION:
+    CONN_MAX_AGE = 600  # 10 minutes
+    CONN_HEALTH_CHECKS = True
+else:
+    CONN_MAX_AGE = 0  # Close connections after each request in development
+    CONN_HEALTH_CHECKS = False
 
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "UTC"
@@ -177,10 +278,6 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # Django 6 Tasks with django-tasks RQ backend
 # Fallback to ImmediateBackend if Redis is not configured
 # Use ImmediateBackend for tests or if Redis is not configured
-import sys
-
-IS_TESTING = "pytest" in sys.modules
-
 TASKS = {
     "default": {
         "BACKEND": "django_tasks.backends.rq.RQBackend"

@@ -155,7 +155,7 @@ async def _enrich_from_osiris(
         return True, []
 
     except Exception as e:
-        logger.warning(f"Error enriching course for item {item.material_id}: {e}")
+        logger.exception(f"Error enriching course for item {item.material_id}")
         return False, [f"Course enrichment failed: {e!s}"]
 
 
@@ -167,7 +167,7 @@ async def _process_documents(item: CopyrightItem):
         try:
             await download_undownloaded_pdfs(limit=0)
         except Exception as e:
-            logger.warning(f"Error downloading PDF for item {item.material_id}: {e}")
+            logger.exception(f"Error downloading PDF for item {item.material_id}")
             error_messages.append(f"PDF Download failed: {e!s}")
 
     try:
@@ -175,7 +175,7 @@ async def _process_documents(item: CopyrightItem):
         item_re = await CopyrightItem.objects.aget(material_id=item.material_id)
         await parse_pdfs(filter_ids=[item_re.material_id])
     except Exception as e:
-        logger.warning(f"Error parsing PDF for item {item.material_id}: {e}")
+        logger.exception(f"Error parsing PDF for item {item.material_id}")
         error_messages.append(f"PDF Parsing failed: {e!s}")
 
     return error_messages
@@ -285,7 +285,7 @@ async def enrich_item(
         )
 
     except Exception as e:
-        logger.error(f"Critical error in enrich_item for {item_id}: {e}")
+        logger.exception(f"Critical error in enrich_item for {item_id}")
         try:
             item = await CopyrightItem.objects.aget(material_id=item_id)
             item.enrichment_status = EnrichmentStatus.FAILED

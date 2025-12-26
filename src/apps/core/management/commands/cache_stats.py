@@ -7,8 +7,8 @@ Usage:
     python manage.py cache_stats --cache queries
 """
 
-from django.core.management.base import BaseCommand
 from django.core.cache import caches
+from django.core.management.base import BaseCommand
 
 
 class Command(BaseCommand):
@@ -38,9 +38,7 @@ class Command(BaseCommand):
             try:
                 cache = caches[cache_name]
 
-                self.stdout.write(
-                    self.style.SUCCESS(f"\n=== Cache: {cache_name} ===")
-                )
+                self.stdout.write(self.style.SUCCESS(f"\n=== Cache: {cache_name} ==="))
 
                 # Get redis client
                 if hasattr(cache, "client"):

@@ -12,18 +12,16 @@ This ensures all updates follow consistent business rules.
 
 from __future__ import annotations
 
-from typing import Literal
-
 from django.contrib.auth import get_user_model
 from django.db import transaction
 
 from apps.core.models import (
     ChangeLog,
-    CopyrightItem,
-    WorkflowStatus,
     ClassificationV2,
-    OvernameStatus,
+    CopyrightItem,
     Lengte,
+    OvernameStatus,
+    WorkflowStatus,
 )
 
 User = get_user_model()
@@ -174,13 +172,13 @@ class ItemUpdateService:
         """Get or create system user for unauthenticated updates."""
         from django.contrib.auth.hashers import make_password
 
-        user, created = User.objects.get_or_create(
+        user, _created = User.objects.get_or_create(
             username="system",
             defaults={
                 "password": make_password(None),  # Unusable password
                 "is_staff": False,
                 "is_superuser": False,
-            }
+            },
         )
         return user
 

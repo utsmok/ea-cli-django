@@ -13,7 +13,6 @@ All business logic lives in services for testability.
 import json
 
 from django.contrib.auth.decorators import login_required
-from django.core.paginator import Paginator
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django.template.response import TemplateResponse
@@ -22,13 +21,13 @@ from loguru import logger
 
 from apps.core.models import CopyrightItem
 
-from .forms import InlineEditForm, WorkflowFilterForm
+from .forms import WorkflowFilterForm
+from .services.detail_service import ItemDetailService
 from .services.query_service import (
-    ItemQueryService,
     ItemQueryFilter,
+    ItemQueryService,
 )
 from .services.update_service import ItemUpdateService
-from .services.detail_service import ItemDetailService
 
 
 @login_required
@@ -138,7 +137,9 @@ def update_item_field(request, material_id: int):
             status=400,
         )
         # Add error toast trigger
-        response["HX-Trigger"] = json.dumps({"show-toast": {"type": "error", "message": "Update failed"}})
+        response["HX-Trigger"] = json.dumps(
+            {"show-toast": {"type": "error", "message": "Update failed"}}
+        )
         return response
 
     # Build context for updated row
@@ -164,16 +165,17 @@ def update_item_field(request, material_id: int):
         old_status = result.changes_made.get("workflow_status", {}).get("old")
         new_status = result.changes_made.get("workflow_status", {}).get("new")
         item_id = result.updated_item.material_id
-        filename = result.updated_item.filename or "Untitled"
 
         # Set HX-Trigger header with JSON payload
-        response["HX-Trigger"] = json.dumps({
-            "show-toast": {
-                "type": "success",
-                "title": f"Item #{item_id}",
-                "message": f"Classification changed - Status: {old_status} → {new_status}"
+        response["HX-Trigger"] = json.dumps(
+            {
+                "show-toast": {
+                    "type": "success",
+                    "title": f"Item #{item_id}",
+                    "message": f"Classification changed - Status: {old_status} → {new_status}",
+                }
             }
-        })
+        )
 
     return response
 
@@ -238,9 +240,12 @@ def item_detail_modal(request, material_id: int):
 
     # Get latest enrichment result to check for errors
     from apps.enrichment.models import EnrichmentResult
-    latest_result = EnrichmentResult.objects.filter(
-        item__material_id=material_id
-    ).order_by("-created_at").first()
+
+    latest_result = (
+        EnrichmentResult.objects.filter(item__material_id=material_id)
+        .order_by("-created_at")
+        .first()
+    )
 
     context = {
         "item": data.item,
@@ -264,8 +269,8 @@ def item_detail_modal(request, material_id: int):
     response = TemplateResponse(request, "dashboard/_detail_modal.html", context)
 
     # Trigger enrichment if data is missing
-    from apps.enrichment.tasks import enrich_item
     from apps.core.models import EnrichmentStatus
+    from apps.enrichment.tasks import enrich_item
 
     needs_enrichment = (
         not data.pdf_available
@@ -278,17 +283,10 @@ def item_detail_modal(request, material_id: int):
     is_enriching = data.item.enrichment_status == EnrichmentStatus.RUNNING
 
     if needs_enrichment and not is_enriching:
-        # Set status to RUNNING before enqueueing (so modal shows poller immediately)
-        data.item.enrichment_status = EnrichmentStatus.RUNNING
-        data.item.save(update_fields=["enrichment_status"])
-
-        # Re-render modal with enrichment_status = RUNNING (includes poller)
-        context["item"] = data.item
-        response = TemplateResponse(request, "dashboard/_detail_modal.html", context)
-
-        # Create EnrichmentResult to track errors
-        from apps.enrichment.models import EnrichmentBatch, EnrichmentResult
+        # Create EnrichmentResult to track errors first
         from django.utils import timezone
+
+        from apps.enrichment.models import EnrichmentBatch, EnrichmentResult
 
         batch = EnrichmentBatch.objects.create(
             source=EnrichmentBatch.Source.MANUAL_SINGLE,
@@ -297,20 +295,28 @@ def item_detail_modal(request, material_id: int):
             started_at=timezone.now(),
         )
         result = EnrichmentResult.objects.create(
-            item=data.item,
-            batch=batch,
-            status=EnrichmentResult.Status.PENDING
+            item=data.item, batch=batch, status=EnrichmentResult.Status.PENDING
         )
 
         # Enqueue enrichment task with result tracking
         try:
             enrich_item.enqueue(material_id, batch_id=batch.id, result_id=result.id)
-            logger.info(f"Enqueued enrichment for item {material_id} (batch={batch.id}, result={result.id})")
+            logger.info(
+                f"Enqueued enrichment for item {material_id} (batch={batch.id}, result={result.id})"
+            )
+
+            # Only set status to RUNNING after successful enqueue (prevents race condition)
+            data.item.enrichment_status = EnrichmentStatus.RUNNING
+            data.item.save(update_fields=["enrichment_status"])
+
+            # Re-render modal with enrichment_status = RUNNING (includes poller)
+            context["item"] = data.item
+            response = TemplateResponse(
+                request, "dashboard/_detail_modal.html", context
+            )
         except Exception as e:
             logger.error(f"Failed to enqueue enrichment for {material_id}: {e}")
-            # If enqueue fails, reset status
-            data.item.enrichment_status = EnrichmentStatus.NOT_STARTED
-            data.item.save(update_fields=["enrichment_status"])
+            # If enqueue fails, do not set RUNNING status - keep as NOT_STARTED
 
     return response
 
@@ -337,7 +343,9 @@ def item_enrichment_status(request, material_id: int):
 
     # If enrichment is still running, return 204 to keep polling
     if item.enrichment_status == EnrichmentStatus.RUNNING:
-        logger.info(f"Item {material_id} enrichment still RUNNING, returning 204 to keep polling")
+        logger.info(
+            f"Item {material_id} enrichment still RUNNING, returning 204 to keep polling"
+        )
         return HttpResponse(status=204)
 
     # Enrichment complete - return full updated modal content
@@ -365,9 +373,12 @@ def item_enrichment_status(request, material_id: int):
 
     # Get latest enrichment result to check for errors
     from apps.enrichment.models import EnrichmentResult
-    latest_result = EnrichmentResult.objects.filter(
-        item__material_id=material_id
-    ).order_by("-created_at").first()
+
+    latest_result = (
+        EnrichmentResult.objects.filter(item__material_id=material_id)
+        .order_by("-created_at")
+        .first()
+    )
 
     context = {
         "item": data.item,

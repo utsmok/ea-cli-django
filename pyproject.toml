@@ -36,7 +36,13 @@ dependencies = [
 
 
 [dependency-groups]
-dev = ["ruff", "django-debug-toolbar", "ty"]
+dev = [
+    "ruff",
+    "django-debug-toolbar",
+    "ty",
+    "pytest-mock>=3.15.1",
+    "pytest-django>=4.11.1",
+]
 
 test = [
     "pytest",

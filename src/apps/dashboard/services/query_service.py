@@ -15,16 +15,15 @@ from __future__ import annotations
 from typing import Literal
 
 from django.core.paginator import Paginator
-from django.db.models import Q, QuerySet, Count
-from django.utils.functional import cached_property
+from django.db.models import Count, Q, QuerySet
 
 from apps.core.models import (
+    ClassificationV2,
     CopyrightItem,
     Faculty,
-    WorkflowStatus,
-    ClassificationV2,
-    OvernameStatus,
     Lengte,
+    OvernameStatus,
+    WorkflowStatus,
 )
 from apps.core.services.cache_service import cache_query_result
 
@@ -92,7 +91,9 @@ class ItemQueryService:
             "document",
         )
 
-    def get_filtered_queryset(self, filters: ItemQueryFilter) -> QuerySet[CopyrightItem]:
+    def get_filtered_queryset(
+        self, filters: ItemQueryFilter
+    ) -> QuerySet[CopyrightItem]:
         """
         Apply filters to base queryset.
 
@@ -195,4 +196,4 @@ class ItemQueryService:
             .values_list("workflow_status", "count")
         )
 
-        return {status: count for status, count in counts}
+        return dict(counts)

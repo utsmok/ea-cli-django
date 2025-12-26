@@ -12,7 +12,7 @@ Cache failures are logged but don't break the application.
 
 import logging
 
-from django.db.models.signals import post_save, post_delete
+from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
 
 from apps.core.models import CopyrightItem, Course, Person
@@ -37,7 +37,9 @@ def invalidate_copyright_item_cache(sender, **kwargs):
         # Invalidate faculty queries
         invalidate_pattern("faculties")
 
-        logger.debug(f"Invalidated copyright item caches after {sender.__name__} change")
+        logger.debug(
+            f"Invalidated copyright item caches after {sender.__name__} change"
+        )
     except Exception as e:
         # Don't break the app if cache invalidation fails
         logger.error(f"Failed to invalidate cache: {e}")
