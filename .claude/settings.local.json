@@ -30,7 +30,25 @@
       "Bash(echo:*)",
       "Bash(uv add:*)",
       "Bash(uv sync:*)",
-      "Bash(uv pip list:*)"
+      "Bash(uv pip list:*)",
+      "Bash(wait:*)",
+      "Bash(pkill:*)",
+      "Bash(PGPASSWORD=dev_password psql:*)",
+      "Bash(docker exec:*)",
+      "Bash(timeout 60 uv run pytest:*)",
+      "Bash(timeout:*)",
+      "Bash(tee:*)",
+      "Bash(ls:*)",
+      "Skill(continuity_ledger)",
+      "Bash(mkdir:*)",
+      "Skill(onboard)",
+      "Bash(test:*)",
+      "Bash(xargs:*)",
+      "Bash(chmod:*)",
+      "Skill(create_handoff)",
+      "Bash(~/.claude/scripts/spec_metadata.sh:*)",
+      "Bash(git remote get-url:*)",
+      "Bash(sqlite3:*)"
     ]
   },
   "outputStyle": "default"

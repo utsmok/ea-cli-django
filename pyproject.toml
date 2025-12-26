@@ -49,6 +49,10 @@ test = [
     "pytest-asyncio",
     "pytest-cov",
     "pytest-django",
+    "pytest-xdist>=3.6.0",
+    "pytest-html>=4.1.0",
+    "pytest-playwright>=0.7.0",
+    "playwright>=1.48.0",
 ]
 
 [tool.ruff]

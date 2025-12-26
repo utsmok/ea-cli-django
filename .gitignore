@@ -17,22 +17,35 @@ build/
 .pytest_cache/
 .coverage
 htmlcov/
+coverage.xml
 
-
+# Test artifacts (add to gitignore, not in version control)
+test_screenshots/
+playwright-report/
+playwright/.cache/
+pytest-results/
 
 # Databases
 *.sqlite3
 *.db
 
 # Generated data and exports
-test_data/
+# test_data/ is ignored but specific test files can be unignored
+test_data/*
+!test_data/.gitkeep
+!test_data/e2e/
+!test_data/e2e/*.xlsx
+!test_data/faculty_sheets/
 exports/backups/
 downloads/
 ingestion_batches/
 *.arrow
 *.msgpack
+# Keep some xlsx/csv files for testing, ignore the rest
 *.xlsx
 *.csv
+!test_data/**/*.xlsx
+!test_data/**/*.csv
 
 # Development tools
 .vscode/
@@ -70,3 +83,6 @@ package-lock.json
 
 # Screenshots and testing artifacts
 screenshots/
+
+# Continuous Claude cache (local only)
+.claude/cache/
