@@ -1,10 +1,10 @@
 import asyncio
-import logging
 import urllib.parse as _u
 
 import bs4
 import httpx
 from django.utils import timezone
+from loguru import logger
 
 from apps.core.models import CopyrightItem, Course, Faculty, MissingCourse, Person
 from apps.core.services.cache_service import cache_async_result
@@ -12,8 +12,6 @@ from apps.core.services.relations import link_persons_to_courses
 from apps.core.services.retry_logic import async_retry
 from apps.core.utils.course_parser import determine_course_code
 from apps.core.utils.safecast import safe_int
-
-logger = logging.getLogger(__name__)
 
 # Constants
 OSIRIS_SEARCH_URL = (

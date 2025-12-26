@@ -7,13 +7,11 @@ Provides:
 - invalidate_key: Invalidate a specific cache key
 """
 
-import logging
 from collections.abc import Callable
 from functools import wraps
 
 from django.core.cache import cache
-
-logger = logging.getLogger(__name__)
+from loguru import logger
 
 
 def cache_query_result(

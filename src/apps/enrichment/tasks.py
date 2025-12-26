@@ -290,8 +290,8 @@ async def enrich_item(
             item = await CopyrightItem.objects.aget(material_id=item_id)
             item.enrichment_status = EnrichmentStatus.FAILED
             await item.asave(update_fields=["enrichment_status"])
-        except Exception:
-            pass
+        except Exception as inner_e:
+            logger.error(f"Failed to update error status for item {item_id}: {inner_e}")
 
         if result_id:
             res = await EnrichmentResult.objects.filter(id=result_id).afirst()

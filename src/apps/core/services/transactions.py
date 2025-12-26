@@ -6,13 +6,11 @@ transaction.atomic() wrapped for async execution.
 """
 
 import functools
-import logging
 from collections.abc import Callable
 from typing import TypeVar
 
 from django.db import transaction
-
-logger = logging.getLogger(__name__)
+from loguru import logger
 
 T = TypeVar("T")
 

@@ -4,18 +4,16 @@ Ports logic from ea-cli/easy_access/pdf/download.py
 """
 
 import asyncio
-import logging
 from pathlib import Path
 
 import httpx
 from django.conf import settings
+from loguru import logger
 
 from apps.core.models import CopyrightItem
 from apps.core.services.retry_logic import async_retry
 from apps.core.services.transactions import atomic_async
 from apps.documents.models import Document, PDFCanvasMetadata
-
-logger = logging.getLogger(__name__)
 
 
 @async_retry(max_retries=3, base_delay=1.0, max_delay=60.0)

@@ -4,7 +4,6 @@ Ports logic from ea-cli/easy_access/maintenance/file_existence.py
 """
 
 import asyncio
-import logging
 import time
 from datetime import timedelta
 from typing import Any, TypedDict
@@ -12,12 +11,11 @@ from typing import Any, TypedDict
 import httpx
 from django.conf import settings
 from django.utils import timezone
+from loguru import logger
 
 from apps.core.models import CopyrightItem
 from apps.core.services.cache_service import cache_async_result
 from apps.core.services.retry_logic import async_retry
-
-logger = logging.getLogger(__name__)
 
 
 class Item(TypedDict):

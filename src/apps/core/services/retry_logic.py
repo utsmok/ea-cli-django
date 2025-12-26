@@ -6,14 +6,12 @@ Does NOT retry on authentication/authorization failures (401, 403).
 """
 
 import asyncio
-import logging
 from collections.abc import Callable
 from functools import wraps
 from typing import TypeVar
 
 import httpx
-
-logger = logging.getLogger(__name__)
+from loguru import logger
 
 T = TypeVar("T")
 

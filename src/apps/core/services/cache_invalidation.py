@@ -10,15 +10,12 @@ This provides automatic cache invalidation without manual calls.
 Cache failures are logged but don't break the application.
 """
 
-import logging
-
 from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
+from loguru import logger
 
 from apps.core.models import CopyrightItem, Course, Person
 from apps.core.services.cache_service import invalidate_pattern
-
-logger = logging.getLogger(__name__)
 
 
 @receiver(post_save, sender=CopyrightItem)
