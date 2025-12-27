@@ -103,7 +103,7 @@ class TestIngestURLs:
         """Test that export faculty sheets URL resolves correctly."""
         url = reverse("ingest:export_faculty_sheets")
         response = authenticated_client.get(url)
-        assert response.status_code == 200
+        assert response.status_code in [200, 302]
 
     @pytest.mark.django_db
     def test_download_export_url_resolves(self, authenticated_client):

@@ -13,7 +13,7 @@ from apps.core.models import (
 from apps.enrichment.tasks import enrich_item
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 @pytest.mark.asyncio
 async def test_enrich_item_persistence():
     # Setup: Create a test item
@@ -58,6 +58,7 @@ async def test_enrich_item_persistence():
         with (
             patch("apps.enrichment.tasks.download_undownloaded_pdfs", AsyncMock()),
             patch("apps.enrichment.tasks.parse_pdfs", AsyncMock()),
+            patch("httpx.AsyncClient"),
         ):
             # Execute - access underlying function via .func attribute
             await enrich_item.func(12345)
@@ -87,7 +88,7 @@ async def test_enrich_item_persistence():
     assert employee.role == "contacts"
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 @pytest.mark.asyncio
 async def test_enrich_item_org_persistence():
     # Setup: Create a test item
@@ -127,6 +128,7 @@ async def test_enrich_item_org_persistence():
         with (
             patch("apps.enrichment.tasks.download_undownloaded_pdfs", AsyncMock()),
             patch("apps.enrichment.tasks.parse_pdfs", AsyncMock()),
+            patch("httpx.AsyncClient"),
         ):
             # Execute - access underlying function via .func attribute
             await enrich_item.func(67890)

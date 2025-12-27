@@ -171,9 +171,10 @@ async def create_or_link_document(
 
     if created:
         from django.core.files.base import ContentFile
+        from asgiref.sync import sync_to_async
 
         # Save the file to the Document
-        doc.file.save(file_path.name, ContentFile(file_bytes), save=True)
+        await sync_to_async(doc.file.save)(file_path.name, ContentFile(file_bytes), save=True)
         # Remove the temporary file
         file_path.unlink(missing_ok=True)
 

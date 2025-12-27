@@ -13,7 +13,7 @@ All business logic lives in services for testability.
 import json
 
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponse
+from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404
 from django.template.response import TemplateResponse
 from django.views.decorators.http import require_GET, require_POST
@@ -192,7 +192,10 @@ def item_detail_panel(request, material_id: int):
     - Quick classification fields
     """
     detail_service = ItemDetailService()
-    item = detail_service.get_minimal_detail(material_id)
+    try:
+        item = detail_service.get_minimal_detail(material_id)
+    except CopyrightItem.DoesNotExist:
+        raise Http404("Item not found")
 
     context = {
         "item": item,
@@ -235,7 +238,11 @@ def item_detail_modal(request, material_id: int):
         search_query=search,
     )
 
-    data = detail_service.get_detail_data(material_id)
+    try:
+        data = detail_service.get_detail_data(material_id)
+    except CopyrightItem.DoesNotExist:
+        raise Http404("Item not found")
+
     prev_id, next_id = detail_service.get_navigation_ids(material_id, filters)
 
     # Get latest enrichment result via service
@@ -365,7 +372,10 @@ def item_detail_page(request, material_id: int):
     Same content as modal but as full page.
     """
     detail_service = ItemDetailService()
-    data = detail_service.get_detail_data(material_id)
+    try:
+        data = detail_service.get_detail_data(material_id)
+    except CopyrightItem.DoesNotExist:
+        raise Http404("Item not found")
 
     query_service = ItemQueryService()
 

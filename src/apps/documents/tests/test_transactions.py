@@ -11,11 +11,11 @@ from unittest.mock import patch
 import pytest
 
 from apps.core.models import CopyrightItem, Faculty
-from apps.documents.models import Document
-from apps.documents.services.download import download_undownloaded_pdfs
+from apps.documents.models import Document, PDFCanvasMetadata
+from apps.documents.services.download import download_undownloaded_pdfs, create_or_link_document
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 @pytest.mark.asyncio
 async def test_download_failure_does_not_create_orphaned_records(tmp_path):
     """
@@ -65,3 +65,94 @@ async def test_download_failure_does_not_create_orphaned_records(tmp_path):
     # Verify result reflects failures
     assert result["downloaded"] == 0
     assert result["failed"] >= 2
+
+@pytest.mark.django_db(transaction=True)
+@pytest.mark.asyncio
+async def test_create_document_rollback_on_item_save_failure(tmp_path):
+    """
+    Test that document creation is rolled back if item update fails.
+    """
+    # Setup
+    faculty, _ = await Faculty.objects.aget_or_create(
+        abbreviation="BMS",
+        defaults={"name": "BMS", "hierarchy_level": 1, "full_abbreviation": "UT-BMS"},
+    )
+    item = await CopyrightItem.objects.acreate(
+        material_id=100,
+        url="http://canvas/files/100",
+        file_exists=True,
+        faculty=faculty,
+    )
+
+    meta = await PDFCanvasMetadata.objects.acreate(
+        uuid="uuid100",
+        display_name="test100.pdf",
+        filename="test100.pdf",
+        size=10,
+        canvas_created_at="2024-01-01T00:00:00Z",
+        canvas_updated_at="2024-01-01T00:00:00Z",
+        locked=False,
+        hidden=False,
+        visibility_level="public",
+        download_url="http://example.com/100"
+    )
+
+    # Create a dummy file
+    file_path = tmp_path / "test100.pdf"
+    file_path.write_bytes(b"content")
+
+    # Mock item.asave to fail
+    with patch.object(CopyrightItem, 'asave', side_effect=Exception("DB Error")):
+        with pytest.raises(Exception, match="DB Error"):
+            await create_or_link_document(item, file_path, meta)
+
+    # Verify document was not created (rolled back)
+    assert await Document.objects.acount() == 0
+
+    # Verify item was not updated
+    await item.arefresh_from_db()
+    assert item.document is None
+
+
+@pytest.mark.django_db(transaction=True)
+@pytest.mark.asyncio
+async def test_successful_create_document_commits(tmp_path):
+    """
+    Test that document is created and linked successfully.
+    """
+    # Setup
+    faculty, _ = await Faculty.objects.aget_or_create(
+        abbreviation="BMS",
+        defaults={"name": "BMS", "hierarchy_level": 1, "full_abbreviation": "UT-BMS"},
+    )
+    item = await CopyrightItem.objects.acreate(
+        material_id=101,
+        url="http://canvas/files/101",
+        file_exists=True,
+        faculty=faculty,
+    )
+
+    meta = await PDFCanvasMetadata.objects.acreate(
+        uuid="uuid101",
+        display_name="test101.pdf",
+        filename="test101.pdf",
+        size=10,
+        canvas_created_at="2024-01-01T00:00:00Z",
+        canvas_updated_at="2024-01-01T00:00:00Z",
+        locked=False,
+        hidden=False,
+        visibility_level="public",
+        download_url="http://example.com/101"
+    )
+
+    # Create a dummy file
+    file_path = tmp_path / "test101.pdf"
+    file_path.write_bytes(b"content")
+
+    doc = await create_or_link_document(item, file_path, meta)
+
+    assert doc is not None
+    assert await Document.objects.acount() == 1
+
+    await item.arefresh_from_db()
+    assert item.document_id == doc.id

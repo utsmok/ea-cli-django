@@ -38,6 +38,7 @@ class TestAPIURLs:
         data = json.loads(response.content)
         assert "status" in data or "healthy" in data
 
+    @pytest.mark.django_db
     def test_readiness_check_url_resolves(self, client):
         """Test that readiness check URL resolves correctly without authentication."""
         url = reverse("api:readiness_check")
@@ -45,6 +46,7 @@ class TestAPIURLs:
         # Readiness check should work without authentication
         assert response.status_code == 200
 
+    @pytest.mark.django_db
     def test_readiness_check_returns_json(self, client):
         """Test that readiness check returns JSON response."""
         url = reverse("api:readiness_check")
@@ -145,6 +147,7 @@ class TestAPIURLs:
         # Might return 405 Method Not Allowed or still work
         assert response.status_code in [200, 405]
 
+    @pytest.mark.django_db
     def test_readiness_check_get_only(self, client):
         """Test that readiness check only accepts GET requests."""
         url = reverse("api:readiness_check")
@@ -176,6 +179,7 @@ class TestAPIURLs:
         # Health check should indicate service status
         assert isinstance(data, dict)
 
+    @pytest.mark.django_db
     def test_readiness_check_response_structure(self, client):
         """Test that readiness check returns proper response structure."""
         url = reverse("api:readiness_check")
@@ -239,6 +243,7 @@ class TestAPIURLs:
         # Should still return 200
         assert response.status_code == 200
 
+    @pytest.mark.django_db
     def test_readiness_check_with_parameters(self, client):
         """Test that readiness check ignores URL parameters."""
         url = reverse("api:readiness_check") + "?verbose=true"

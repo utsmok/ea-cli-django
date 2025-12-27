@@ -21,7 +21,7 @@ class TestEnrichmentURLs:
     # URL Resolution Tests
     # =========================================================================
 
-    @pytest.mark.django_db
+    @pytest.mark.django_db(transaction=True)
     def test_trigger_item_enrichment_url_resolves(self, authenticated_client, staff_user):
         """Test that trigger item enrichment URL resolves correctly."""
         item = CopyrightItem.objects.create(
@@ -50,7 +50,7 @@ class TestEnrichmentURLs:
         # Should return status (JSON or HTML)
         assert response.status_code == 200
 
-    @pytest.mark.django_db
+    @pytest.mark.django_db(transaction=True)
     def test_trigger_batch_enrichment_url_resolves(self, authenticated_client):
         """Test that trigger batch enrichment URL resolves correctly."""
         url = reverse("enrichment:trigger_batch")
@@ -59,7 +59,7 @@ class TestEnrichmentURLs:
         # POST should trigger batch enrichment
         assert response.status_code in [200, 302, 400]
 
-    @pytest.mark.django_db
+    @pytest.mark.django_db(transaction=True)
     def test_trigger_batch_enrichment_post(self, authenticated_client):
         """Test that batch enrichment accepts POST requests."""
         url = reverse("enrichment:trigger_batch")
@@ -71,7 +71,7 @@ class TestEnrichmentURLs:
     # Authentication Tests
     # =========================================================================
 
-    @pytest.mark.django_db
+    @pytest.mark.django_db(transaction=True)
     def test_trigger_item_enrichment_requires_authentication(self, client, staff_user):
         """Test that item enrichment authentication behavior."""
         item = CopyrightItem.objects.create(
@@ -100,7 +100,7 @@ class TestEnrichmentURLs:
         # Some endpoints may not require authentication
         assert response.status_code in [200, 302, 401, 403]
 
-    @pytest.mark.django_db
+    @pytest.mark.django_db(transaction=True)
     def test_trigger_batch_enrichment_requires_authentication(self, client):
         """Test that batch enrichment authentication behavior."""
         url = reverse("enrichment:trigger_batch")
@@ -186,7 +186,7 @@ class TestEnrichmentURLs:
         content_type = response["Content-Type"]
         assert content_type.startswith(("application/json", "text/html"))
 
-    @pytest.mark.django_db
+    @pytest.mark.django_db(transaction=True)
     def test_batch_enrichment_returns_success_indicator(
         self, authenticated_client, staff_user
     ):

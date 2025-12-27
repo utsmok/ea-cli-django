@@ -80,13 +80,13 @@ class TestHTMXBehaviors:
             material_id=10101,
             faculty=self.faculty,
         )
-        
+
         url = reverse("dashboard:detail_panel", kwargs={"material_id": item.material_id})
         response = self.client.get(
             url,
             HTTP_HX_REQUEST="true",
         )
-        
+
         assert response.status_code == 200
         # Should not include full HTML document structure
         assert b"<!DOCTYPE html>" not in response.content
@@ -97,13 +97,13 @@ class TestHTMXBehaviors:
             material_id=10102,
             faculty=self.faculty,
         )
-        
+
         url = reverse("enrichment:trigger_item", kwargs={"material_id": item.material_id})
         response = self.client.post(
             url,
             HTTP_HX_REQUEST="true",
         )
-        
+
         # Should accept request (may return various statuses based on implementation)
         assert response.status_code in [200, 201, 202, 204, 400]
 
@@ -120,7 +120,7 @@ class TestJSONResponses:
         """Test health check returns proper response."""
         url = reverse("api:health_check")
         response = self.client.get(url)
-        
+
         assert response.status_code == 200
         # Health check returns JSON or simple text
         assert response["Content-Type"].startswith(("application/json", "text/", "text/html"))
@@ -130,24 +130,24 @@ class TestJSONResponses:
         # Create a batch first
         from apps.ingest.models import IngestionBatch
         from apps.users.models import User
-        
+
         user, _ = User.objects.get_or_create(
             username="testuser",
             defaults={"email": "test@example.com"}
         )
-        
+
         batch = IngestionBatch.objects.create(
             source_type=IngestionBatch.SourceType.QLIK,
             uploaded_by=user,
             status=IngestionBatch.Status.STAGED,
         )
-        
+
         url = reverse("ingest:batch_status_api", kwargs={"batch_id": batch.id})
         response = self.client.get(url)
-        
+
         assert response.status_code == 200
         assert response["Content-Type"].startswith("application/json")
-        
+
         # Should have JSON data
         data = response.json()
         assert "status" in data or "batch_status" in data
@@ -165,7 +165,7 @@ class TestContentTypes:
         """Test dashboard returns HTML content."""
         url = reverse("dashboard:index")
         response = self.client.get(url)
-        
+
         assert response.status_code == 200
         assert response["Content-Type"].startswith("text/html")
 
@@ -173,7 +173,7 @@ class TestContentTypes:
         """Test API health check returns appropriate content type."""
         url = reverse("api:health_check")
         response = self.client.get(url)
-        
+
         assert response.status_code == 200
         # Should be JSON or text
         assert response["Content-Type"].startswith(("application/json", "text/"))
@@ -194,13 +194,13 @@ class TestDatabaseStateVerification:
     def test_item_creation_persists_to_database(self):
         """Test that item creation persists to database."""
         initial_count = CopyrightItem.objects.count()
-        
+
         # Create item
         CopyrightItem.objects.create(
             material_id=10201,
             faculty=self.faculty,
         )
-        
+
         final_count = CopyrightItem.objects.count()
         assert final_count == initial_count + 1
 
@@ -209,21 +209,21 @@ class TestDatabaseStateVerification:
         item = CopyrightItem.objects.create(
             material_id=10202,
             faculty=self.faculty,
-            notes="Original notes",
+            remarks="Original remarks",
         )
-        
+
         url = reverse("dashboard:update_field", kwargs={"material_id": item.material_id})
         response = self.client.post(url, {
-            "field": "notes",
-            "value": "Updated notes",
+            "field": "remarks",
+            "value": "Updated remarks",
         })
-        
+
         # Refresh from database
         item.refresh_from_db()
-        
+
         # If update was successful, verify it persisted
         if response.status_code in [200, 204]:
-            assert item.notes == "Updated notes"
+            assert item.remarks == "Updated remarks"
 
 
 class TestErrorResponses:
@@ -245,4 +245,3 @@ class TestErrorResponses:
         url = reverse("ingest:batch_detail", kwargs={"batch_id": 999999})
         response = self.client.get(url)
         assert response.status_code == 404
-

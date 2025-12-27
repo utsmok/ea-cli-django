@@ -8,6 +8,7 @@ Tests the full workflow:
 """
 
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 from django.core.files import File
@@ -47,7 +48,50 @@ def faculty_sheets_dir(test_data_dir):
     return sheets_dir
 
 
+@pytest.fixture(autouse=True)
+def mock_osiris_scraper():
+    """Mock Osiris scraper to prevent external API calls."""
+    with patch("apps.enrichment.services.osiris_scraper.OsirisScraperService") as MockService:
+        # Mock the instance returned by the constructor
+        instance = MockService.return_value
+
+        # Define async side effects
+        async def async_aenter(*args, **kwargs):
+            return instance
+
+        async def async_aexit(*args, **kwargs):
+            return None
+
+        async def async_fetch(*args, **kwargs):
+            return {}
+
+        # Apply side effects
+        instance.__aenter__.side_effect = async_aenter
+        instance.__aexit__.side_effect = async_aexit
+        instance.fetch_course_details.side_effect = async_fetch
+
+        yield MockService
+
+
+@pytest.fixture(autouse=True)
+def mock_pdf_downloader():
+    """Mock PDF downloader to prevent external API calls."""
+    with patch("apps.enrichment.tasks.download_undownloaded_pdfs") as mock:
+        async def async_return(*args, **kwargs):
+            return {"downloaded": 0, "failed": 0}
+        mock.side_effect = async_return
+        yield mock
+
+
+@pytest.fixture(autouse=True)
+def mock_enrichment_trigger():
+    """Mock enrichment trigger to prevent async task execution during ingestion tests."""
+    with patch("apps.enrichment.tasks.trigger_batch_enrichment") as mock:
+        yield mock
+
+
 @pytest.mark.django_db(transaction=True)
+@pytest.mark.timeout(300)
 class TestQlikIngestion:
     """Test Qlik export ingestion."""
 
@@ -95,8 +139,9 @@ class TestQlikIngestion:
         assert sample_item.title is not None or sample_item.filename is not None
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 @pytest.mark.slow
+@pytest.mark.timeout(300)
 class TestFacultyIngestion:
     """Test Faculty sheet ingestion."""
 
@@ -151,7 +196,8 @@ class TestFacultyIngestion:
         )
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
+@pytest.mark.timeout(300)
 class TestExportFunctionality:
     """Test export functionality."""
 
@@ -204,7 +250,8 @@ class TestExportFunctionality:
         assert overview_csv.exists(), "update_overview.csv not created"
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
+@pytest.mark.timeout(300)
 class TestRoundTripIngestion:
     """Test that exported sheets can be re-ingested."""
 
@@ -260,7 +307,8 @@ class TestRoundTripIngestion:
         assert final_count == initial_count, "Re-import should not create new items"
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
+@pytest.mark.timeout(300)
 def test_complete_pipeline(test_user, qlik_file, tmp_path):
     """End-to-end test of the complete pipeline."""
     # 1. Ingest Qlik data

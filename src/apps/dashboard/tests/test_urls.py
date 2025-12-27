@@ -146,25 +146,15 @@ class TestDashboardURLs:
     def test_nonexistent_item_returns_error(self, authenticated_client):
         """Test that requesting a non-existent item returns an error."""
         url = reverse("dashboard:detail_page", kwargs={"material_id": 999999})
-        # View raises DoesNotExist exception
-        # Use pytest.raises to verify the exception is raised
-        from apps.core.models import CopyrightItem
-
-        with pytest.raises(CopyrightItem.DoesNotExist):
-            authenticated_client.get(url)
+        response = authenticated_client.get(url)
+        assert response.status_code == 404
 
     @pytest.mark.django_db
     def test_invalid_material_id_returns_error(self, authenticated_client):
         """Test that invalid material_id returns an error."""
-        # Django URL routing handles type validation at the routing level
-        # Invalid integers would be caught before reaching the view
-        # This test verifies the view handles non-existent IDs
         url = reverse("dashboard:detail_page", kwargs={"material_id": 0})
-        # View raises DoesNotExist exception
-        from apps.core.models import CopyrightItem
-
-        with pytest.raises(CopyrightItem.DoesNotExist):
-            authenticated_client.get(url)
+        response = authenticated_client.get(url)
+        assert response.status_code == 404
 
     # =========================================================================
     # HTTP Method Tests
