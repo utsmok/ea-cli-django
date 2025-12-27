@@ -52,7 +52,15 @@
       "Skill(resume_handoff)",
       "Skill(commit)",
       "Bash(bash .claude/scripts/generate-reasoning.sh:*)",
-      "Bash(git rev-parse:*)"
+      "Bash(git rev-parse:*)",
+      "Bash(git log:*)",
+      "Bash(git show:*)",
+      "Bash(time uv run pytest:*)",
+      "Bash(time timeout 60 uv run pytest:*)",
+      "Bash(time timeout 45 uv run pytest:*)",
+      "Bash(time timeout 120 uv run pytest:*)",
+      "Skill(test-driven-development)",
+      "Skill(implement_plan)"
     ]
   },
   "outputStyle": "default"

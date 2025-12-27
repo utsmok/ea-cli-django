@@ -1,0 +1,35 @@
+
+@plugin "daisyui/theme" {
+  name: "utwente";
+  default: false;
+  prefersdark: false;
+  color-scheme: "light";
+  --color-base-100: #F7F8F8;
+  --color-base-200: #F0F1F2;
+  --color-base-300: #DCDDDE;
+  --color-base-content: #000000;
+  --color-primary: #98c4d7;
+  --color-primary-content: oklch(13% 0.028 261.692);
+  --color-secondary: #b49fc7;
+  --color-secondary-content: oklch(29% 0.066 243.157);
+  --color-accent: #919cbd;
+  --color-accent-content: oklch(28% 0.091 267.935);
+  --color-neutral: #cad9d6;
+  --color-neutral-content: #000000;
+  --color-info: #008eb3;
+  --color-info-content: oklch(97% 0.013 236.62);
+  --color-success: #579749;
+  --color-success-content: oklch(98% 0.018 155.826);
+  --color-warning: #e7514a;
+  --color-warning-content: oklch(98% 0.016 73.684);
+  --color-error: #b5123d;
+  --color-error-content: oklch(96% 0.015 12.422);
+  --radius-selector: 1rem;
+  --radius-field: 2rem;
+  --radius-box: 0.5rem;
+  --size-selector: 0.21875rem;
+  --size-field: 0.1875rem;
+  --border: 2px;
+  --depth: 1;
+  --noise: 1;
+}
