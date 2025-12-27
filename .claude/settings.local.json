@@ -48,7 +48,11 @@
       "Skill(create_handoff)",
       "Bash(~/.claude/scripts/spec_metadata.sh:*)",
       "Bash(git remote get-url:*)",
-      "Bash(sqlite3:*)"
+      "Bash(sqlite3:*)",
+      "Skill(resume_handoff)",
+      "Skill(commit)",
+      "Bash(bash .claude/scripts/generate-reasoning.sh:*)",
+      "Bash(git rev-parse:*)"
     ]
   },
   "outputStyle": "default"

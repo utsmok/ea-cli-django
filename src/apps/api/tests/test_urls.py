@@ -110,9 +110,9 @@ class TestAPIURLs:
 
     def test_shinobi_api_url_resolves(self, client):
         """Test that Shinobi API base URL resolves correctly."""
-        url = reverse("api:api") + "v1/"
-        # Note: Shinobi API might have different authentication requirements
-        # For now, just test URL resolution
+        # Note: Shinobi API is included directly without a named route
+        # Use hardcoded path instead of reverse()
+        url = "/api/v1/"
         response = client.get(url)
         # Shinobi might return 401 or list of endpoints
         assert response.status_code in [200, 401, 404]
@@ -120,11 +120,13 @@ class TestAPIURLs:
     @pytest.mark.django_db
     def test_shinobi_api_with_authentication(self, authenticated_client):
         """Test that Shinobi API is accessible with authentication."""
-        url = reverse("api:api") + "v1/"
+        # Note: Shinobi API is included directly without a named route
+        # Use hardcoded path instead of reverse()
+        url = "/api/v1/"
         response = authenticated_client.get(url)
         # Should return something (endpoints list, 401, 404, or 405)
         # Accept multiple possibilities as Shinobi config may vary
-        assert response.status_code in [200, 401, 404, 405, 500]
+        assert response.status_code in [200, 401, 404, 405]
 
     # =========================================================================
     # HTTP Method Tests
