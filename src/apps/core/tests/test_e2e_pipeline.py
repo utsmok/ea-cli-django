@@ -24,6 +24,9 @@ from apps.enrichment.tasks import enrich_item, trigger_batch_enrichment
 from apps.documents.tasks import check_and_download_pdfs, extract_pdfs_for_items
 
 
+@pytest.mark.slow
+@pytest.mark.external_api
+@pytest.mark.timeout(60)
 class TestBaseCasePipeline:
     """
     Test the complete 7-step processing pipeline with 5 representative items.

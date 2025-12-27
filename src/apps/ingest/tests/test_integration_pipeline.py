@@ -96,9 +96,12 @@ class TestQlikIngestion:
 
 
 @pytest.mark.django_db
+@pytest.mark.slow
 class TestFacultyIngestion:
     """Test Faculty sheet ingestion."""
 
+    @pytest.mark.slow
+    @pytest.mark.timeout(60)
     def test_ingest_faculty_sheets(
         self, test_user, qlik_file, faculty_sheets_dir, test_data_dir
     ):

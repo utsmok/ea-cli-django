@@ -47,18 +47,17 @@ def atomic_async(
         async def wrapper(*args, **kwargs) -> T:
             # For Django 6.0+, we need to use sync_to_async wrapper
             # because transaction.atomic doesn't support async context manager
-            from asgiref.sync import sync_to_async
+            from asgiref.sync import async_to_sync, sync_to_async
+
+            import asyncio
 
             @sync_to_async
             def run_in_transaction() -> T:
                 with transaction.atomic(using=using, savepoint=savepoint):
-                    # Since we're in a sync context but need to run async code,
-                    # we need to handle this differently. The actual function
-                    # will be run in an async context managed by sync_to_async
-                    # but the transaction boundary is established here.
-                    # This is a known limitation - for full async transaction
-                    # support, Django 6.0 requires using transaction.atomic
-                    # in a different way or running the entire operation sync.
+                    # If the function is a coroutine, we must await it
+                    # within the transaction boundary.
+                    if asyncio.iscoroutinefunction(func):
+                        return async_to_sync(func)(*args, **kwargs)
                     return func(*args, **kwargs)
 
             try:

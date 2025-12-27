@@ -79,6 +79,8 @@ def test_faculty(db):
 
 
 @pytest.mark.django_db(transaction=True)
+@pytest.mark.slow
+@pytest.mark.timeout(30)
 class TestRoundTripExportImport:
     """Test round-trip export and import with modifications."""
 

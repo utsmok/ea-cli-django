@@ -12,6 +12,8 @@ from apps.ingest.tasks import stage_batch, process_batch
 from django.conf import settings
 
 
+@pytest.mark.slow
+@pytest.mark.timeout(30)
 class TestTaskExecution:
     """
     Verify task execution behavior during testing.
