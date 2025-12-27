@@ -13,7 +13,6 @@ from apps.core.models import (
 from apps.enrichment.tasks import enrich_item
 
 
-@pytest.mark.skip(reason="Task decorator causes 'Task object is not callable' error in tests")
 @pytest.mark.django_db
 @pytest.mark.asyncio
 async def test_enrich_item_persistence():
@@ -60,8 +59,8 @@ async def test_enrich_item_persistence():
             patch("apps.enrichment.tasks.download_undownloaded_pdfs", AsyncMock()),
             patch("apps.enrichment.tasks.parse_pdfs", AsyncMock()),
         ):
-            # Execute
-            await enrich_item(12345)
+            # Execute - access underlying function via .func attribute
+            await enrich_item.func(12345)
 
     # Verify Course persistence
     await item.arefresh_from_db()
@@ -88,7 +87,6 @@ async def test_enrich_item_persistence():
     assert employee.role == "contacts"
 
 
-@pytest.mark.skip(reason="Task decorator causes 'Task object is not callable' error in tests")
 @pytest.mark.django_db
 @pytest.mark.asyncio
 async def test_enrich_item_org_persistence():
@@ -130,8 +128,8 @@ async def test_enrich_item_org_persistence():
             patch("apps.enrichment.tasks.download_undownloaded_pdfs", AsyncMock()),
             patch("apps.enrichment.tasks.parse_pdfs", AsyncMock()),
         ):
-            # Execute
-            await enrich_item(67890)
+            # Execute - access underlying function via .func attribute
+            await enrich_item.func(67890)
 
     # Verify Person persistence
     person = await Person.objects.aget(input_name="Test Person")

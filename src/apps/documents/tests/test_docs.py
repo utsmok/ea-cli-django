@@ -1,24 +1,21 @@
 from unittest.mock import patch
 
 import pytest
-from asgiref.sync import sync_to_async
 from django.core.files.base import ContentFile
 
 from apps.core.models import CopyrightItem, Faculty
 from apps.documents.models import Document, PDFCanvasMetadata, PDFText
-from apps.documents.services.download import download_undownloaded_pdfs
 
 
-@pytest.mark.skip(reason="Complex async mock interaction causing coroutine warnings")
+@pytest.mark.skip(reason="FileField.save() in async context causes SynchronousOnlyOperation - tested via E2E")
 @pytest.mark.django_db
 @pytest.mark.asyncio
 async def test_document_deduplication(tmp_path):
     """
     Test that documents with same filehash are deduplicated.
-
-    SKIPPED: This test has complex async mock interactions that cause
-    coroutine warnings. Document deduplication logic is verified through
-    integration tests and manual testing.
+    
+    SKIPPED: Django's FileField.save() cannot be called from async context.
+    Document deduplication logic is verified through E2E pipeline tests.
     """
     pass
 
@@ -28,6 +25,7 @@ async def test_document_deduplication(tmp_path):
 async def test_extraction_service_call():
     # This test verifies that parse_pdfs calls the extraction service
     from apps.documents.services.parse import parse_pdfs
+    from asgiref.sync import sync_to_async
 
     _faculty, _ = await Faculty.objects.aget_or_create(
         abbreviation="BMS",
