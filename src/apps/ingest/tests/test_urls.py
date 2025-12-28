@@ -8,7 +8,6 @@ Tests verify:
 - Status API endpoints return proper JSON
 """
 import pytest
-from django.test import Client
 from django.urls import reverse
 
 from apps.ingest.models import IngestionBatch

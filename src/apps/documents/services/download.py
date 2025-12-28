@@ -170,8 +170,8 @@ async def create_or_link_document(
     )
 
     if created:
-        from django.core.files.base import ContentFile
         from asgiref.sync import sync_to_async
+        from django.core.files.base import ContentFile
 
         # Save the file to the Document
         await sync_to_async(doc.file.save)(file_path.name, ContentFile(file_bytes), save=True)

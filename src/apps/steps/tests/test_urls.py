@@ -8,7 +8,6 @@ Tests verify:
 - Run and status endpoints work correctly
 """
 import pytest
-from django.test import Client
 from django.urls import reverse
 
 

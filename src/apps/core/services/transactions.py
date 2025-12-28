@@ -47,9 +47,9 @@ def atomic_async(
         async def wrapper(*args, **kwargs) -> T:
             # For Django 6.0+, we need to use sync_to_async wrapper
             # because transaction.atomic doesn't support async context manager
-            from asgiref.sync import async_to_sync, sync_to_async
-
             import asyncio
+
+            from asgiref.sync import async_to_sync, sync_to_async
 
             @sync_to_async
             def run_in_transaction() -> T:

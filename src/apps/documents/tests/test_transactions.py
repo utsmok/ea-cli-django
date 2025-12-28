@@ -12,7 +12,10 @@ import pytest
 
 from apps.core.models import CopyrightItem, Faculty
 from apps.documents.models import Document, PDFCanvasMetadata
-from apps.documents.services.download import download_undownloaded_pdfs, create_or_link_document
+from apps.documents.services.download import (
+    create_or_link_document,
+    download_undownloaded_pdfs,
+)
 
 
 @pytest.mark.django_db(transaction=True)

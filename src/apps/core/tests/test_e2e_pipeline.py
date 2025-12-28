@@ -17,11 +17,10 @@ from apps.core.models import (
     CopyrightItem,
     EnrichmentStatus,
 )
+from apps.documents.tasks import check_and_download_pdfs, extract_pdfs_for_items
+from apps.enrichment.tasks import enrich_item
 from apps.ingest.models import IngestionBatch
 from apps.ingest.tasks import process_batch, stage_batch
-from apps.enrichment.models import EnrichmentBatch
-from apps.enrichment.tasks import enrich_item, trigger_batch_enrichment
-from apps.documents.tasks import check_and_download_pdfs, extract_pdfs_for_items
 
 
 @pytest.mark.slow
@@ -550,8 +549,8 @@ class TestBaseCasePipeline:
         if not base_case_5_file.exists():
             pytest.skip(f"Test data file not found: {base_case_5_file}")
 
-        import time
         import asyncio
+        import time
 
         start_time = time.time()
 

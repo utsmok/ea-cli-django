@@ -5,13 +5,12 @@ This file provides common fixtures for all tests in the project.
 Fixtures are available to all test files automatically.
 """
 import os
+from collections.abc import Generator
 from pathlib import Path
-from typing import Generator
 
 import pytest
 from django.contrib.auth import get_user_model
 from django.test import Client
-from django.utils import timezone
 
 # Get the User model
 User = get_user_model()
@@ -22,7 +21,7 @@ User = get_user_model()
 # ============================================================================
 
 @pytest.fixture(scope="function")
-def clean_db(db) -> Generator[None, None, None]:
+def clean_db(db) -> Generator[None]:
     """
     Provide a clean database for each test.
 

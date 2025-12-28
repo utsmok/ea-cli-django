@@ -8,7 +8,6 @@ Tests verify:
 - Batch enrichment triggers work correctly
 """
 import pytest
-from django.test import Client
 from django.urls import reverse
 
 from apps.core.models import CopyrightItem

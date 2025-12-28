@@ -1,7 +1,7 @@
-from django.test import Client, TestCase, override_settings
-from django.urls import reverse
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
+from django.test import Client, TestCase, override_settings
+from django.urls import reverse
 
 User = get_user_model()
 

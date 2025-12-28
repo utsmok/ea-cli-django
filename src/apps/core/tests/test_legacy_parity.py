@@ -14,9 +14,9 @@ from pathlib import Path
 
 import polars as pl
 import pytest
+from django.contrib.auth import get_user_model
 
 from apps.ingest.tasks import process_batch, stage_batch
-from django.contrib.auth import get_user_model
 
 User = get_user_model()
 
@@ -119,8 +119,9 @@ class TestLegacyParity:
 
     def _ingest_qlik_file(self, file_path: Path):
         """Create ingestion batch and stage data."""
-        from apps.ingest.models import IngestionBatch
         from django.core.files import File as DjangoFile
+
+        from apps.ingest.models import IngestionBatch
         first_user = User.objects.create(username="legacy_parity_user")
         print(f"Using user {first_user} for upload")
         with open(file_path, "rb") as f:

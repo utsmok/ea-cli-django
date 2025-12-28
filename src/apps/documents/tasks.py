@@ -138,12 +138,12 @@ async def extract_pdfs_for_items(item_ids: list[int]) -> dict:
         items = CopyrightItem.objects.filter(
             material_id__in=item_ids, document__isnull=False
         )
-        count = items.count()
+        count = await items.acount()
 
         # Mark items as having extraction in progress
-        for item in items:
+        async for item in items:
             item.extraction_status = "extraction_pending"
-            item.save(update_fields=["extraction_status"])
+            await item.asave(update_fields=["extraction_status"])
 
         # Trigger extraction for specific items
         result = await parse_pdfs(filter_ids=item_ids, skip_text=False)
@@ -151,7 +151,7 @@ async def extract_pdfs_for_items(item_ids: list[int]) -> dict:
         # Update status
         for item in items:
             item.extraction_status = "completed"
-            item.save(update_fields=["extraction_status"])
+            await item.asave(update_fields=["extraction_status"])
 
         logger.info(f"Extraction task completed for {count} items: {result}")
         return result

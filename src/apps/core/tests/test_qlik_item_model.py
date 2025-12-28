@@ -1,6 +1,8 @@
-from django.test import TestCase
 from django.db.utils import IntegrityError
-from apps.core.models import QlikItem, Status, Classification
+from django.test import TestCase
+
+from apps.core.models import Classification, QlikItem, Status
+
 
 class QlikItemModelTests(TestCase):
     def test_create_qlik_item_minimal(self):

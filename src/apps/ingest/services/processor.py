@@ -17,7 +17,6 @@ from apps.ingest.models import (
     QlikEntry,
 )
 from apps.ingest.services.merge_rules import (
-    QLIK_CREATEABLE_FIELDS,
     get_faculty_strategy,
     get_qlik_strategy,
 )

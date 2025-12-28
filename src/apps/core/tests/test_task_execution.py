@@ -5,11 +5,11 @@ Verify that tasks use ImmediateBackend (synchronous execution) during testing
 and return proper result structures.
 """
 import pytest
+from django.conf import settings
 
 from apps.core.models import CopyrightItem
 from apps.ingest.models import IngestionBatch
-from apps.ingest.tasks import stage_batch, process_batch
-from django.conf import settings
+from apps.ingest.tasks import process_batch, stage_batch
 
 
 @pytest.mark.slow
@@ -33,7 +33,6 @@ class TestTaskExecution:
         - Task results are immediately available
         """
         # Verify IS_TESTING is True
-        from django.core.exceptions import ImproperlyConfigured
 
         try:
             is_testing = getattr(settings, "IS_TESTING", False)

@@ -1,6 +1,8 @@
+from unittest.mock import patch
+
 from django.test import Client, TestCase
 from django.urls import reverse
-from unittest.mock import patch
+
 
 class HealthCheckTests(TestCase):
     def setUp(self):

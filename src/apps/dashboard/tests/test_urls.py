@@ -8,7 +8,6 @@ Tests verify:
 - HTTP methods are correctly handled
 """
 import pytest
-from django.test import Client
 from django.urls import reverse
 
 from apps.core.models import CopyrightItem

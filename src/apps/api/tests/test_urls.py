@@ -8,7 +8,6 @@ Tests verify:
 - Shinobi API endpoints are accessible
 """
 import pytest
-from django.test import Client
 from django.urls import reverse
 
 

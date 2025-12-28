@@ -3,7 +3,7 @@ from unittest.mock import patch
 import pytest
 from django.core.files.base import ContentFile
 
-from apps.core.models import CopyrightItem, Faculty
+from apps.core.models import Faculty
 from apps.documents.models import Document, PDFCanvasMetadata, PDFText
 
 
@@ -78,8 +78,9 @@ async def test_document_deduplication(tmp_path):
 @pytest.mark.asyncio
 async def test_extraction_service_call():
     # This test verifies that parse_pdfs calls the extraction service
-    from apps.documents.services.parse import parse_pdfs
     from asgiref.sync import sync_to_async
+
+    from apps.documents.services.parse import parse_pdfs
 
     _faculty, _ = await Faculty.objects.aget_or_create(
         abbreviation="BMS",

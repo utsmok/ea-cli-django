@@ -12,6 +12,7 @@ Tests the main copyright dashboard interface including:
 """
 
 import re
+
 import pytest
 from playwright.sync_api import Page, expect
 

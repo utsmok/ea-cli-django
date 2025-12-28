@@ -5,15 +5,12 @@ This file provides shared fixtures for Playwright UI tests.
 """
 
 import os
+from collections.abc import Generator
 from pathlib import Path
-from typing import Generator
 
 import pytest
 from django.contrib.auth import get_user_model
-from django.test import Client
-from playwright.sync_api import Browser, BrowserContext, Page
-
-from apps.core.models import CopyrightItem, Faculty
+from playwright.sync_api import Page
 
 User = get_user_model()
 
@@ -41,7 +38,7 @@ def base_url() -> str:
 
 
 @pytest.fixture
-def page(base_url: str) -> Generator[Page, None, None]:
+def page(base_url: str) -> Generator[Page]:
     """
     Create a Playwright page with base URL.
 
