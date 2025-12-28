@@ -60,7 +60,8 @@
       "Bash(time timeout 45 uv run pytest:*)",
       "Bash(time timeout 120 uv run pytest:*)",
       "Skill(test-driven-development)",
-      "Skill(implement_plan)"
+      "Skill(implement_plan)",
+      "Bash(wc:*)"
     ]
   },
   "outputStyle": "default"
