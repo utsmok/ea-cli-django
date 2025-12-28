@@ -24,6 +24,8 @@ test_screenshots/
 playwright-report/
 playwright/.cache/
 pytest-results/
+test_results/
+test_results/*.txt
 
 # Databases
 *.sqlite3
@@ -37,6 +39,7 @@ test_data/*
 !test_data/e2e/*.xlsx
 !test_data/faculty_sheets/
 exports/backups/
+exports/faculty_sheets/
 downloads/
 ingestion_batches/
 *.arrow
